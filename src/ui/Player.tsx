@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { Suspense, lazy, useEffect, useMemo, useRef, useState } from 'react';
 import { ClientSession, type ClientStatus } from '../net/session';
 import { peerClient } from '../net/transport';
 import { normalizeCode, prettyCode, type Intent, type PlayerView } from '../engine/game';
@@ -9,6 +9,8 @@ import { MapCanvas, lineToTemplate, type TemplateShape } from './MapCanvas';
 import { CharBuilder } from './CharBuilder';
 import { SheetPanel, ActionsPanel, BagPanel } from './Sheet';
 import { DiceTray, LogView, Modal, clientId, store, toast, vibrate, type RollFn } from './common';
+
+const View3D = lazy(() => import('../view3d/View3D'));
 
 type Tab = 'table' | 'sheet' | 'actions' | 'bag' | 'log';
 
@@ -89,6 +91,8 @@ function PlayerTable({ s, onLeave }: { s: ClientSession; onLeave: () => void }) 
   const [seenHandout, setSeenHandout] = useState(0);
   const [menu, setMenu] = useState(false);
   const [mapTool, setMapTool] = useState<'move' | 'measure' | 'area'>('move');
+  const [view3d, setView3d] = useState<boolean>(() => store.get('view3d', false));
+  useEffect(() => store.set('view3d', view3d), [view3d]);
   const [area, setArea] = useState<TemplateShape>({ shape: 'sphere', size: 20, color: '#4cc9f0' });
   const [safetyOpen, setSafetyOpen] = useState(false);
   const ch = v.myCharacter;
@@ -170,6 +174,32 @@ function PlayerTable({ s, onLeave }: { s: ClientSession; onLeave: () => void }) 
             )}
             {v.curtain ? (
               <div className="curtain">The GM is setting the scene…</div>
+            ) : view3d ? (
+              <Suspense fallback={<div className="curtain">Building the dungeon in 3D…</div>}>
+                <View3D
+                  map={v.map}
+                  role="player"
+                  tokens={v.tokens}
+                  myTokenId={v.myTokenId}
+                  currentTokenId={v.combat.current}
+                  visible={v.visible}
+                  lit={v.lit}
+                  revealed={v.revealed}
+                  speedLeft={combat.movedLeft}
+                  combatActive={v.combat.active}
+                  log={v.log}
+                  canMove={(t) => t.id === v.myTokenId && (!v.combat.active || myTurn)}
+                  onMove={(id, x, y) => safe(send({ t: 'move', tokenId: id, x, y }))}
+                  onExit={() => setView3d(false)}
+                  onTap={(info) => {
+                    if (info.edge && v.map.doors[info.edge]) safe(send({ t: 'door', key: info.edge }));
+                    else if (info.tokenId) {
+                      const t = v.tokens.find((k) => k.id === info.tokenId);
+                      if (t) toast(`${t.name}${t.hpLabel ? ` · ${t.hpLabel}` : ''}${t.conditions.length ? ` · ${t.conditions.map(conditionName).join(', ')}` : ''}`);
+                    }
+                  }}
+                />
+              </Suspense>
             ) : (
               <MapCanvas
                 map={v.map}
@@ -212,6 +242,7 @@ function PlayerTable({ s, onLeave }: { s: ClientSession; onLeave: () => void }) 
             </div>
             {!v.curtain && (
               <div className="map-tools phone-tools">
+                <button className={view3d ? 'on' : ''} onClick={() => setView3d(!view3d)} aria-label="3D view">3D</button>
                 <button className={mapTool === 'measure' ? 'on' : ''} onClick={() => setMapTool(mapTool === 'measure' ? 'move' : 'measure')} aria-label="Ruler">📏</button>
                 <button className={mapTool === 'area' ? 'on' : ''} onClick={() => setMapTool(mapTool === 'area' ? 'move' : 'area')} aria-label="Spell area">🎯</button>
                 {myToken && <button className={myToken.light ? 'on' : ''} onClick={() => safe(send({ t: 'torch', tokenId: myToken.id, on: !myToken.light }))} aria-label="Torch">🔥</button>}
@@ -228,7 +259,7 @@ function PlayerTable({ s, onLeave }: { s: ClientSession; onLeave: () => void }) 
                 <span className="small muted">Drag from you toward the target. Tap the start of your area to remove it.</span>
               </div>
             )}
-            {!v.combat.active && mapTool === 'move' && <p className="hint">Drag your token to move. Tap a door to open it.</p>}
+            {!v.combat.active && mapTool === 'move' && !view3d && <p className="hint">Drag your token to move. Tap a door to open it.</p>}
             {mapTool === 'measure' && <p className="hint">Drag to measure. Every square is 5 ft.</p>}
           </div>
         )}

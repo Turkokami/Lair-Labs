@@ -314,3 +314,23 @@ canvas.thumb { display: block; }
 .safety-card ul { margin: 4px 0 8px 18px; padding: 0; }
 .phone-tools { top: 48px; }
 .phone .area-bar { bottom: 56px; right: 10px; }
+
+/* ---------- 3D dungeon view ---------- */
+.v3d { position: relative; flex: 1; min-height: 0; background: #060508; overflow: hidden; user-select: none; -webkit-user-select: none; }
+.v3d-canvas { position: absolute; inset: 0; }
+.v3d-top { position: absolute; left: 8px; right: 62px; top: 8px; display: flex; gap: 6px; align-items: center; z-index: 4; pointer-events: none; }
+.v3d-top > * { pointer-events: auto; }
+.v3d-btn { min-height: 34px; padding: 4px 10px; border-radius: 10px; background: rgba(20, 17, 13, 0.82); color: #fff; font-size: 0.85rem; border: 1px solid rgba(255, 255, 255, 0.12); }
+.v3d-seg { display: flex; border-radius: 10px; overflow: hidden; border: 1px solid rgba(255, 255, 255, 0.12); }
+.v3d-seg button { min-height: 34px; padding: 4px 10px; border-radius: 0; background: rgba(20, 17, 13, 0.82); color: #ddd; font-size: 0.85rem; border: 0; }
+.v3d-seg button.on { background: var(--gold); color: #1a140c; font-weight: 700; }
+.v3d-pad { position: absolute; left: 10px; bottom: 12px; display: grid; grid-template-columns: repeat(3, 48px); grid-template-rows: repeat(2, 48px); gap: 6px; z-index: 4; }
+.v3d-pad button { width: 48px; height: 48px; min-height: 48px; padding: 0; border-radius: 14px; font-size: 1.15rem; background: rgba(20, 17, 13, 0.72); color: #fff; border: 1px solid rgba(255, 255, 255, 0.14); }
+.v3d-pad button:active { background: var(--gold); color: #1a140c; }
+.v3d-feet { position: absolute; right: 12px; bottom: 16px; background: rgba(20, 17, 13, 0.85); color: var(--gold); padding: 6px 12px; border-radius: 12px; font-weight: 700; z-index: 4; }
+.v3d-hint { position: absolute; left: 50%; top: 52px; transform: translateX(-50%); background: rgba(20, 17, 13, 0.9); color: #fff; padding: 6px 14px; border-radius: 12px; z-index: 6; font-size: 0.9rem; white-space: nowrap; }
+.gm-3d { position: relative; flex: 1; display: flex; min-height: 0; }
+.map-tools.gm-3d-toggle { right: auto; left: 10px; }
+.v3d-caption { padding: 8px 12px; background: #120f0c; color: var(--gold); font-weight: 600; text-align: center; min-height: 38px; }
+.v3d-demo-bar { display: flex; gap: 12px; justify-content: center; align-items: center; padding: 8px; background: #120f0c; }
+.v3d-btn.on { background: var(--gold); color: #1a140c; }

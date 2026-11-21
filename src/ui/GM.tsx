@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { Suspense, lazy, useEffect, useMemo, useRef, useState } from 'react';
 import QRCode from 'qrcode';
 import { HostSession } from '../net/session';
 import { peerHost } from '../net/transport';
@@ -16,6 +16,8 @@ import { CONDITIONS, conditionName, fmtMod, mod } from '../rules/core';
 import { computeSheet } from '../rules/character';
 import { d20Formula } from '../engine/dice';
 import { MapCanvas, lineToTemplate, type MapCanvasProps, type TemplateShape } from './MapCanvas';
+
+const View3D = lazy(() => import('../view3d/View3D'));
 import { SheetPanel, ActionsPanel, BagPanel } from './Sheet';
 import { DiceTray, LogView, Modal, store, toast, type RollFn } from './common';
 import { peerParams, safeDiscord } from './Player';
@@ -103,6 +105,7 @@ export function GMApp({ onExit }: { onExit: () => void }) {
 function GMTable({ host, onEnd }: { host: HostSession; onEnd: () => void }) {
   const [, setTick] = useState(0);
   const [mode, setMode] = useState<'build' | 'play'>('build');
+  const [view3d, setView3d] = useState(false);
   const [tool, setTool] = useState<Tool>('select');
   const [playTab, setPlayTab] = useState<PlayTab>('table');
   const [obj, setObj] = useState<ObjChoice>({ kind: 'chest', rot: 0, v: 0 });
@@ -362,6 +365,35 @@ function GMTable({ host, onEnd }: { host: HostSession; onEnd: () => void }) {
       </header>
       <div className="gm-body">
         <div className="gm-map">
+          {view3d ? (
+            <Suspense fallback={<div className="curtain">Building the dungeon in 3D…</div>}>
+              <View3D
+                map={map}
+                role="gm"
+                preview={mode === 'build'}
+                tokens={v.tokens}
+                myTokenId={selected}
+                currentTokenId={core.currentTokenId()}
+                revealed={s.revealed}
+                combatActive={s.combat?.active}
+                speedLeft={(() => { const t = s.tokens.find((k) => k.id === (selected ?? core.currentTokenId())); return t ? t.speed - t.movedFeet : undefined; })()}
+                log={v.log}
+                onMove={(id, x, y) => gm({ t: 'move', tokenId: id, x, y })}
+                onExit={() => setView3d(false)}
+                onTap={(info) => {
+                  if (info.tokenId) {
+                    setSelected(info.tokenId);
+                    const t = s.tokens.find((k) => k.id === info.tokenId);
+                    if (t) toast(`${t.name} · ${t.hp}/${t.maxHp} HP`);
+                  } else if (info.edge && map.doors[info.edge]) {
+                    const cur = map.doors[info.edge];
+                    if (mode === 'build') editMap({ ...map, doors: { ...map.doors, [info.edge]: cur === 'open' ? 'closed' : 'open' } });
+                    else gm({ t: 'door', key: info.edge });
+                  }
+                }}
+              />
+            </Suspense>
+          ) : (
           <MapCanvas
             map={map}
             role="gm"
@@ -384,15 +416,21 @@ function GMTable({ host, onEnd }: { host: HostSession; onEnd: () => void }) {
             roomLabels={mode === 'build'}
             backdrop={map.backdrop ? host.backdrops.get(map.backdrop.id) : undefined}
           />
+          )}
           {help[tool] && tool !== 'select' && <div className="tool-help">{help[tool]}</div>}
-          {mode === 'play' && (
+          {!view3d && (
+            <div className="map-tools gm-3d-toggle">
+              <button onClick={() => setView3d(true)} title="Walk the map in 3D">3D</button>
+            </div>
+          )}
+          {mode === 'play' && !view3d && (
             <div className="map-tools">
               <button className={tool === 'measure' ? 'on' : ''} onClick={() => setTool(tool === 'measure' ? 'select' : 'measure')} title="Ruler">📏</button>
               <button className={tool === 'area' ? 'on' : ''} onClick={() => setTool(tool === 'area' ? 'select' : 'area')} title="Spell area">🎯</button>
               {(s.templates?.length ?? 0) > 0 && <button onClick={() => gm({ t: 'gm:clearTemplates' })} title="Clear all areas">🧹</button>}
             </div>
           )}
-          {mode === 'play' && tool === 'area' && (
+          {mode === 'play' && !view3d && tool === 'area' && (
             <AreaBar
               area={area}
               setArea={setArea}

@@ -1,4 +1,6 @@
-import { useState } from 'react';
+import { Suspense, lazy, useState } from 'react';
+
+const Demo3D = lazy(() => import('./view3d/Demo3D'));
 import { GMApp } from './ui/GM';
 import { PlayerApp } from './ui/Player';
 import { About } from './ui/About';
@@ -10,6 +12,15 @@ export function App() {
   const q = new URLSearchParams(location.search);
   const joinCode = q.get('join') ?? undefined;
   const [route, setRoute] = useState<Route>(joinCode ? 'join' : 'home');
+  if (q.has('demo3d'))
+    return (
+      <>
+        <Suspense fallback={<div className="curtain">Building the dungeon in 3D…</div>}>
+          <Demo3D />
+        </Suspense>
+        <Toasts />
+      </>
+    );
   const home = () => {
     history.replaceState(null, '', location.pathname + keepPeer());
     setRoute('home');
