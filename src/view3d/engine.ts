@@ -7,14 +7,14 @@ import type { GameMap } from '../engine/map';
 import { makeVisUniforms, type VisUniforms } from './shaders';
 import { kitMaterials, type Bin } from './kit';
 import { buildDungeon, poseDoor, WALL_H, type Built } from './dungeon';
-import { dungeonEnv, glowTex } from './textures';
+import { dungeonEnv, glowTex, setTextureDetail } from './textures';
 import type { LightSpot } from './props3d';
 
 export type Quality = 'low' | 'medium' | 'high';
 export const QUALITY: Record<Quality, { pixelRatio: number; lights: number; shadows: boolean; antialias: boolean; fogFar: number }> = {
-  low: { pixelRatio: 1, lights: 4, shadows: false, antialias: false, fogFar: 0.11 },
-  medium: { pixelRatio: 1.5, lights: 8, shadows: false, antialias: true, fogFar: 0.075 },
-  high: { pixelRatio: 2, lights: 14, shadows: true, antialias: true, fogFar: 0.055 },
+  low: { pixelRatio: 1, lights: 4, shadows: false, antialias: false, fogFar: 0.09 },
+  medium: { pixelRatio: 1.5, lights: 8, shadows: false, antialias: true, fogFar: 0.06 },
+  high: { pixelRatio: 2, lights: 14, shadows: true, antialias: true, fogFar: 0.045 },
 };
 
 /** A guess at a good start: phones and small screens get Low or Medium. */
@@ -34,8 +34,8 @@ export function defaultQuality(): Quality {
 
 const AMBIENT: Record<string, { sky: string; ground: string; amb: number; fog: string }> = {
   bright: { sky: '#d8d2c4', ground: '#5a5048', amb: 1.4, fog: '#3a3530' },
-  dim: { sky: '#6a6a80', ground: '#2a2420', amb: 0.55, fog: '#121014' },
-  dark: { sky: '#3a3a52', ground: '#141210', amb: 0.22, fog: '#060508' },
+  dim: { sky: '#6a6a80', ground: '#3e362e', amb: 0.55, fog: '#121014' },
+  dark: { sky: '#3a3a52', ground: '#1e1a16', amb: 0.22, fog: '#060508' },
 };
 
 export class Engine3D {
@@ -77,6 +77,7 @@ export class Engine3D {
     this.renderer.domElement.style.height = '100%';
     this.renderer.domElement.style.touchAction = 'none';
     host.appendChild(this.renderer.domElement);
+    setTextureDetail(quality);
     this.kitMats = kitMaterials(this.vis);
     this.scene.environment = dungeonEnv();
     this.scene.add(this.hemi, this.sun, this.sun.target, this.carried);
@@ -213,7 +214,7 @@ export class Engine3D {
       }
       l.position.set(s.x, s.y, s.z);
       l.color.set(s.color);
-      l.distance = Math.max(4, s.range * 1.15);
+      l.distance = Math.max(6, s.range * 1.45); // reach up the tall walls to the ceiling
       const flick = s.flame ? 0.86 + 0.14 * Math.sin(t * 11 + i * 1.7) * Math.sin(t * 7.3 + i) : 1;
       // fade lights in by distance so they don't pop when the pool is re-sorted
       const d = Math.hypot(s.x - focus.x, s.z - focus.z);

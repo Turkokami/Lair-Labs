@@ -2,7 +2,7 @@
 // original art drawn in code, 1 square = 100 art units, ids are stable once saved maps use them.
 // Top-down, light from the top-left, ink outline. Wall-mounted pieces put the wall along the TOP edge of their box.
 // Every object here has a matching 3D model in src/view3d/models-extra.ts, keyed by the same id.
-import type { ObjDef, G } from '../art/types';
+import type { ObjDef, G, Variant } from '../art/types';
 import {
   rng, rr, circle, ellipse, poly, blob, lumpy, litFill, domeFill, paint, line, bevel, speckle, cloth, gem, glow, flame,
   book, bottle, candle, scroll, ringPull, rivet, strap, stone, shade, mix, alpha, INK, LW, WOOD, METAL, STONE, CLOTH, vars,
@@ -2179,4 +2179,1501 @@ const DRESSING: ObjDef[] = [
   },
 ];
 
-export const EXTRA_OBJECTS: ObjDef[] = [...LIGHTS, ...FURNITURE, ...DRESSING];
+// ---------------------------------------------------------------- tall halls
+// Pieces for grand rooms with high ceilings (the 3D view's halls are 24 ft tall): tall columns, galleries, great stairs,
+// hangings, throne rooms, libraries and deep crypts. Ceiling-hung things use the overhead layer, so tokens pass under them.
+
+const HSTONES = [
+  { name: 'Marble', c: { stone: STONE.marble } },
+  { name: 'Grey stone', c: { stone: STONE.grey } },
+  { name: 'Dark stone', c: { stone: STONE.dark } },
+  { name: 'Sandstone', c: { stone: STONE.sand } },
+];
+const STATUE_STONES: Variant[] = [
+  { name: 'Grey stone', c: {} },
+  { name: 'Marble', c: { stone: STONE.marble, body: '#e8e4dc' } },
+  { name: 'Bronze', c: { stone: STONE.dark, body: '#9a6a34' } },
+  { name: 'Verdigris', c: { stone: STONE.green, body: '#6f9a86' } },
+];
+
+/** Dressed stone blocks in running bond, clipped to a rect. */
+function hBlocks(g: G, x: number, y: number, w: number, h: number, base: string, r: R, bw = 22, bh = 14) {
+  g.save();
+  g.beginPath();
+  g.rect(x, y, w, h);
+  g.clip();
+  for (let row = 0, yy = y; yy < y + h; row++, yy += bh) {
+    for (let xx = x - (row % 2 ? bw / 2 : 0); xx < x + w; xx += bw) {
+      const tone = shade(base, (r() - 0.5) * 0.18);
+      g.fillStyle = litFill(g, xx, yy, bw, bh, tone, 0.12);
+      g.fillRect(xx, yy, bw, bh);
+      g.strokeStyle = alpha(shade(base, -0.55), 0.75);
+      g.lineWidth = 1;
+      g.strokeRect(xx + 0.5, yy + 0.5, bw - 1, bh - 1);
+    }
+  }
+  g.restore();
+}
+
+/** A stone slab: blocks, a bevel and an ink edge. */
+function slab(g: G, x: number, y: number, w: number, h: number, col: string, r: R, bw = 22, bh = 14, rad = 2) {
+  rr(g, x, y, w, h, rad);
+  paint(g, col, null);
+  hBlocks(g, x, y, w, h, col, r, bw, bh);
+  bevel(g, x, y, w, h, rad, 0.28);
+  rr(g, x, y, w, h, rad);
+  stroke(g, INK, LW);
+}
+
+/** A column seen from above: square base, round capital with flutes or a twist. */
+function colTop(g: G, cx: number, cy: number, s: number, col: string, r: R, kind: 'flute' | 'twist' | 'plain' = 'plain') {
+  rr(g, cx - s, cy - s, s * 2, s * 2, 3);
+  paint(g, litFill(g, cx - s, cy - s, s * 2, s * 2, shade(col, -0.14), 0.22), INK, LW);
+  bevel(g, cx - s, cy - s, s * 2, s * 2, 3, 0.3);
+  const rad = s * 0.8;
+  circle(g, cx, cy, rad);
+  paint(g, domeFill(g, cx, cy, rad, col, 0.35), INK, LW);
+  g.save();
+  circle(g, cx, cy, rad);
+  g.clip();
+  if (kind === 'flute') {
+    for (let i = 0; i < 16; i++) {
+      const a = (i / 16) * TAU;
+      line(g, cx + Math.cos(a) * rad * 0.58, cy + Math.sin(a) * rad * 0.58, cx + Math.cos(a) * rad, cy + Math.sin(a) * rad, alpha(shade(col, -0.55), 0.7), 1.7);
+    }
+  } else if (kind === 'twist') {
+    for (let i = 0; i < 4; i++) {
+      g.beginPath();
+      for (let j = 0; j <= 10; j++) {
+        const t = j / 10, a = (i / 4) * TAU + t * 2.4, d = rad * (0.15 + t * 0.85);
+        if (j === 0) g.moveTo(cx + Math.cos(a) * d, cy + Math.sin(a) * d);
+        else g.lineTo(cx + Math.cos(a) * d, cy + Math.sin(a) * d);
+      }
+      stroke(g, alpha(shade(col, -0.55), 0.8), 2.4);
+    }
+  }
+  g.restore();
+  circle(g, cx, cy, rad * 0.55);
+  stroke(g, alpha('#ffffff', 0.22), 1.4);
+  speckle(g, cx - s, cy - s, s * 2, s * 2, r, 8, alpha(shade(col, -0.5), 0.3), 1);
+}
+
+/** A strip of wall face along the top edge, for pieces that stand against a wall. */
+function wallLip(g: G, x: number, w: number, h: number, col: string, r: R) {
+  slab(g, x, 0, w, h, shade(col, -0.08), r, 18, h);
+}
+
+/** A soft dark shadow on the floor under something that hangs. */
+function dropShadow(g: G, cx: number, cy: number, rx: number, ry = rx) {
+  const gr = g.createRadialGradient(cx, cy, 0, cx, cy, Math.max(rx, ry));
+  gr.addColorStop(0, 'rgba(0,0,0,0.32)');
+  gr.addColorStop(1, 'rgba(0,0,0,0)');
+  g.fillStyle = gr;
+  ellipse(g, cx, cy, rx, ry);
+  g.fill();
+}
+
+/** A sun mark (rays and a disc), the emblem on banners, altars and crests. */
+function sunMark(g: G, cx: number, cy: number, s: number, col: string) {
+  for (let i = 0; i < 8; i++) {
+    const a = (i / 8) * TAU;
+    poly(g, [[cx + Math.cos(a - 0.18) * s * 0.5, cy + Math.sin(a - 0.18) * s * 0.5], [cx + Math.cos(a) * s, cy + Math.sin(a) * s], [cx + Math.cos(a + 0.18) * s * 0.5, cy + Math.sin(a + 0.18) * s * 0.5]]);
+    paint(g, shade(col, 0.1), INK, 0.9);
+  }
+  circle(g, cx, cy, s * 0.48);
+  paint(g, domeFill(g, cx, cy, s * 0.48, col, 0.5), INK, 1.1);
+}
+
+/** A plinth for a tall statue, seen from above. */
+function plinthTop(g: G, x: number, y: number, s: number, col: string, r: R) {
+  rr(g, x, y, s, s, 4);
+  paint(g, litFill(g, x, y, s, s, shade(col, -0.15), 0.2), INK, LW);
+  rr(g, x + s * 0.08, y + s * 0.08, s * 0.84, s * 0.84, 3);
+  paint(g, litFill(g, x + s * 0.08, y + s * 0.08, s * 0.84, s * 0.84, col, 0.25), INK, 1.4);
+  bevel(g, x + s * 0.08, y + s * 0.08, s * 0.84, s * 0.84, 3, 0.3);
+  speckle(g, x, y, s, s, r, 14, alpha(shade(col, -0.5), 0.3), 1);
+}
+
+/** A hanging chain seen from above, ending in a hook. */
+function hookChain(g: G, x: number, y: number, len: number, a: number, metal: string) {
+  const ex = x + Math.cos(a) * len, ey = y + Math.sin(a) * len;
+  chain(g, x, y, ex, ey, metal, 2.6);
+  g.beginPath();
+  g.arc(ex + Math.cos(a) * 4, ey + Math.sin(a) * 4, 4.5, a - 2.2, a + 2.2);
+  stroke(g, INK, 4);
+  g.beginPath();
+  g.arc(ex + Math.cos(a) * 4, ey + Math.sin(a) * 4, 4.5, a - 2.2, a + 2.2);
+  stroke(g, shade(metal, 0.15), 2);
+}
+
+/** Bars of a round cage seen from above. */
+function cageTop(g: G, cx: number, cy: number, rad: number, metal: string, n = 10) {
+  for (let i = 0; i < n; i++) {
+    const a = (i / n) * TAU;
+    bar(g, cx + Math.cos(a) * rad * 0.3, cy + Math.sin(a) * rad * 0.3, cx + Math.cos(a) * rad, cy + Math.sin(a) * rad, metal, 2.2);
+  }
+  hoop(g, cx, cy, rad, metal, 3.6);
+  circle(g, cx, cy, rad * 0.32);
+  paint(g, domeFill(g, cx, cy, rad * 0.32, metal, 0.5), INK, 1.3);
+  ringPull(g, cx, cy, rad * 0.14, metal);
+}
+
+const HALLS_ARCH: ObjDef[] = [
+  {
+    id: 'column-fluted', name: 'Tall fluted column', cat: 'structure', sets: ['temple', 'castle', 'crypt', 'dungeon', 'wizard', 'desert'], tags: ['column', 'pillar', 'fluted', 'hall', 'tall', 'marble', 'support', 'grand', 'cathedral'],
+    w: 1, h: 1, blocksMovement: true, blocksSight: true, c: { stone: STONE.marble }, variants: HSTONES,
+    desc: 'A fluted column running all the way up to a high ceiling. Set them in pairs down a great hall.',
+    draw: ({ g, c, seed }) => colTop(g, 50, 50, 42, c.stone, rng(seed), 'flute'),
+  },
+  {
+    id: 'column-twisted', name: 'Twisted column', cat: 'structure', sets: ['temple', 'castle', 'wizard', 'crypt'], tags: ['column', 'pillar', 'spiral', 'barley twist', 'hall', 'tall', 'ornate'],
+    w: 1, h: 1, blocksMovement: true, blocksSight: true, c: { stone: STONE.marble },
+    variants: [{ name: 'Marble', c: {} }, { name: 'Red stone', c: { stone: STONE.red } }, { name: 'Dark stone', c: { stone: STONE.dark } }, { name: 'Sandstone', c: { stone: STONE.sand } }],
+    desc: 'A tall column whose shaft winds like a rope. Common in old palaces and wizard towers.',
+    draw: ({ g, c, seed }) => colTop(g, 50, 50, 42, c.stone, rng(seed), 'twist'),
+  },
+  {
+    id: 'column-cluster', name: 'Clustered pier', cat: 'structure', sets: ['temple', 'castle', 'crypt'], tags: ['column', 'pillar', 'pier', 'gothic', 'cathedral', 'hall', 'tall', 'support'],
+    w: 2, h: 2, blocksMovement: true, blocksSight: true, c: { stone: STONE.grey }, variants: STONES,
+    desc: 'A thick pier of five shafts bundled together, the kind that holds up a cathedral roof.',
+    draw: ({ g, c, seed }) => {
+      const r = rng(seed);
+      rr(g, 12, 12, 176, 176, 6);
+      paint(g, litFill(g, 12, 12, 176, 176, shade(c.stone, -0.16), 0.2), INK, LW);
+      bevel(g, 12, 12, 176, 176, 6, 0.3);
+      rr(g, 26, 26, 148, 148, 5);
+      paint(g, litFill(g, 26, 26, 148, 148, shade(c.stone, -0.06), 0.22), INK, 1.4);
+      for (const [x, y] of [[100, 46], [154, 100], [100, 154], [46, 100]]) {
+        circle(g, x, y, 28);
+        paint(g, domeFill(g, x, y, 28, c.stone, 0.35), INK, LW);
+      }
+      circle(g, 100, 100, 48);
+      paint(g, domeFill(g, 100, 100, 48, shade(c.stone, 0.06), 0.35), INK, LW);
+      circle(g, 100, 100, 30);
+      stroke(g, alpha('#ffffff', 0.2), 1.6);
+      speckle(g, 14, 14, 172, 172, r, 22, alpha(shade(c.stone, -0.5), 0.3), 1.1);
+    },
+  },
+  {
+    id: 'half-column-wall', name: 'Wall half-column', cat: 'structure', sets: ['temple', 'castle', 'crypt', 'dungeon', 'wizard'], tags: ['pilaster', 'column', 'engaged', 'wall', 'tall', 'hall', 'support'],
+    w: 1, h: 1, blocksMovement: true, c: { stone: STONE.marble }, variants: HSTONES,
+    desc: 'Half a column built into the wall, running up to the ceiling. Put the top edge on a wall.',
+    draw: ({ g, c, seed }) => {
+      const r = rng(seed);
+      wallLip(g, 0, 100, 8, c.stone, r);
+      rr(g, 10, 4, 80, 40, 3);
+      paint(g, litFill(g, 10, 4, 80, 40, shade(c.stone, -0.14), 0.22), INK, LW);
+      bevel(g, 10, 4, 80, 40, 3, 0.3);
+      g.beginPath();
+      g.arc(50, 6, 32, 0, Math.PI);
+      g.closePath();
+      paint(g, domeFill(g, 50, 6, 32, c.stone, 0.35), INK, LW);
+      g.save();
+      g.beginPath();
+      g.arc(50, 6, 32, 0, Math.PI);
+      g.closePath();
+      g.clip();
+      for (let i = 1; i < 8; i++) {
+        const a = (i / 8) * Math.PI;
+        line(g, 50 + Math.cos(a) * 18, 6 + Math.sin(a) * 18, 50 + Math.cos(a) * 32, 6 + Math.sin(a) * 32, alpha(shade(c.stone, -0.55), 0.7), 1.6);
+      }
+      g.restore();
+    },
+  },
+  {
+    id: 'window-stained-tall', name: 'Tall stained-glass window', cat: 'decor', sets: ['temple', 'castle', 'crypt', 'wizard'], tags: ['window', 'stained glass', 'arched', 'cathedral', 'light', 'tall', 'hall', 'chapel'],
+    w: 2, h: 1, c: { stone: STONE.grey, a: '#c0392b', b: '#2f6db3', cc: '#e9c46a' },
+    variants: [
+      { name: 'Rose and sky', c: {} },
+      { name: 'Royal', c: { stone: STONE.marble, a: '#3a4fb8', b: '#7a3aa8', cc: '#dfe7f2' } },
+      { name: 'Emerald', c: { a: '#2e8b57', b: '#d4a640', cc: '#4fb3a8' } },
+      { name: 'Blood moon', c: { stone: STONE.dark, a: '#8b1e1e', b: '#2b1f2e', cc: '#f0a040' } },
+    ],
+    desc: 'A tall arched window of coloured glass, throwing patches of colour on the floor. Put the top edge on a wall.',
+    draw: ({ g, c, seed }) => {
+      const r = rng(seed);
+      const cols = [c.a, c.b, c.cc];
+      g.save();
+      poly(g, [[36, 14], [164, 14], [196, 98], [4, 98]]);
+      g.clip();
+      for (let row = 0; row < 5; row++) for (let i = 0; i < 7; i++) {
+        const t = (row + 0.5) / 5, spread = 128 + t * 180, x = 100 - spread / 2 + (i + 0.5) * (spread / 7), y = 18 + row * 17;
+        poly(g, [[x, y], [x + 9 + t * 4, y + 8], [x, y + 16], [x - 9 - t * 4, y + 8]]);
+        g.fillStyle = alpha(cols[(i + row) % 3], 0.22 - t * 0.12);
+        g.fill();
+      }
+      g.restore();
+      wallLip(g, 0, 200, 10, c.stone, r);
+      rr(g, 22, 4, 156, 16, 3);
+      paint(g, litFill(g, 22, 4, 156, 16, c.stone, 0.3), INK, LW);
+      for (let i = 0; i < 6; i++) {
+        rr(g, 32 + i * 23, 8, 21, 7, 1);
+        paint(g, alpha(cols[i % 3], 0.9), INK, 1);
+      }
+      line(g, 100, 6, 100, 18, INK, 2);
+    },
+  },
+  {
+    id: 'gallery-balcony', name: 'Gallery balcony', cat: 'structure', sets: ['castle', 'temple', 'town', 'wizard', 'tavern'], tags: ['balcony', 'gallery', 'mezzanine', 'upper floor', 'walkway', 'minstrel', 'overhead', 'tall'],
+    w: 3, h: 1, layer: 'overhead', c: { stone: STONE.grey, metal: METAL.iron }, variants: STONES,
+    desc: 'A stone walkway high on the wall with a railing, held up on brackets. Tokens below pass underneath. Put the top edge on a wall.',
+    draw: ({ g, c, seed }) => {
+      const r = rng(seed);
+      rr(g, 2, 0, 296, 80, 2);
+      paint(g, c.stone, null);
+      hBlocks(g, 2, 0, 296, 80, c.stone, r, 30, 20);
+      sheen(g, 2, 0, 296, 80, 0.12);
+      rr(g, 2, 0, 296, 80, 2);
+      stroke(g, INK, LW);
+      g.fillStyle = 'rgba(0,0,0,0.3)';
+      g.fillRect(2, 80, 296, 8);
+      rr(g, 0, 70, 300, 13, 4);
+      paint(g, litFill(g, 0, 70, 300, 13, shade(c.stone, 0.12), 0.3), INK, LW);
+      for (let x = 14; x < 300; x += 34) {
+        circle(g, x, 76.5, 5.5);
+        paint(g, domeFill(g, x, 76.5, 5.5, shade(c.stone, 0.18), 0.4), INK, 1.1);
+      }
+    },
+  },
+  {
+    id: 'stair-grand', name: 'Grand staircase', cat: 'structure', sets: ['castle', 'temple', 'town', 'wizard'], tags: ['stairs', 'staircase', 'steps', 'landing', 'grand', 'ascend', 'gallery', 'upper floor', 'tall'],
+    w: 3, h: 4, c: { stone: STONE.marble, carpet: CLOTH.red, metal: METAL.brass },
+    variants: [
+      { name: 'Marble, red carpet', c: {} },
+      { name: 'Grey stone, blue carpet', c: { stone: STONE.grey, carpet: CLOTH.blue, metal: METAL.silver } },
+      { name: 'Dark stone, bare', c: { stone: STONE.dark }, f: { bare: 1 } },
+      { name: 'Oak, green carpet', c: { stone: WOOD.oak, carpet: CLOTH.green, metal: METAL.gold } },
+    ],
+    desc: 'A broad flight of steps rising from the bottom edge to a landing at the top, about 13 ft up. Put the landing against a wall or under a gallery.',
+    draw: ({ g, c, f, seed }) => {
+      const r = rng(seed);
+      const n = 13, y0 = 100, step = 300 / n;
+      slab(g, 22, 4, 256, 96, shade(c.stone, 0.12), r, 32, 24);
+      for (let i = 0; i < n; i++) {
+        const y = y0 + i * step, tone = shade(c.stone, 0.1 - (i / n) * 0.4);
+        g.fillStyle = litFill(g, 22, y, 256, step, tone, 0.12);
+        g.fillRect(22, y, 256, step);
+        line(g, 22, y, 278, y, alpha(INK, 0.85), 1.6);
+        line(g, 22, y + 2, 278, y + 2, alpha('#ffffff', 0.2), 1);
+      }
+      if (!f.bare) {
+        rr(g, 104, 30, 92, 370, 2);
+        paint(g, litFill(g, 104, 30, 92, 370, c.carpet, 0.2), INK, 1.4);
+        line(g, 112, 30, 112, 400, alpha(CLOTH.gold, 0.7), 1.4);
+        line(g, 188, 30, 188, 400, alpha(CLOTH.gold, 0.7), 1.4);
+        for (let i = 0; i < n; i++) line(g, 100, y0 + i * step + 3, 200, y0 + i * step + 3, c.metal, 1.8);
+      }
+      for (const x of [0, 278]) {
+        rr(g, x, 4, 22, 396, 3);
+        paint(g, litFill(g, x, 4, 22, 396, shade(c.stone, -0.1), 0.25), INK, LW);
+        bevel(g, x, 4, 22, 396, 3, 0.3);
+      }
+      for (const [x, y] of [[11, 388], [289, 388], [11, 100], [289, 100]]) {
+        rr(g, x - 13, y - 13, 26, 26, 4);
+        paint(g, litFill(g, x - 13, y - 13, 26, 26, shade(c.stone, 0.05), 0.3), INK, 1.6);
+        circle(g, x, y, 7);
+        paint(g, domeFill(g, x, y, 7, c.metal, 0.5), INK, 1);
+      }
+      rr(g, 0, 0, 300, 400, 3);
+      stroke(g, INK, LW);
+    },
+  },
+  {
+    id: 'stair-spiral', name: 'Spiral stair', cat: 'structure', sets: ['castle', 'wizard', 'dungeon', 'temple', 'town'], tags: ['stairs', 'spiral', 'winding', 'tower', 'steps', 'ascend', 'upper floor', 'tall'],
+    w: 2, h: 2, c: { stone: STONE.grey, metal: METAL.iron }, variants: STONES,
+    desc: 'Wedge-shaped steps winding round a central post right up to the ceiling. The arrow marks the first step.',
+    draw: ({ g, c, seed }) => {
+      const r = rng(seed);
+      const n = 16;
+      circle(g, 100, 100, 94);
+      paint(g, shade(c.stone, -0.45), INK, LW);
+      for (let i = 0; i < n; i++) {
+        const a0 = (i / n) * TAU - Math.PI / 2, a1 = a0 + TAU / n;
+        g.beginPath();
+        g.moveTo(100 + Math.cos(a0) * 14, 100 + Math.sin(a0) * 14);
+        g.arc(100, 100, 88, a0, a1);
+        g.lineTo(100 + Math.cos(a1) * 14, 100 + Math.sin(a1) * 14);
+        g.closePath();
+        paint(g, litFill(g, 12, 12, 176, 176, shade(c.stone, -0.3 + (i / n) * 0.45), 0.15), INK, 1.3);
+      }
+      speckle(g, 20, 20, 160, 160, r, 18, alpha(shade(c.stone, -0.5), 0.3), 1);
+      circle(g, 100, 100, 88);
+      stroke(g, INK, 4.6);
+      circle(g, 100, 100, 88);
+      stroke(g, c.metal, 2.4);
+      circle(g, 100, 100, 16);
+      paint(g, domeFill(g, 100, 100, 16, shade(c.stone, 0.1), 0.4), INK, LW);
+      poly(g, [[118, 30], [146, 34], [122, 46]]);
+      paint(g, alpha('#ffffff', 0.85), INK, 1.2);
+    },
+  },
+  {
+    id: 'doors-grand-frame', name: 'Great doors', cat: 'structure', sets: ['castle', 'temple', 'crypt', 'dungeon', 'town'], tags: ['doors', 'double doors', 'gate', 'entrance', 'portal', 'arch', 'tall', 'hall', 'decor'],
+    w: 3, h: 1, c: { stone: STONE.grey, wood: WOOD.oak, metal: METAL.iron },
+    variants: [
+      { name: 'Oak and iron', c: {} },
+      { name: 'Ebony and gold', c: { wood: WOOD.ebony, metal: METAL.gold, stone: STONE.marble } },
+      { name: 'Weathered', c: { wood: '#7d6a55', metal: METAL.rust } },
+      { name: 'Red lacquer', c: { wood: '#7a2622', metal: METAL.brass, stone: STONE.dark } },
+    ],
+    desc: 'A pair of tall arched doors set in a carved stone frame, about 18 ft high. Dressing for a wall, not a working door. Put the top edge on a wall.',
+    draw: ({ g, c, seed }) => {
+      const r = rng(seed);
+      wallLip(g, 0, 300, 8, c.stone, r);
+      g.beginPath();
+      g.ellipse(150, 18, 110, 40, 0, 0, Math.PI);
+      g.closePath();
+      paint(g, litFill(g, 40, 18, 220, 40, shade(c.stone, 0.08), 0.25), INK, LW);
+      hBlocks(g, 70, 20, 160, 18, shade(c.stone, 0.08), r, 26, 9);
+      g.beginPath();
+      g.ellipse(150, 18, 110, 40, 0, 0, Math.PI);
+      stroke(g, INK, LW);
+      for (const x of [16, 238]) {
+        slab(g, x, 2, 46, 34, c.stone, r, 16, 12);
+      }
+      panel(g, 62, 4, 88, 14, c.wood, r, 'v', 5, 2);
+      panel(g, 150, 4, 88, 14, c.wood, r, 'v', 5, 2);
+      for (const x of [74, 106, 138, 162, 194, 226]) strap(g, x - 2, 4, 4, 14, c.metal, false);
+      for (const x of [142, 158]) ringPull(g, x, 21, 4, c.metal);
+    },
+  },
+  {
+    id: 'wall-alcove-arch', name: 'Arched alcove', cat: 'decor', sets: ['temple', 'crypt', 'castle', 'dungeon', 'wizard'], tags: ['alcove', 'niche', 'arch', 'shrine', 'wall', 'urn', 'statue', 'candles', 'skulls'],
+    w: 2, h: 1, c: { stone: STONE.grey, metal: METAL.bronze, wax: WAX },
+    variants: [
+      { name: 'Urn', c: {} },
+      { name: 'Small saint', c: { stone: STONE.marble }, f: { item: 1 } },
+      { name: 'Candles', c: { stone: STONE.sand }, f: { item: 2 } },
+      { name: 'Skulls', c: { stone: STONE.dark }, f: { item: 3 } },
+    ],
+    desc: 'A tall round-headed niche cut into the wall with something kept in it. Put the top edge on a wall.',
+    draw: ({ g, c, f, seed }) => {
+      const r = rng(seed);
+      wallLip(g, 0, 200, 8, c.stone, r);
+      rr(g, 40, 2, 120, 36, 3);
+      paint(g, litFill(g, 40, 2, 120, 36, shade(c.stone, -0.5), 0.2), INK, 1.6);
+      for (const x of [8, 160]) slab(g, x, 2, 32, 46, c.stone, r, 16, 12);
+      rr(g, 36, 34, 128, 10, 2);
+      paint(g, litFill(g, 36, 34, 128, 10, shade(c.stone, 0.12), 0.3), INK, 1.6);
+      const item = f.item ?? 0;
+      if (item === 1) {
+        ellipse(g, 100, 20, 18, 11);
+        paint(g, domeFill(g, 100, 20, 18, '#e8e4dc', 0.35), INK, 1.3);
+        circle(g, 100, 18, 8);
+        paint(g, domeFill(g, 100, 18, 8, '#efece6', 0.4), INK, 1.1);
+      } else if (item === 2) {
+        for (const x of [76, 92, 108, 124]) cupCandle(g, x, 18 + (x % 3) * 2, c.metal, c.wax, 0.75);
+      } else if (item === 3) {
+        for (const [x, y] of [[82, 22], [100, 18], [118, 22], [91, 30], [109, 30]]) skull(g, x, y, 7, 0);
+      } else {
+        circle(g, 100, 20, 14);
+        paint(g, domeFill(g, 100, 20, 14, c.metal, 0.45), INK, 1.4);
+        circle(g, 100, 20, 6);
+        paint(g, domeFill(g, 100, 20, 6, shade(c.metal, -0.4), 0.3), INK, 1);
+      }
+    },
+  },
+  {
+    id: 'archway-grand', name: 'Great archway', cat: 'structure', sets: ['castle', 'temple', 'crypt', 'dungeon', 'desert', 'town'], tags: ['arch', 'archway', 'gateway', 'portal', 'entrance', 'tall', 'ruin', 'hall'],
+    w: 3, h: 1, c: { stone: STONE.grey }, variants: STONES,
+    desc: 'A free-standing stone arch on two piers, about 20 ft tall. Tokens walk through the middle.',
+    draw: ({ g, c, seed }) => {
+      const r = rng(seed);
+      g.fillStyle = 'rgba(0,0,0,0.22)';
+      g.fillRect(58, 62, 184, 14);
+      rr(g, 52, 28, 196, 40, 3);
+      paint(g, litFill(g, 52, 28, 196, 40, shade(c.stone, 0.06), 0.25), INK, LW);
+      for (let i = 1; i < 9; i++) {
+        const x = 52 + i * (196 / 9), lean = (x - 150) * 0.08;
+        line(g, x - lean, 29, x + lean, 67, alpha(shade(c.stone, -0.55), 0.8), 1.2);
+      }
+      rr(g, 138, 24, 24, 48, 2);
+      paint(g, litFill(g, 138, 24, 24, 48, shade(c.stone, 0.16), 0.3), INK, 1.6);
+      for (const x of [6, 240]) slab(g, x, 10, 54, 80, c.stone, r, 18, 14);
+      speckle(g, 52, 28, 196, 40, r, 14, alpha(shade(c.stone, -0.5), 0.3), 1);
+    },
+  },
+];
+
+const HALLS_HANGING: ObjDef[] = [
+  {
+    id: 'banner-hanging-tall', name: 'Long hall banner', cat: 'decor', sets: ['castle', 'temple', 'town', 'camp'], tags: ['banner', 'flag', 'hanging', 'ceiling', 'heraldry', 'standard', 'hall', 'overhead', 'tall'],
+    w: 1, h: 1, layer: 'overhead', c: { cloth: CLOTH.red, metal: METAL.gold }, variants: CLOTHS('cloth'),
+    desc: 'A long swallow-tailed banner hanging from the ceiling on cords, nearly to head height. Tokens pass under it.',
+    draw: ({ g, c, seed }) => {
+      const r = rng(seed);
+      line(g, 50, 4, 14, 20, alpha(INK, 0.8), 1.4);
+      line(g, 50, 4, 86, 20, alpha(INK, 0.8), 1.4);
+      poly(g, [[22, 20], [78, 20], [78, 92], [50, 76], [22, 92]]);
+      paint(g, litFill(g, 22, 20, 56, 72, c.cloth, 0.2), INK, LW * 0.8);
+      g.save();
+      poly(g, [[22, 20], [78, 20], [78, 92], [50, 76], [22, 92]]);
+      g.clip();
+      for (const x of [34, 50, 66]) {
+        const gr = g.createLinearGradient(x - 5, 0, x + 5, 0);
+        gr.addColorStop(0, 'rgba(0,0,0,0)');
+        gr.addColorStop(0.5, alpha(shade(c.cloth, -0.5), 0.3));
+        gr.addColorStop(1, 'rgba(255,255,255,0.08)');
+        g.fillStyle = gr;
+        g.fillRect(x - 5, 20, 10, 74);
+      }
+      line(g, 26, 24, 26, 86, alpha(c.metal, 0.8), 1.6);
+      line(g, 74, 24, 74, 86, alpha(c.metal, 0.8), 1.6);
+      g.restore();
+      sunMark(g, 50, 46, 15, c.metal);
+      bar(g, 12, 20, 88, 20, METAL.iron, 3.4);
+      for (const x of [12, 88]) {
+        circle(g, x, 20, 4);
+        paint(g, domeFill(g, x, 20, 4, c.metal, 0.5), INK, 1);
+      }
+      void r;
+    },
+  },
+  {
+    id: 'tapestry-tall', name: 'Tall tapestry', cat: 'decor', sets: ['castle', 'temple', 'town', 'wizard'], tags: ['tapestry', 'wall hanging', 'cloth', 'hunt', 'story', 'hall', 'tall', 'arras'],
+    w: 2, h: 1, c: { cloth: CLOTH.red, cc: CLOTH.gold, metal: METAL.brass },
+    variants: [
+      { name: 'Crimson', c: {} },
+      { name: 'Midnight stars', c: { cloth: '#1f2f5a', cc: '#d8dde6', metal: METAL.silver } },
+      { name: 'Greenwood', c: { cloth: CLOTH.green, cc: '#c9a36a' } },
+      { name: 'Faded', c: { cloth: '#8a6a5a', cc: '#c8b98a', metal: METAL.iron } },
+    ],
+    desc: 'A woven hanging three times a person\'s height, hung from a rod near the ceiling. Hides a secret door nicely. Put the top edge on a wall.',
+    draw: ({ g, c, seed }) => {
+      const r = rng(seed);
+      g.fillStyle = 'rgba(0,0,0,0.18)';
+      g.fillRect(14, 30, 172, 10);
+      cloth(g, 14, 4, 172, 26, c.cloth, r, 6, 2);
+      g.save();
+      rr(g, 14, 4, 172, 26, 2);
+      g.clip();
+      rr(g, 18, 8, 164, 18, 1);
+      stroke(g, alpha(c.cc, 0.85), 1.6);
+      for (let x = 30; x < 180; x += 20) {
+        poly(g, [[x, 12], [x + 5, 17], [x, 22], [x - 5, 17]]);
+        g.fillStyle = alpha(c.cc, 0.75);
+        g.fill();
+      }
+      g.restore();
+      fringe(g, 16, 30, 184, 1, c.cc);
+      bar(g, 6, 4, 194, 4, c.metal, 3.6);
+      for (const x of [6, 194]) {
+        circle(g, x, 4, 4.4);
+        paint(g, domeFill(g, x, 4, 4.4, c.metal, 0.5), INK, 1);
+      }
+    },
+  },
+  {
+    id: 'heraldic-crest', name: 'Heraldic crest', cat: 'decor', sets: ['castle', 'town', 'tavern', 'camp'], tags: ['shield', 'crest', 'heraldry', 'swords', 'coat of arms', 'trophy', 'wall', 'hall'],
+    w: 1, h: 1, c: { a: CLOTH.red, b: CLOTH.gold, metal: METAL.silver },
+    variants: [
+      { name: 'Red and gold', c: {} },
+      { name: 'Blue and silver', c: { a: CLOTH.blue, b: '#d8dde6', metal: METAL.silver } },
+      { name: 'Green and bronze', c: { a: CLOTH.green, b: METAL.bronze, metal: METAL.bronze } },
+      { name: 'Black and gold', c: { a: CLOTH.black, b: CLOTH.gold, metal: METAL.gold } },
+    ],
+    desc: 'A big painted shield over two crossed swords, hung high on the wall. Put the top edge on a wall.',
+    draw: ({ g, c }) => {
+      for (const [x1, x2] of [[12, 88], [88, 12]]) {
+        bar(g, x1, 6, x2, 58, c.metal, 3.6);
+        const mx = x1 + (x2 - x1) * 0.18, my = 6 + 52 * 0.18;
+        bar(g, mx - 7, my + 5, mx + 7, my - 5, METAL.brass, 3);
+      }
+      const sh = [[26, 4], [74, 4], [74, 26], [50, 52], [26, 26]];
+      poly(g, sh);
+      paint(g, c.a, INK, LW);
+      g.save();
+      poly(g, sh);
+      g.clip();
+      g.fillStyle = c.b;
+      g.fillRect(50, 0, 30, 60);
+      poly(g, [[26, 34], [50, 18], [74, 34], [74, 42], [50, 26], [26, 42]]);
+      paint(g, shade(c.metal, 0.1), INK, 1);
+      sheen(g, 26, 4, 48, 48, 0.18);
+      g.restore();
+      poly(g, sh);
+      stroke(g, c.metal, 2.4);
+      poly(g, sh);
+      stroke(g, INK, 1);
+    },
+  },
+  {
+    id: 'cage-hanging', name: 'Hanging cage', cat: 'decor', sets: ['dungeon', 'castle', 'cave', 'crypt'], tags: ['cage', 'prison', 'captive', 'hanging', 'chain', 'ceiling', 'torture', 'overhead'],
+    w: 1, h: 1, layer: 'overhead', c: { metal: METAL.iron },
+    variants: [{ name: 'Empty', c: {} }, { name: 'Occupied', c: {}, f: { bones: 1 } }, { name: 'Rusted', c: { metal: METAL.rust } }, { name: 'Rusted, occupied', c: { metal: METAL.rust }, f: { bones: 1 } }],
+    desc: 'A round iron cage hanging on a chain from the ceiling, its floor about 3 ft up. Tokens pass under it.',
+    draw: ({ g, c, f }) => {
+      dropShadow(g, 54, 56, 40);
+      if (f.bones) {
+        boneAt(g, 36, 62, 58, 70, 3, BONE);
+        skull(g, 62, 42, 8, 0.4);
+      }
+      cageTop(g, 50, 50, 36, c.metal);
+    },
+  },
+  {
+    id: 'chains-hanging', name: 'Hanging chains', cat: 'decor', sets: ['dungeon', 'castle', 'cave', 'crypt', 'mine'], tags: ['chains', 'hooks', 'hanging', 'ceiling', 'torture', 'slaughter', 'meat', 'overhead'],
+    w: 1, h: 1, layer: 'overhead', c: { metal: METAL.iron },
+    variants: [{ name: 'Iron hooks', c: {} }, { name: 'Meat hooks', c: {}, f: { meat: 1 } }, { name: 'Rusted', c: { metal: METAL.rust } }, { name: 'Black iron', c: { metal: METAL.black } }],
+    desc: 'Lengths of chain dangling from the ceiling at different heights, ending in hooks.',
+    draw: ({ g, c, f, seed }) => {
+      const r = rng(seed);
+      const spots = [[30, 28], [70, 26], [50, 52], [26, 72], [74, 70]];
+      for (const [x, y] of spots) {
+        const a = r() * TAU;
+        hookChain(g, x, y, 10 + r() * 6, a, c.metal);
+        if (f.meat && r() < 0.7) {
+          blob(g, lumpy(x + Math.cos(a) * 20, y + Math.sin(a) * 20, 8, 0.3, 7, r));
+          paint(g, domeFill(g, x + Math.cos(a) * 20, y + Math.sin(a) * 20, 8, '#8a2a2a', 0.35), INK, 1.1);
+        }
+      }
+    },
+  },
+  {
+    id: 'censer-hanging', name: 'Hanging censer', cat: 'religious', sets: ['temple', 'crypt', 'castle', 'wizard'], tags: ['censer', 'incense', 'thurible', 'smoke', 'hanging', 'chain', 'ceiling', 'overhead'],
+    w: 1, h: 1, layer: 'overhead', c: { metal: METAL.brass, smoke: '#b8b4c8' }, variants: MV,
+    desc: 'A pierced metal censer hanging on a long chain, trailing sweet smoke.',
+    draw: ({ g, c }) => {
+      for (const [x, y, s] of [[64, 34, 22], [36, 30, 18], [70, 64, 16]]) {
+        const gr = g.createRadialGradient(x, y, 0, x, y, s);
+        gr.addColorStop(0, alpha(c.smoke, 0.4));
+        gr.addColorStop(1, alpha(c.smoke, 0));
+        g.fillStyle = gr;
+        g.fillRect(x - s, y - s, s * 2, s * 2);
+      }
+      circle(g, 50, 52, 18);
+      paint(g, domeFill(g, 50, 52, 18, c.metal, 0.5), INK, LW);
+      for (let i = 0; i < 8; i++) {
+        const a = (i / 8) * TAU;
+        circle(g, 50 + Math.cos(a) * 11, 52 + Math.sin(a) * 11, 1.8);
+        g.fillStyle = '#ffb347';
+        g.fill();
+      }
+      for (let i = 0; i < 3; i++) {
+        const a = (i / 3) * TAU - Math.PI / 2;
+        chain(g, 50 + Math.cos(a) * 16, 52 + Math.sin(a) * 16, 50, 52, c.metal, 2);
+      }
+      ringPull(g, 50, 52, 4, c.metal);
+    },
+  },
+];
+
+const HALLS_LIGHTS: ObjDef[] = [
+  {
+    id: 'lantern-cluster', name: 'Lantern cluster', cat: 'light', sets: ['castle', 'temple', 'town', 'tavern', 'wizard'], tags: ['lanterns', 'hanging', 'ceiling', 'chains', 'cluster', 'light', 'overhead'],
+    w: 2, h: 2, layer: 'overhead', light: { bright: 15, dim: 20, color: LAMP }, c: { metal: METAL.iron, glass: '#ffc46b' },
+    variants: [
+      { name: 'Iron, amber', c: {} },
+      { name: 'Brass', c: { metal: METAL.brass, glass: '#ffd27a' } },
+      { name: 'Silver, moonlight', c: { metal: METAL.silver, glass: '#cfe6ff' } },
+      { name: 'Witchlight', c: { metal: METAL.black, glass: '#9dff9a' } },
+    ],
+    desc: 'An iron hoop hung from the ceiling with lanterns dangling from it at different heights.',
+    draw: ({ g, c }) => {
+      glow(g, 100, 100, 99, c.glass, 0.32);
+      for (let i = 0; i < 3; i++) {
+        const a = (i / 3) * TAU + 0.5;
+        bar(g, 100, 100, 100 + Math.cos(a) * 56, 100 + Math.sin(a) * 56, c.metal, 2);
+      }
+      hoop(g, 100, 100, 56, c.metal, 3.6);
+      for (let i = 0; i < 5; i++) {
+        const a = (i / 5) * TAU - Math.PI / 2;
+        lanternTop(g, 100 + Math.cos(a) * 56, 100 + Math.sin(a) * 56, 12, c.metal, c.glass);
+      }
+      lanternTop(g, 100, 100, 15, c.metal, c.glass);
+    },
+  },
+  {
+    id: 'chandelier-great', name: 'Great chandelier', cat: 'light', sets: ['castle', 'temple', 'town', 'tavern', 'crypt'], tags: ['chandelier', 'candles', 'hanging', 'ceiling', 'grand', 'hall', 'ring', 'chains', 'overhead'],
+    w: 3, h: 3, layer: 'overhead', light: { bright: 30, dim: 30, color: CANDLE }, c: { metal: METAL.iron, wax: WAX },
+    variants: [{ name: 'Iron', c: {} }, { name: 'Brass', c: { metal: METAL.brass } }, { name: 'Gold', c: { metal: METAL.gold } }, { name: 'Black iron, bone candles', c: { metal: METAL.black, wax: '#d8cfb4' } }],
+    desc: 'A huge double ring of candles hung on four chains, lighting a whole hall. Tokens pass underneath.',
+    draw: ({ g, c, seed }) => {
+      const r = rng(seed);
+      glow(g, 150, 150, 149, '#ffcf7a', 0.38);
+      for (let i = 0; i < 8; i++) {
+        const a = (i / 8) * TAU + 0.2;
+        bar(g, 150 + Math.cos(a) * 70, 150 + Math.sin(a) * 70, 150 + Math.cos(a) * 120, 150 + Math.sin(a) * 120, c.metal, 2.6);
+      }
+      for (let i = 0; i < 4; i++) {
+        const a = (i / 4) * TAU + Math.PI / 4;
+        chain(g, 150, 150, 150 + Math.cos(a) * 118, 150 + Math.sin(a) * 118, c.metal, 3);
+      }
+      hoop(g, 150, 150, 120, c.metal, 6);
+      hoop(g, 150, 150, 70, c.metal, 4.6);
+      for (let i = 0; i < 16; i++) {
+        const a = (i / 16) * TAU;
+        cupCandle(g, 150 + Math.cos(a) * 120, 150 + Math.sin(a) * 120, c.metal, c.wax, 1);
+      }
+      for (let i = 0; i < 8; i++) {
+        const a = (i / 8) * TAU + 0.4;
+        cupCandle(g, 150 + Math.cos(a) * 70, 150 + Math.sin(a) * 70, c.metal, c.wax, 0.9);
+      }
+      circle(g, 150, 150, 18);
+      paint(g, domeFill(g, 150, 150, 18, c.metal, 0.55), INK, 1.6);
+      candle(g, 150, 150, 7, r, c.wax);
+    },
+  },
+  {
+    id: 'brazier-pedestal', name: 'Pedestal brazier', cat: 'light', sets: ['temple', 'castle', 'crypt', 'dungeon', 'desert', 'wizard'], tags: ['brazier', 'fire', 'pedestal', 'bowl', 'flame', 'tall', 'sacred', 'light'],
+    w: 1, h: 1, blocksMovement: true, light: { bright: 20, dim: 20, color: TORCH }, c: { stone: STONE.marble, metal: METAL.bronze, fire: '#ffb02e' },
+    variants: [
+      { name: 'Bronze, fire', c: {} },
+      { name: 'Silver, blue flame', c: { stone: STONE.grey, metal: METAL.silver, fire: '#4cc9f0' } },
+      { name: 'Black, green flame', c: { stone: STONE.dark, metal: METAL.black, fire: '#7ae36a' } },
+      { name: 'Gold, holy flame', c: { stone: STONE.sand, metal: METAL.gold, fire: '#ffe08a' } },
+    ],
+    desc: 'A wide fire bowl on a chest-high stone pedestal, lighting a great hall or temple.',
+    draw: ({ g, c, seed }) => {
+      const r = rng(seed);
+      glow(g, 50, 50, 50, c.fire, 0.45);
+      rr(g, 12, 12, 76, 76, 6);
+      paint(g, litFill(g, 12, 12, 76, 76, shade(c.stone, -0.15), 0.22), INK, LW);
+      bevel(g, 12, 12, 76, 76, 6, 0.3);
+      circle(g, 50, 50, 34);
+      paint(g, domeFill(g, 50, 50, 34, c.metal, 0.45), INK, LW);
+      circle(g, 50, 50, 27);
+      paint(g, '#2a1a12', INK, 1.4);
+      for (let i = 0; i < 14; i++) {
+        const a = r() * TAU, d = Math.sqrt(r()) * 22;
+        circle(g, 50 + Math.cos(a) * d, 50 + Math.sin(a) * d, 2.4 + r() * 2.2);
+        paint(g, r() < 0.5 ? '#c2410c' : '#4a2a1a', null);
+      }
+      fireAt(g, 50, 50, 20, r, c.fire);
+    },
+  },
+  {
+    id: 'candle-stand-tall', name: 'Tall candle stand', cat: 'light', sets: ['temple', 'castle', 'crypt', 'wizard', 'town'], tags: ['candles', 'pricket', 'candlestand', 'tall', 'iron', 'church', 'vigil', 'light'],
+    w: 1, h: 1, blocksMovement: true, light: { bright: 10, dim: 15, color: CANDLE }, c: { metal: METAL.brass, wax: WAX }, variants: MV,
+    desc: 'A head-high stand on three feet with a crown of tall candles.',
+    draw: ({ g, c }) => {
+      glow(g, 50, 50, 46, '#ffcf7a', 0.35);
+      for (let i = 0; i < 3; i++) {
+        const a = (i / 3) * TAU - Math.PI / 2;
+        bar(g, 50, 50, 50 + Math.cos(a) * 42, 50 + Math.sin(a) * 42, c.metal, 3);
+        circle(g, 50 + Math.cos(a) * 42, 50 + Math.sin(a) * 42, 4.5);
+        paint(g, domeFill(g, 50 + Math.cos(a) * 42, 50 + Math.sin(a) * 42, 4.5, c.metal, 0.5), INK, 1);
+      }
+      hoop(g, 50, 50, 20, c.metal, 3);
+      for (let i = 0; i < 5; i++) {
+        const a = (i / 5) * TAU;
+        cupCandle(g, 50 + Math.cos(a) * 20, 50 + Math.sin(a) * 20, c.metal, c.wax, 0.8);
+      }
+      cupCandle(g, 50, 50, c.metal, c.wax, 0.95);
+    },
+  },
+  {
+    id: 'brazier-hanging', name: 'Hanging fire basket', cat: 'light', sets: ['castle', 'dungeon', 'cave', 'crypt', 'temple', 'camp'], tags: ['brazier', 'fire', 'basket', 'hanging', 'chains', 'ceiling', 'cresset', 'overhead', 'light'],
+    w: 1, h: 1, layer: 'overhead', light: { bright: 15, dim: 15, color: TORCH }, c: { metal: METAL.iron, fire: '#ffb02e' },
+    variants: [
+      { name: 'Iron', c: {} },
+      { name: 'Bronze', c: { metal: METAL.bronze } },
+      { name: 'Black iron, blue flame', c: { metal: METAL.black, fire: '#4cc9f0' } },
+      { name: 'Rusted, green flame', c: { metal: METAL.rust, fire: '#7ae36a' } },
+    ],
+    desc: 'An open iron basket of burning coals hung on three chains. Hangs above the room; tokens pass underneath.',
+    draw: ({ g, c, seed }) => {
+      const r = rng(seed);
+      glow(g, 50, 50, 50, c.fire, 0.45);
+      circle(g, 50, 50, 30);
+      paint(g, '#2a1a12', null);
+      for (let i = 0; i < 8; i++) {
+        const a = (i / 8) * TAU;
+        bar(g, 50 + Math.cos(a) * 12, 50 + Math.sin(a) * 12, 50 + Math.cos(a) * 30, 50 + Math.sin(a) * 30, c.metal, 2.2);
+      }
+      hoop(g, 50, 50, 30, c.metal, 4);
+      fireAt(g, 50, 50, 19, r, c.fire);
+      for (let i = 0; i < 3; i++) {
+        const a = (i / 3) * TAU - Math.PI / 2;
+        chain(g, 50 + Math.cos(a) * 30, 50 + Math.sin(a) * 30, 50 + Math.cos(a) * 14, 50 + Math.sin(a) * 14, c.metal, 2.2);
+      }
+    },
+  },
+  {
+    id: 'hearth-grand', name: 'Great hearth', cat: 'light', sets: ['castle', 'tavern', 'town'], tags: ['fireplace', 'hearth', 'fire', 'chimney', 'hall', 'feast', 'warmth', 'grand'],
+    w: 3, h: 1, blocksMovement: true, light: { bright: 20, dim: 20, color: TORCH }, c: { stone: STONE.grey, wood: WOOD.oak, fire: '#ffb02e' },
+    variants: [
+      { name: 'Grey stone', c: {} },
+      { name: 'Sandstone', c: { stone: STONE.sand } },
+      { name: 'Dark stone', c: { stone: STONE.dark } },
+      { name: 'Marble', c: { stone: STONE.marble, wood: WOOD.walnut } },
+    ],
+    desc: 'A walk-in fireplace with a chimney breast that rises to the ceiling. Put the top edge on a wall.',
+    draw: ({ g, c, seed }) => {
+      const r = rng(seed);
+      glow(g, 150, 30, 110, '#ff9a40', 0.4);
+      slab(g, 36, 40, 228, 40, shade(c.stone, 0.06), r, 28, 13);
+      rr(g, 70, 2, 160, 40, 2);
+      paint(g, '#1c1410', INK, 1.6);
+      plank(g, 136, 24, 70, 10, 0.12, c.wood, r);
+      plank(g, 164, 22, 66, 9, -0.2, shade(c.wood, -0.1), r);
+      fireAt(g, 150, 22, 18, r, c.fire);
+      for (const x of [96, 204]) {
+        bar(g, x, 10, x, 36, METAL.black, 3.4);
+        circle(g, x, 36, 4);
+        paint(g, domeFill(g, x, 36, 4, METAL.iron, 0.5), INK, 1);
+      }
+      slab(g, 8, 0, 64, 50, c.stone, r, 20, 13);
+      slab(g, 228, 0, 64, 50, c.stone, r, 20, 13);
+    },
+  },
+];
+
+const HALLS_ROOMS: ObjDef[] = [
+  {
+    id: 'throne-dais', name: 'Throne on a dais', cat: 'furniture', sets: ['castle', 'temple', 'dungeon', 'crypt'], tags: ['throne', 'dais', 'king', 'queen', 'ruler', 'steps', 'royal', 'hall', 'court'],
+    w: 3, h: 3, blocksMovement: true, c: { stone: STONE.grey, metal: METAL.gold, cloth: CLOTH.red },
+    variants: [
+      { name: 'Gold and crimson', c: {} },
+      { name: 'Silver and blue', c: { stone: STONE.marble, metal: METAL.silver, cloth: CLOTH.blue } },
+      { name: 'Bone and black', c: { stone: STONE.dark, metal: BONE, cloth: CLOTH.black } },
+      { name: 'Bronze and green', c: { stone: STONE.sand, metal: METAL.bronze, cloth: CLOTH.green } },
+    ],
+    desc: 'A high-backed throne on three stone steps, with a carpet running up the front. The back faces the top edge.',
+    draw: ({ g, c, seed }) => {
+      const r = rng(seed);
+      for (const [x, k] of [[6, -0.12], [36, 0], [66, 0.12]] as [number, number][]) {
+        rr(g, x, x - 4, 300 - 2 * x, 300 - 2 * x, 4);
+        paint(g, litFill(g, x, x - 4, 300 - 2 * x, 300 - 2 * x, shade(c.stone, k), 0.2), INK, LW);
+        bevel(g, x, x - 4, 300 - 2 * x, 300 - 2 * x, 4, 0.25);
+      }
+      speckle(g, 8, 4, 284, 284, r, 30, alpha(shade(c.stone, -0.5), 0.25), 1.1);
+      cloth(g, 122, 176, 56, 120, c.cloth, r, 2, 2);
+      line(g, 126, 176, 126, 296, alpha(c.metal, 0.8), 1.4);
+      line(g, 174, 176, 174, 296, alpha(c.metal, 0.8), 1.4);
+      rr(g, 98, 70, 104, 30, 6);
+      paint(g, litFill(g, 98, 70, 104, 30, c.metal, 0.35), INK, LW);
+      for (const x of [104, 150, 196]) {
+        circle(g, x, 74, 8);
+        paint(g, domeFill(g, x, 74, 8, shade(c.metal, 0.1), 0.5), INK, 1.2);
+      }
+      gem(g, 150, 86, 6, '#d6402f');
+      rr(g, 106, 98, 88, 70, 6);
+      paint(g, litFill(g, 106, 98, 88, 70, shade(c.metal, -0.1), 0.3), INK, LW);
+      pad(g, 116, 104, 68, 58, c.cloth, 10);
+      for (const x of [96, 188]) {
+        rr(g, x, 100, 16, 66, 5);
+        paint(g, litFill(g, x, 100, 16, 66, c.metal, 0.35), INK, 1.6);
+      }
+    },
+  },
+  {
+    id: 'feast-hall-table', name: 'Great hall feast table', cat: 'furniture', sets: ['castle', 'tavern', 'town', 'camp'], tags: ['feast', 'banquet', 'table', 'benches', 'long table', 'hall', 'dining', 'mead hall'],
+    w: 6, h: 2, blocksMovement: true, c: { wood: WOOD.oak, cloth: CLOTH.red, metal: METAL.brass, wax: WAX }, variants: WV,
+    desc: 'A thirty-foot table laid for a feast, with a bench down each side.',
+    draw: ({ g, c, seed }) => {
+      const r = rng(seed);
+      panel(g, 24, 10, 552, 30, shade(c.wood, -0.08), r, 'h', 2, 4);
+      panel(g, 24, 160, 552, 30, shade(c.wood, -0.08), r, 'h', 2, 4);
+      panel(g, 10, 52, 580, 96, c.wood, r, 'h', 5, 4);
+      cloth(g, 30, 86, 540, 28, c.cloth, r, 10, 2);
+      for (let i = 0; i < 9; i++) {
+        const x = 62 + i * 60;
+        dish(g, x, 70, 10, '#d9d2c3', i % 3 ? '#c0703a' : '#7a9a4a');
+        dish(g, x + 22, 130, 10, '#d9d2c3', i % 2 ? '#a0503a' : '#c9a24a');
+        circle(g, x + 18, 66, 4.4);
+        paint(g, domeFill(g, x + 18, 66, 4.4, c.metal, 0.5), INK, 1);
+        circle(g, x + 4, 136, 4.4);
+        paint(g, domeFill(g, x + 4, 136, 4.4, c.metal, 0.5), INK, 1);
+      }
+      ellipse(g, 300, 100, 30, 18);
+      paint(g, domeFill(g, 300, 100, 30, '#d9d2c3', 0.25), INK, 1.4);
+      ellipse(g, 300, 100, 22, 12);
+      paint(g, domeFill(g, 300, 100, 22, '#9a5a2a', 0.45), INK, 1.2);
+      for (const x of [120, 480]) {
+        circle(g, x, 100, 13);
+        paint(g, domeFill(g, x, 100, 13, c.metal, 0.5), INK, 1.3);
+        for (const dx of [-7, 0, 7]) candle(g, x + dx, 100 + (dx ? 3 : -4), 3.4, r, c.wax);
+      }
+    },
+  },
+  {
+    id: 'statue-tall-knight', name: 'Tall knight statue', cat: 'decor', sets: ['castle', 'temple', 'crypt', 'dungeon', 'town'], tags: ['statue', 'knight', 'warrior', 'guardian', 'sword', 'plinth', 'monument', 'tall', 'hall'],
+    w: 2, h: 2, blocksMovement: true, blocksSight: true, c: { stone: STONE.grey, body: '#b8b2a6' }, variants: STATUE_STONES,
+    desc: 'A knight twice life size on a tall plinth, hands resting on a sword set point-down. Faces the bottom edge.',
+    draw: ({ g, c, seed }) => {
+      const r = rng(seed);
+      plinthTop(g, 18, 18, 164, c.stone, r);
+      ellipse(g, 100, 92, 50, 30);
+      paint(g, litFill(g, 50, 62, 100, 60, shade(c.body, -0.15), 0.25), INK, LW);
+      ellipse(g, 100, 106, 44, 26);
+      paint(g, domeFill(g, 100, 106, 44, c.body, 0.3), INK, LW);
+      for (const k of [-1, 1]) {
+        ellipse(g, 100 + k * 40, 104, 16, 18);
+        paint(g, domeFill(g, 100 + k * 40, 104, 16, shade(c.body, 0.08), 0.4), INK, 1.6);
+      }
+      circle(g, 100, 102, 18);
+      paint(g, domeFill(g, 100, 102, 18, shade(c.body, 0.1), 0.45), INK, LW);
+      line(g, 100, 86, 100, 118, alpha(shade(c.body, -0.5), 0.8), 3);
+      bar(g, 76, 140, 124, 140, shade(c.body, -0.05), 5);
+      for (const x of [90, 110]) {
+        circle(g, x, 140, 6);
+        paint(g, domeFill(g, x, 140, 6, c.body, 0.4), INK, 1.2);
+      }
+      circle(g, 100, 134, 5);
+      paint(g, domeFill(g, 100, 134, 5, c.body, 0.5), INK, 1.1);
+    },
+  },
+  {
+    id: 'statue-tall-robed', name: 'Robed figure statue', cat: 'decor', sets: ['temple', 'crypt', 'wizard', 'castle', 'town'], tags: ['statue', 'priest', 'sage', 'monk', 'saint', 'hooded', 'plinth', 'monument', 'tall'],
+    w: 2, h: 2, blocksMovement: true, blocksSight: true, c: { stone: STONE.grey, body: '#b8b2a6', glow: '#ffd27a' },
+    variants: [
+      { name: 'Grey stone, book', c: {} },
+      { name: 'Marble, lantern', c: { stone: STONE.marble, body: '#e8e4dc' }, f: { item: 1 } },
+      { name: 'Bronze, staff', c: { stone: STONE.dark, body: '#9a6a34' }, f: { item: 2 } },
+      { name: 'Dark stone, glowing orb', c: { stone: STONE.dark, body: '#5e5a62', glow: '#9fd8ff' }, f: { item: 3 } },
+    ],
+    desc: 'A hooded figure in long robes, twice life size on a tall plinth, holding something out. Faces the bottom edge.',
+    draw: ({ g, c, f, seed }) => {
+      const r = rng(seed);
+      plinthTop(g, 18, 18, 164, c.stone, r);
+      blob(g, lumpy(100, 104, 52, 0.08, 12, r, 44));
+      paint(g, domeFill(g, 100, 104, 52, c.body, 0.3), INK, LW);
+      for (let i = 0; i < 6; i++) {
+        const a = Math.PI * 0.15 + (i / 5) * Math.PI * 0.7;
+        line(g, 100 + Math.cos(a) * 24, 104 + Math.sin(a) * 20, 100 + Math.cos(a) * 48, 104 + Math.sin(a) * 40, alpha(shade(c.body, -0.5), 0.6), 1.4);
+      }
+      circle(g, 100, 92, 22);
+      paint(g, domeFill(g, 100, 92, 22, shade(c.body, -0.05), 0.45), INK, LW);
+      ellipse(g, 100, 100, 10, 8);
+      paint(g, shade(c.body, -0.6), null);
+      const item = f.item ?? 0;
+      if (item === 1) {
+        glow(g, 100, 140, 26, c.glow, 0.5);
+        lanternTop(g, 100, 140, 8, c.body, c.glow);
+      } else if (item === 2) {
+        circle(g, 130, 128, 7);
+        paint(g, domeFill(g, 130, 128, 7, shade(c.body, 0.1), 0.5), INK, 1.3);
+      } else if (item === 3) {
+        glow(g, 100, 140, 30, c.glow, 0.6);
+        circle(g, 100, 140, 10);
+        paint(g, domeFill(g, 100, 140, 10, c.glow, 0.5), INK, 1.2);
+      } else {
+        rr(g, 84, 128, 32, 20, 2);
+        paint(g, litFill(g, 84, 128, 32, 20, shade(c.body, 0.08), 0.3), INK, 1.4);
+        line(g, 100, 128, 100, 148, INK, 1.2);
+      }
+    },
+  },
+  {
+    id: 'statue-tall-winged', name: 'Winged guardian statue', cat: 'decor', sets: ['temple', 'crypt', 'castle', 'wizard'], tags: ['statue', 'winged', 'guardian', 'angel', 'celestial', 'spear', 'plinth', 'monument', 'tall'],
+    w: 2, h: 2, blocksMovement: true, blocksSight: true, c: { stone: STONE.grey, body: '#b8b2a6' }, variants: STATUE_STONES,
+    desc: 'A winged guardian with a spear, its wings raised so their tips nearly brush a high ceiling. Faces the bottom edge.',
+    draw: ({ g, c, seed }) => {
+      const r = rng(seed);
+      plinthTop(g, 30, 30, 140, c.stone, r);
+      for (const k of [-1, 1]) {
+        const pts = [[100 + k * 20, 92], [100 + k * 92, 30], [100 + k * 96, 62], [100 + k * 80, 92], [100 + k * 60, 112], [100 + k * 26, 112]];
+        poly(g, pts);
+        paint(g, litFill(g, 4, 30, 192, 82, shade(c.body, 0.05), 0.3), INK, LW);
+        for (let i = 1; i < 5; i++) line(g, 100 + k * 26, 100, 100 + k * (40 + i * 13), 34 + i * 16, alpha(shade(c.body, -0.5), 0.7), 1.3);
+      }
+      ellipse(g, 100, 104, 26, 20);
+      paint(g, domeFill(g, 100, 104, 26, c.body, 0.35), INK, LW);
+      circle(g, 100, 100, 13);
+      paint(g, domeFill(g, 100, 100, 13, shade(c.body, 0.1), 0.45), INK, 1.8);
+      bar(g, 124, 70, 124, 156, shade(c.body, -0.1), 3.6);
+      poly(g, [[124, 156], [119, 146], [129, 146]]);
+      paint(g, shade(c.body, 0.15), INK, 1.1);
+    },
+  },
+  {
+    id: 'fountain-grand', name: 'Grand fountain', cat: 'decor', sets: ['castle', 'temple', 'town', 'market'], tags: ['fountain', 'water', 'basin', 'tiered', 'courtyard', 'plaza', 'hall', 'grand'],
+    w: 3, h: 3, blocksMovement: true, c: { stone: STONE.marble, water: '#4f8fb0' },
+    variants: [
+      { name: 'Marble', c: {} },
+      { name: 'Grey stone', c: { stone: STONE.grey } },
+      { name: 'Sandstone', c: { stone: STONE.sand, water: '#4a9aa8' } },
+      { name: 'Dark stone, green water', c: { stone: STONE.dark, water: '#4f8a6a' } },
+    ],
+    desc: 'An eight-sided basin with two tiers of bowls spilling into it, taller than a person.',
+    draw: ({ g, c, seed }) => {
+      const r = rng(seed);
+      const oct = (rad: number) => Array.from({ length: 8 }, (_, i) => [150 + Math.cos((i / 8) * TAU + TAU / 16) * rad, 150 + Math.sin((i / 8) * TAU + TAU / 16) * rad]);
+      poly(g, oct(146));
+      paint(g, litFill(g, 4, 4, 292, 292, c.stone, 0.25), INK, LW);
+      poly(g, oct(128));
+      const wg = g.createRadialGradient(130, 120, 10, 150, 150, 130);
+      wg.addColorStop(0, shade(c.water, 0.3));
+      wg.addColorStop(1, shade(c.water, -0.3));
+      paint(g, wg, INK, 1.6);
+      for (const rad of [76, 96, 116]) {
+        circle(g, 150, 150, rad);
+        stroke(g, alpha('#ffffff', 0.22), 1.4);
+      }
+      speckle(g, 30, 30, 240, 240, r, 30, alpha('#ffffff', 0.35), 1.2);
+      circle(g, 150, 150, 62);
+      paint(g, domeFill(g, 150, 150, 62, c.stone, 0.35), INK, LW);
+      circle(g, 150, 150, 52);
+      paint(g, domeFill(g, 150, 150, 52, c.water, 0.3), INK, 1.2);
+      circle(g, 150, 150, 32);
+      paint(g, domeFill(g, 150, 150, 32, shade(c.stone, 0.05), 0.4), INK, 1.8);
+      circle(g, 150, 150, 24);
+      paint(g, domeFill(g, 150, 150, 24, shade(c.water, 0.1), 0.3), INK, 1);
+      circle(g, 150, 150, 10);
+      paint(g, domeFill(g, 150, 150, 10, shade(c.stone, 0.1), 0.5), INK, 1.4);
+    },
+  },
+  {
+    id: 'organ-cathedral', name: 'Cathedral organ', cat: 'furniture', sets: ['temple', 'castle', 'crypt'], tags: ['organ', 'pipes', 'music', 'cathedral', 'grand', 'tall', 'haunted', 'chapel'],
+    w: 4, h: 1, blocksMovement: true, c: { wood: WOOD.walnut, metal: METAL.silver },
+    variants: [
+      { name: 'Silver and walnut', c: {} },
+      { name: 'Gold and ebony', c: { wood: WOOD.ebony, metal: METAL.gold } },
+      { name: 'Brass and oak', c: { wood: WOOD.oak, metal: METAL.brass } },
+      { name: 'Bone and black', c: { wood: '#2b2b30', metal: BONE } },
+    ],
+    desc: 'Three towers of pipes climbing nearly to a high ceiling, over a carved console. Put the top edge on a wall.',
+    draw: ({ g, c, seed }) => {
+      const r = rng(seed);
+      panel(g, 6, 2, 388, 46, c.wood, r, 'h', 2, 3);
+      const pipeRow = (x0: number, x1: number, n: number, rad: number) => {
+        for (let i = 0; i < n; i++) {
+          const x = x0 + ((i + 0.5) / n) * (x1 - x0), rr2 = rad * (1 - Math.abs(i - (n - 1) / 2) / n * 0.6);
+          circle(g, x, 24, rr2);
+          paint(g, domeFill(g, x, 24, rr2, c.metal, 0.55), INK, 1.2);
+          circle(g, x, 24, rr2 * 0.45);
+          paint(g, '#1a1410', null);
+        }
+      };
+      pipeRow(16, 126, 6, 9);
+      pipeRow(138, 262, 6, 11);
+      pipeRow(274, 384, 6, 9);
+      panel(g, 136, 46, 128, 30, shade(c.wood, -0.05), r, 'h', 2, 3);
+      rr(g, 146, 66, 108, 8, 1);
+      paint(g, '#efe8d8', INK, 1);
+      for (let x = 150; x < 252; x += 7) line(g, x, 66, x, 71, INK, 2.4);
+      panel(g, 160, 82, 80, 14, c.wood, r, 'h', 1, 3);
+    },
+  },
+  {
+    id: 'lectern-dais', name: 'Lectern on a dais', cat: 'religious', sets: ['temple', 'castle', 'wizard', 'crypt', 'town'], tags: ['lectern', 'pulpit', 'dais', 'sermon', 'book', 'reading', 'speech', 'steps'],
+    w: 2, h: 2, blocksMovement: true, c: { stone: STONE.marble, wood: WOOD.oak, metal: METAL.brass, wax: WAX },
+    variants: [
+      { name: 'Marble and oak', c: {} },
+      { name: 'Grey and walnut', c: { stone: STONE.grey, wood: WOOD.walnut, metal: METAL.iron } },
+      { name: 'Dark and ebony', c: { stone: STONE.dark, wood: WOOD.ebony, metal: METAL.silver } },
+      { name: 'Sandstone and gold', c: { stone: STONE.sand, wood: WOOD.pine, metal: METAL.gold } },
+    ],
+    desc: 'A slanted reading stand with a great open book, raised on two round steps. The reader stands at the top edge.',
+    draw: ({ g, c, seed }) => {
+      const r = rng(seed);
+      circle(g, 100, 100, 94);
+      paint(g, domeFill(g, 100, 100, 94, shade(c.stone, -0.1), 0.25), INK, LW);
+      circle(g, 100, 96, 66);
+      paint(g, domeFill(g, 100, 96, 66, c.stone, 0.3), INK, LW);
+      speckle(g, 10, 10, 180, 180, r, 22, alpha(shade(c.stone, -0.5), 0.3), 1);
+      g.save();
+      g.translate(100, 104);
+      rr(g, -34, -22, 68, 44, 3);
+      paint(g, litFill(g, -34, -22, 68, 44, c.wood, 0.3), INK, LW);
+      rr(g, -28, -17, 27, 34, 1);
+      paint(g, '#efe6cf', INK, 1);
+      rr(g, 1, -17, 27, 34, 1);
+      paint(g, '#e6dcc0', INK, 1);
+      for (let i = 0; i < 5; i++) {
+        line(g, -24, -11 + i * 6, -5, -11 + i * 6, alpha(INK, 0.4), 1);
+        line(g, 5, -11 + i * 6, 24, -11 + i * 6, alpha(INK, 0.4), 1);
+      }
+      line(g, 6, 17, 10, 28, '#a3312c', 2);
+      g.restore();
+      cupCandle(g, 52, 76, c.metal, c.wax, 0.9);
+      cupCandle(g, 148, 76, c.metal, c.wax, 0.9);
+    },
+  },
+  {
+    id: 'war-table', name: 'War table', cat: 'furniture', sets: ['castle', 'camp', 'town', 'dungeon'], tags: ['war', 'map', 'strategy', 'campaign', 'generals', 'markers', 'table', 'council', 'planning'],
+    w: 3, h: 2, blocksMovement: true, c: { wood: WOOD.oak, map: '#e6d6aa', a: CLOTH.red, b: CLOTH.blue }, variants: WV,
+    desc: 'A heavy table spread with a campaign map, pieces for armies and a dagger pinning the corner.',
+    draw: ({ g, c, seed }) => {
+      const r = rng(seed);
+      panel(g, 6, 6, 288, 188, c.wood, r, 'h', 6, 6);
+      rr(g, 26, 24, 248, 152, 4);
+      paint(g, litFill(g, 26, 24, 248, 152, c.map, 0.15), INK, 1.6);
+      g.save();
+      rr(g, 26, 24, 248, 152, 4);
+      g.clip();
+      g.fillStyle = alpha('#5a8aa8', 0.35);
+      g.fillRect(26, 24, 248, 152);
+      blob(g, lumpy(140, 104, 96, 0.22, 14, r, 58));
+      paint(g, c.map, alpha(shade(c.map, -0.6), 0.9), 1.4);
+      g.beginPath();
+      g.moveTo(70, 72);
+      g.bezierCurveTo(110, 96, 140, 80, 172, 120);
+      g.bezierCurveTo(190, 140, 200, 150, 220, 150);
+      stroke(g, alpha('#3f6f9a', 0.8), 2.2);
+      for (let i = 0; i < 14; i++) {
+        circle(g, 80 + r() * 50, 100 + r() * 40, 3.6);
+        g.fillStyle = alpha('#3e6b3a', 0.7);
+        g.fill();
+      }
+      for (let i = 0; i < 5; i++) {
+        const x = 170 + i * 14, y = 74 + (i % 2) * 8;
+        poly(g, [[x - 7, y + 6], [x, y - 6], [x + 7, y + 6]], false);
+        stroke(g, alpha('#5a4a3a', 0.85), 1.4);
+      }
+      g.restore();
+      for (const [x, y, col] of [[110, 82, c.a], [124, 92, c.a], [100, 120, c.a], [196, 118, c.b], [208, 104, c.b], [182, 140, c.b]] as [number, number, string][]) {
+        circle(g, x, y, 5.5);
+        paint(g, domeFill(g, x, y, 5.5, col, 0.5), INK, 1.2);
+      }
+      for (const [x, y, col] of [[152, 64, c.a], [226, 134, c.b]] as [number, number, string][]) {
+        line(g, x, y, x, y - 14, INK, 1.4);
+        poly(g, [[x, y - 14], [x + 11, y - 10], [x, y - 6]]);
+        paint(g, col, INK, 1);
+      }
+      bar(g, 236, 36, 268, 58, METAL.silver, 3);
+      bar(g, 232, 40, 240, 32, METAL.brass, 3);
+      candle(g, 44, 156, 6, r, WAX);
+    },
+  },
+  {
+    id: 'altar-reredos', name: 'High altar and screen', cat: 'religious', sets: ['temple', 'crypt', 'castle'], tags: ['altar', 'reredos', 'screen', 'shrine', 'chapel', 'cathedral', 'holy', 'tall', 'sanctuary'],
+    w: 3, h: 2, blocksMovement: true, c: { stone: STONE.marble, metal: METAL.gold, cloth: CLOTH.white, wax: WAX },
+    variants: [
+      { name: 'Marble and gold', c: {} },
+      { name: 'Grey and silver', c: { stone: STONE.grey, metal: METAL.silver, cloth: CLOTH.blue } },
+      { name: 'Black and blood', c: { stone: STONE.dark, metal: '#8b1e1e', cloth: '#4a1414' } },
+      { name: 'Sandstone and bronze', c: { stone: STONE.sand, metal: METAL.bronze, cloth: CLOTH.gold } },
+    ],
+    desc: 'A stone altar on a step, backed by a carved screen of niches and spires that climbs almost to the ceiling. Put the top edge on a wall.',
+    draw: ({ g, c, seed }) => {
+      const r = rng(seed);
+      slab(g, 4, 0, 292, 44, c.stone, r, 24, 14);
+      for (const x of [56, 150, 244]) {
+        rr(g, x - 22, 6, 44, 24, 10);
+        paint(g, shade(c.stone, -0.45), INK, 1.4);
+        poly(g, [[x, 2], [x + 7, 16], [x, 30], [x - 7, 16]]);
+        paint(g, litFill(g, x - 7, 2, 14, 28, shade(c.stone, 0.15), 0.4), INK, 1);
+      }
+      sunMark(g, 150, 18, 10, c.metal);
+      slab(g, 36, 128, 228, 36, shade(c.stone, 0.06), r, 30, 12);
+      rr(g, 56, 60, 188, 70, 3);
+      paint(g, litFill(g, 56, 60, 188, 70, c.stone, 0.25), INK, LW);
+      cloth(g, 70, 56, 160, 78, c.cloth, r, 4, 2);
+      rr(g, 70, 56, 160, 78, 2);
+      stroke(g, alpha(c.metal, 0.85), 2);
+      for (const x of [86, 214]) cupCandle(g, x, 76, c.metal, c.wax, 1.1);
+      rr(g, 132, 80, 36, 24, 3);
+      paint(g, litFill(g, 132, 80, 36, 24, c.metal, 0.4), INK, 1.4);
+    },
+  },
+  {
+    id: 'idol-colossal', name: 'Colossal seated idol', cat: 'religious', sets: ['temple', 'cave', 'desert', 'crypt', 'dungeon'], tags: ['idol', 'statue', 'colossus', 'god', 'giant', 'seated', 'cult', 'ancient', 'tall'],
+    w: 3, h: 3, blocksMovement: true, blocksSight: true, c: { stone: STONE.sand, gem: '#e63946' },
+    variants: [
+      { name: 'Sandstone', c: {} },
+      { name: 'Jade', c: { stone: '#5f8a6a', gem: '#7fffd4' } },
+      { name: 'Obsidian', c: { stone: '#2e2a30', gem: '#ff4d2e' } },
+      { name: 'Gilded', c: { stone: '#c9a24a', gem: '#4cc9f0' } },
+    ],
+    desc: 'A seated stone god nearly as tall as the hall, hands on its knees and a jewel in its brow. Faces the bottom edge.',
+    draw: ({ g, c, seed }) => {
+      const r = rng(seed);
+      slab(g, 14, 8, 272, 230, shade(c.stone, -0.12), r, 34, 22, 4);
+      for (const k of [-1, 1]) {
+        ellipse(g, 150 + k * 46, 214, 34, 52);
+        paint(g, domeFill(g, 150 + k * 46, 214, 34, c.stone, 0.3), INK, LW);
+        ellipse(g, 150 + k * 50, 246, 20, 14);
+        paint(g, domeFill(g, 150 + k * 50, 246, 20, shade(c.stone, 0.08), 0.4), INK, 1.6);
+      }
+      ellipse(g, 150, 120, 96, 56);
+      paint(g, domeFill(g, 150, 120, 96, c.stone, 0.3), INK, LW);
+      for (const k of [-1, 1]) {
+        ellipse(g, 150 + k * 84, 160, 18, 52);
+        paint(g, domeFill(g, 150 + k * 84, 160, 18, shade(c.stone, 0.04), 0.35), INK, LW);
+      }
+      for (let i = 0; i < 9; i++) {
+        const a = Math.PI + (i / 8) * Math.PI;
+        poly(g, [[150 + Math.cos(a - 0.14) * 40, 112 + Math.sin(a - 0.14) * 40], [150 + Math.cos(a) * 62, 112 + Math.sin(a) * 62], [150 + Math.cos(a + 0.14) * 40, 112 + Math.sin(a + 0.14) * 40]]);
+        paint(g, litFill(g, 90, 50, 120, 60, shade(c.stone, 0.12), 0.3), INK, 1.4);
+      }
+      circle(g, 150, 116, 38);
+      paint(g, domeFill(g, 150, 116, 38, shade(c.stone, 0.06), 0.45), INK, LW);
+      glow(g, 150, 132, 18, c.gem, 0.6);
+      gem(g, 150, 132, 7, c.gem);
+      speckle(g, 20, 20, 260, 220, r, 30, alpha(shade(c.stone, -0.5), 0.3), 1.2);
+    },
+  },
+];
+
+const HALLS_LIBRARY: ObjDef[] = [
+  {
+    id: 'bookcase-grand', name: 'Double-height bookcase', cat: 'furniture', sets: ['wizard', 'castle', 'temple', 'town'], tags: ['books', 'library', 'bookcase', 'ladder', 'rolling ladder', 'tall', 'archive', 'scholar', 'grand'],
+    w: 3, h: 1, blocksMovement: true, c: { wood: WOOD.walnut, metal: METAL.brass },
+    variants: [{ name: 'Walnut', c: {} }, { name: 'Oak', c: { wood: WOOD.oak } }, { name: 'Ebony and gold', c: { wood: WOOD.ebony, metal: METAL.gold } }, { name: 'Pine', c: { wood: WOOD.pine, metal: METAL.iron } }],
+    desc: 'Shelves of books climbing near the ceiling, with a brass rail and a rolling ladder to reach the top. Put the top edge on a wall.',
+    draw: ({ g, c, seed }) => {
+      const r = rng(seed);
+      shelfCase(g, 4, 2, 292, 50, c.wood, r, (ix, iy, iw, id) => {
+        for (let i = 0; i < 4; i++) bookRow(g, ix + (i * iw) / 4 + 2, iy, iw / 4 - 4, id, r);
+        for (let i = 1; i < 4; i++) line(g, ix + (i * iw) / 4, iy, ix + (i * iw) / 4, iy + id, c.wood, 4);
+      });
+      bar(g, 4, 58, 296, 58, c.metal, 3);
+      g.save();
+      g.translate(206, 66);
+      g.rotate(-0.08);
+      for (const x of [-15, 15]) bar(g, x, -12, x, 26, c.wood, 4.6);
+      for (let y = -6; y < 26; y += 8) bar(g, -15, y, 15, y, shade(c.wood, 0.1), 3);
+      for (const x of [-15, 15]) {
+        circle(g, x, 28, 4);
+        paint(g, domeFill(g, x, 28, 4, c.metal, 0.5), INK, 1);
+      }
+      g.restore();
+    },
+  },
+  {
+    id: 'reading-nook', name: 'Reading nook', cat: 'furniture', sets: ['wizard', 'castle', 'town', 'tavern'], tags: ['armchair', 'reading', 'books', 'library', 'study', 'cozy', 'rug', 'footstool', 'scholar'],
+    w: 2, h: 2, c: { wood: WOOD.walnut, cloth: CLOTH.green, rug: CLOTH.red, wax: WAX },
+    variants: [
+      { name: 'Green and red', c: {} },
+      { name: 'Blue and gold', c: { cloth: CLOTH.blue, rug: CLOTH.gold } },
+      { name: 'Burgundy', c: { cloth: '#6a1f2a', rug: CLOTH.brown, wood: WOOD.ebony } },
+      { name: 'Plum', c: { cloth: CLOTH.purple, rug: CLOTH.black, wood: WOOD.oak } },
+    ],
+    desc: 'A deep armchair on a round rug with a footstool, a candle table and a pile of books.',
+    draw: ({ g, c, seed }) => {
+      const r = rng(seed);
+      circle(g, 100, 100, 90);
+      paint(g, domeFill(g, 100, 100, 90, c.rug, 0.15), INK, 1.8);
+      circle(g, 100, 100, 78);
+      stroke(g, alpha(shade(c.rug, 0.45), 0.7), 3);
+      circle(g, 100, 100, 40);
+      stroke(g, alpha(shade(c.rug, 0.45), 0.5), 2);
+      chairAt(g, 78, 82, 74, -0.5, c.wood, r, c.cloth);
+      pad(g, 110, 124, 40, 32, c.cloth, 10);
+      roundPanel(g, 148, 60, 22, c.wood, r, 2);
+      cupCandle(g, 144, 56, METAL.brass, c.wax, 0.8);
+      book(g, 150, 60, 14, 10, '#7a2a22', 0.4);
+      for (let i = 0; i < 4; i++) book(g, 30 + i * 2, 140 - i * 5, 22, 15, BOOKS[i + 1], (r() - 0.5) * 0.6);
+    },
+  },
+  {
+    id: 'astrolabe-stand', name: 'Great astrolabe', cat: 'arcane', sets: ['wizard', 'castle', 'temple', 'ship'], tags: ['astrolabe', 'stars', 'astronomy', 'brass', 'instrument', 'observatory', 'scholar', 'navigation'],
+    w: 1, h: 1, blocksMovement: true, c: { metal: METAL.brass, wood: WOOD.walnut }, variants: MV,
+    desc: 'A brass star-disc as tall as a person, turning on a tripod stand.',
+    draw: ({ g, c }) => {
+      for (let i = 0; i < 3; i++) {
+        const a = (i / 3) * TAU + Math.PI / 2;
+        bar(g, 50, 50, 50 + Math.cos(a) * 44, 50 + Math.sin(a) * 44, c.wood, 4);
+      }
+      hoop(g, 50, 50, 36, c.metal, 5);
+      circle(g, 50, 50, 33);
+      paint(g, alpha(shade(c.metal, -0.4), 0.55), null);
+      hoop(g, 50, 50, 24, c.metal, 2);
+      for (let i = 0; i < 24; i++) {
+        const a = (i / 24) * TAU;
+        line(g, 50 + Math.cos(a) * 30, 50 + Math.sin(a) * 30, 50 + Math.cos(a) * 34, 50 + Math.sin(a) * 34, INK, 1);
+      }
+      for (let i = 0; i < 6; i++) {
+        const a = (i / 6) * TAU + 0.3;
+        bar(g, 50, 50, 50 + Math.cos(a) * 22, 50 + Math.sin(a) * 22, c.metal, 1.6);
+        circle(g, 50 + Math.cos(a) * 22, 50 + Math.sin(a) * 22, 2.4);
+        paint(g, shade(c.metal, 0.3), INK, 0.8);
+      }
+      bar(g, 20, 70, 80, 30, shade(c.metal, 0.15), 3);
+      rivet(g, 50, 50, 4, c.metal);
+    },
+  },
+  {
+    id: 'globe-great', name: 'Great globe', cat: 'decor', sets: ['wizard', 'castle', 'town', 'ship'], tags: ['globe', 'world', 'map', 'library', 'study', 'navigator', 'scholar', 'large'],
+    w: 2, h: 2, blocksMovement: true, c: { wood: WOOD.walnut, sea: '#3f6f9a', land: '#9aa86a', metal: METAL.brass },
+    variants: [
+      { name: 'Walnut', c: {} },
+      { name: 'Oak', c: { wood: WOOD.oak } },
+      { name: 'Ebony and gold', c: { wood: WOOD.ebony, metal: METAL.gold } },
+      { name: 'Old parchment', c: { sea: '#c9b07a', land: '#8a6a3a', wood: WOOD.pine } },
+    ],
+    desc: 'A globe taller than a person in a ring stand on four carved legs.',
+    draw: ({ g, c, seed }) => {
+      const r = rng(seed);
+      bar(g, 36, 36, 164, 164, c.wood, 4);
+      bar(g, 164, 36, 36, 164, c.wood, 4);
+      for (const [x, y] of [[36, 36], [164, 36], [36, 164], [164, 164]]) {
+        circle(g, x, y, 11);
+        paint(g, domeFill(g, x, y, 11, c.wood, 0.45), INK, 1.6);
+      }
+      hoop(g, 100, 100, 80, c.wood, 9);
+      for (let i = 0; i < 36; i++) {
+        const a = (i / 36) * TAU;
+        line(g, 100 + Math.cos(a) * 77, 100 + Math.sin(a) * 77, 100 + Math.cos(a) * 83, 100 + Math.sin(a) * 83, alpha(INK, 0.6), 1);
+      }
+      circle(g, 100, 100, 64);
+      paint(g, domeFill(g, 100, 100, 64, c.sea, 0.4), INK, LW);
+      g.save();
+      circle(g, 100, 100, 64);
+      g.clip();
+      for (const [x, y, s] of [[78, 78, 26], [128, 92, 20], [96, 136, 22]]) {
+        blob(g, lumpy(x, y, s, 0.35, 10, r));
+        paint(g, alpha(c.land, 0.95), alpha(shade(c.land, -0.6), 0.8), 1.2);
+      }
+      ellipse(g, 100, 100, 64, 22);
+      stroke(g, alpha('#ffffff', 0.35), 1);
+      g.restore();
+      g.beginPath();
+      g.ellipse(100, 100, 18, 68, 0.3, 0, TAU);
+      stroke(g, INK, 5);
+      g.beginPath();
+      g.ellipse(100, 100, 18, 68, 0.3, 0, TAU);
+      stroke(g, c.metal, 3);
+    },
+  },
+  {
+    id: 'archive-stacks', name: 'Scroll archive stacks', cat: 'storage', sets: ['wizard', 'temple', 'castle', 'town', 'desert'], tags: ['scrolls', 'archive', 'library', 'stacks', 'records', 'cubbies', 'shelves', 'tall', 'scholar'],
+    w: 2, h: 1, blocksMovement: true, c: { wood: WOOD.oak, paper: '#e8dcb8' }, variants: WV,
+    desc: 'A free-standing rack of cubbyholes stuffed with scrolls on both sides, taller than two people.',
+    draw: ({ g, c, seed }) => {
+      const r = rng(seed);
+      rr(g, 4, 8, 192, 84, 3);
+      paint(g, litFill(g, 4, 8, 192, 84, shade(c.wood, -0.3), 0.2), INK, LW);
+      for (let col = 0; col < 6; col++) for (let row = 0; row < 2; row++) {
+        const x = 10 + col * 30.5, y = 14 + row * 39;
+        rr(g, x, y, 27, 34, 1);
+        paint(g, '#1e140d', null);
+        for (let i = 0; i < 6; i++) {
+          const sx = x + 6 + (i % 3) * 7.5 + (r() - 0.5) * 2, sy = y + 9 + Math.floor(i / 3) * 14 + (r() - 0.5) * 2;
+          circle(g, sx, sy, 3.6);
+          paint(g, domeFill(g, sx, sy, 3.6, shade(c.paper, (r() - 0.5) * 0.2), 0.3), INK, 0.8);
+          circle(g, sx, sy, 1.1);
+          g.fillStyle = alpha(shade(c.paper, -0.5), 0.8);
+          g.fill();
+        }
+      }
+      for (let col = 0; col <= 6; col++) {
+        const x = 7 + col * 30.5;
+        rr(g, x, 8, 4, 84, 1);
+        paint(g, litFill(g, x, 8, 4, 84, c.wood, 0.3), INK, 0.9);
+      }
+      for (const y of [8, 48.5, 88]) {
+        rr(g, 4, y, 192, 4, 1);
+        paint(g, litFill(g, 4, y, 192, 4, c.wood, 0.3), INK, 0.9);
+      }
+      rr(g, 4, 8, 192, 84, 3);
+      stroke(g, INK, LW);
+    },
+  },
+];
+
+const HALLS_CRYPT: ObjDef[] = [
+  {
+    id: 'gate-iron-tall', name: 'Tall iron gate', cat: 'structure', sets: ['castle', 'crypt', 'dungeon', 'temple', 'town'], tags: ['gate', 'bars', 'iron', 'fence', 'barrier', 'tall', 'crypt gate', 'locked', 'cemetery'],
+    w: 2, h: 1, blocksMovement: true, c: { metal: METAL.black, stone: STONE.grey },
+    variants: [{ name: 'Black iron', c: {} }, { name: 'Rusted', c: { metal: METAL.rust } }, { name: 'Gilded', c: { metal: METAL.gold, stone: STONE.marble } }, { name: 'Bronze', c: { metal: METAL.bronze, stone: STONE.sand } }],
+    desc: 'A locked double gate of spear-topped bars about 18 ft tall, hung between stone posts. You can see and shoot through it.',
+    draw: ({ g, c, seed }) => {
+      const r = rng(seed);
+      bar(g, 30, 44, 170, 44, c.metal, 3);
+      bar(g, 30, 56, 170, 56, c.metal, 3);
+      for (let i = 0; i < 11; i++) {
+        const x = 37 + i * 12.6;
+        circle(g, x, 50, 4.2);
+        paint(g, domeFill(g, x, 50, 4.2, c.metal, 0.5), INK, 1.1);
+        poly(g, [[x, 43], [x + 3, 50], [x, 57], [x - 3, 50]]);
+        paint(g, shade(c.metal, 0.3), null);
+      }
+      rr(g, 92, 42, 16, 16, 2);
+      paint(g, litFill(g, 92, 42, 16, 16, shade(c.metal, 0.1), 0.4), INK, 1.4);
+      circle(g, 100, 50, 2.4);
+      paint(g, '#1a1410', null);
+      for (const x of [4, 170]) slab(g, x, 28, 26, 44, c.stone, r, 13, 11);
+    },
+  },
+  {
+    id: 'sarcophagus-row', name: 'Row of sarcophagi', cat: 'religious', sets: ['crypt', 'temple', 'dungeon', 'castle', 'desert'], tags: ['sarcophagus', 'tomb', 'burial', 'crypt', 'effigy', 'dead', 'mausoleum', 'nobles'],
+    w: 4, h: 2, blocksMovement: true, c: { stone: STONE.grey, metal: METAL.bronze, wax: WAX }, variants: STONES,
+    desc: 'Three stone coffins with carved lids, side by side on a long plinth. Something may still be inside.',
+    draw: ({ g, c, seed }) => {
+      const r = rng(seed);
+      slab(g, 4, 6, 392, 188, shade(c.stone, -0.18), r, 40, 26, 4);
+      for (const x of [28, 155, 282]) {
+        rr(g, x, 18, 90, 164, 8);
+        paint(g, litFill(g, x, 18, 90, 164, c.stone, 0.25), INK, LW);
+        rr(g, x + 7, 25, 76, 150, 6);
+        paint(g, litFill(g, x + 7, 25, 76, 150, shade(c.stone, 0.1), 0.3), INK, 1.3);
+        bevel(g, x + 7, 25, 76, 150, 6, 0.3);
+        circle(g, x + 45, 50, 13);
+        paint(g, domeFill(g, x + 45, 50, 13, shade(c.stone, 0.18), 0.45), INK, 1.4);
+        ellipse(g, x + 45, 104, 24, 40);
+        paint(g, domeFill(g, x + 45, 104, 24, shade(c.stone, 0.12), 0.35), INK, 1.3);
+        line(g, x + 45, 76, x + 45, 148, alpha(shade(c.stone, -0.5), 0.7), 1.4);
+        line(g, x + 36, 86, x + 54, 86, alpha(shade(c.stone, -0.5), 0.7), 1.6);
+      }
+      for (const x of [137, 264]) cupCandle(g, x, 44, c.metal, c.wax, 0.9);
+    },
+  },
+  {
+    id: 'bone-heap', name: 'Bone heap', cat: 'hazard', sets: ['crypt', 'cave', 'dungeon', 'swamp'], tags: ['bones', 'skulls', 'pile', 'remains', 'ossuary', 'lair', 'dead', 'heap'],
+    w: 2, h: 2, difficult: true, c: { bone: BONE },
+    variants: [{ name: 'Bleached', c: {} }, { name: 'Old', c: { bone: '#cdb98a' } }, { name: 'Charred', c: { bone: '#6a5e54' } }, { name: 'Mossy', c: { bone: '#a8b48a' } }],
+    desc: 'A waist-high heap of bones and skulls. Difficult terrain; who knows what is buried in it.',
+    draw: ({ g, c, seed }) => {
+      const r = rng(seed);
+      blob(g, lumpy(100, 104, 86, 0.18, 14, r, 78));
+      paint(g, domeFill(g, 100, 104, 86, shade(c.bone, -0.35), 0.3), INK, LW);
+      for (let i = 0; i < 26; i++) {
+        const a = r() * TAU, d = Math.sqrt(r()) * 66, x = 100 + Math.cos(a) * d, y = 104 + Math.sin(a) * d * 0.9, b = r() * Math.PI, L = 12 + r() * 16;
+        boneAt(g, x - Math.cos(b) * L, y - Math.sin(b) * L, x + Math.cos(b) * L, y + Math.sin(b) * L, 3 + r() * 1.6, shade(c.bone, (r() - 0.5) * 0.2));
+      }
+      for (let i = 0; i < 6; i++) {
+        const a = r() * TAU, d = Math.sqrt(r()) * 52;
+        skull(g, 100 + Math.cos(a) * d, 100 + Math.sin(a) * d, 8 + r() * 3, r() * TAU, c.bone);
+      }
+    },
+  },
+  {
+    id: 'torture-wheel', name: 'Breaking wheel', cat: 'furniture', sets: ['dungeon', 'castle'], tags: ['torture', 'wheel', 'interrogation', 'prison', 'execution', 'straps', 'cruel'],
+    w: 2, h: 1, blocksMovement: true, c: { wood: WOOD.oak, metal: METAL.iron, rope: '#8a6a4a' }, variants: WV,
+    desc: 'A big spoked wheel upright in a heavy frame, with straps for a victim. Grim dressing for a dungeon.',
+    draw: ({ g, c, seed }) => {
+      const r = rng(seed);
+      for (const y of [8, 92]) {
+        bar(g, 46, y, 154, y, shade(c.wood, -0.1), 7);
+        bar(g, 100, y, 100, 50, shade(c.wood, -0.05), 5);
+      }
+      bar(g, 100, 6, 100, 94, c.metal, 4);
+      g.beginPath();
+      g.ellipse(100, 50, 76, 38, 0, 0, TAU);
+      stroke(g, INK, 10);
+      g.beginPath();
+      g.ellipse(100, 50, 76, 38, 0, 0, TAU);
+      stroke(g, litFill(g, 24, 12, 152, 76, c.wood, 0.3), 7);
+      g.beginPath();
+      g.ellipse(100, 50, 76, 38, 0, 0, TAU);
+      stroke(g, alpha(c.metal, 0.9), 2);
+      for (let i = 0; i < 8; i++) {
+        const a = (i / 8) * TAU;
+        bar(g, 100, 50, 100 + Math.cos(a) * 72, 50 + Math.sin(a) * 35, c.wood, 3.4);
+      }
+      circle(g, 100, 50, 10);
+      paint(g, domeFill(g, 100, 50, 10, c.metal, 0.5), INK, 1.4);
+      for (const a of [0.4, 2.7]) {
+        rr(g, 100 + Math.cos(a) * 64 - 4, 50 + Math.sin(a) * 31 - 7, 8, 14, 2);
+        paint(g, c.rope, INK, 1);
+      }
+      void r;
+    },
+  },
+  {
+    id: 'gibbet-post', name: 'Gibbet', cat: 'structure', sets: ['dungeon', 'castle', 'town', 'swamp', 'forest'], tags: ['gibbet', 'gallows', 'cage', 'hanging', 'execution', 'crossroads', 'warning', 'corpse'],
+    w: 2, h: 1, blocksMovement: true, c: { wood: WOOD.walnut, metal: METAL.iron },
+    variants: [{ name: 'Empty', c: {} }, { name: 'Occupied', c: {}, f: { bones: 1 } }, { name: 'Rusted', c: { metal: METAL.rust } }, { name: 'Weathered, occupied', c: { wood: '#7d6a55', metal: METAL.rust }, f: { bones: 1 } }],
+    desc: 'A tall post with an arm, from which a body-shaped iron cage hangs on a chain.',
+    draw: ({ g, c, f, seed }) => {
+      const r = rng(seed);
+      dropShadow(g, 150, 54, 30, 26);
+      plank(g, 86, 50, 120, 14, 0, c.wood, r);
+      bar(g, 34, 62, 70, 52, shade(c.wood, -0.1), 5);
+      rr(g, 16, 34, 32, 32, 3);
+      paint(g, litFill(g, 16, 34, 32, 32, c.wood, 0.3), INK, LW);
+      if (f.bones) skull(g, 152, 44, 9, 0);
+      g.beginPath();
+      g.ellipse(150, 50, 18, 26, 0, 0, TAU);
+      stroke(g, INK, 5);
+      g.beginPath();
+      g.ellipse(150, 50, 18, 26, 0, 0, TAU);
+      stroke(g, c.metal, 3);
+      for (let i = 0; i < 8; i++) {
+        const a = (i / 8) * TAU;
+        bar(g, 150, 50, 150 + Math.cos(a) * 18, 50 + Math.sin(a) * 26, c.metal, 1.6);
+      }
+      ringPull(g, 150, 50, 4, c.metal);
+    },
+  },
+  {
+    id: 'stalactites-tall', name: 'Dripping stalactites', cat: 'terrain', sets: ['cave', 'mine', 'winter', 'crypt', 'sewer'], tags: ['stalactites', 'ceiling', 'cave', 'dripping', 'water', 'rock', 'hanging', 'overhead', 'tall'],
+    w: 2, h: 2, layer: 'overhead', c: { rock: '#8a8478', water: '#5a8aa8' },
+    variants: [{ name: 'Limestone', c: {} }, { name: 'Dark rock', c: { rock: '#4e4b48' } }, { name: 'Ice', c: { rock: '#cfe6f2', water: '#9ac8e0' } }, { name: 'Red rock', c: { rock: '#9a5a48', water: '#6a8a9a' } }],
+    desc: 'Long spears of rock hanging from a high cave roof, dripping into puddles. Tokens pass underneath.',
+    draw: ({ g, c, seed }) => {
+      const r = rng(seed);
+      blob(g, lumpy(108, 112, 60, 0.3, 11, r, 46));
+      paint(g, alpha(c.water, 0.45), alpha(shade(c.water, -0.4), 0.6), 1.2);
+      for (const [x, y, s] of [[70, 70, 22], [128, 60, 16], [104, 112, 26], [150, 120, 18], [60, 136, 14], [124, 158, 12], [160, 80, 11]]) {
+        circle(g, x, y, s);
+        paint(g, domeFill(g, x, y, s, c.rock, 0.4), INK, 1.8);
+        circle(g, x, y, s * 0.6);
+        stroke(g, alpha(shade(c.rock, -0.4), 0.6), 1.1);
+        circle(g, x + s * 0.05, y + s * 0.05, s * 0.22);
+        paint(g, shade(c.rock, -0.25), null);
+        circle(g, x, y, 2);
+        g.fillStyle = alpha('#ffffff', 0.7);
+        g.fill();
+      }
+    },
+  },
+  {
+    id: 'crystal-spire', name: 'Crystal spire', cat: 'nature', sets: ['cave', 'wizard', 'mine', 'winter'], tags: ['crystal', 'spire', 'gem', 'glowing', 'formation', 'magic', 'cave', 'tall', 'light'],
+    w: 2, h: 2, blocksMovement: true, light: { bright: 10, dim: 20, color: '#8fd8ff' }, c: { crystal: '#8fd8ff', rock: '#5a5560' },
+    variants: [{ name: 'Blue', c: {} }, { name: 'Violet', c: { crystal: '#c9a2ff' } }, { name: 'Green', c: { crystal: '#8fffb0' } }, { name: 'Red', c: { crystal: '#ff8a8a' } }],
+    desc: 'A cluster of glowing crystals as tall as the cave, around one great central spire.',
+    draw: ({ g, c, seed }) => {
+      const r = rng(seed);
+      glow(g, 100, 100, 99, c.crystal, 0.45);
+      for (const [x, y, s] of [[70, 130, 30], [130, 136, 26], [100, 80, 28], [140, 86, 18]]) stone(g, x, y, s, c.rock, r);
+      for (let i = 0; i < 9; i++) {
+        const a = (i / 9) * TAU + r() * 0.4, L = 34 + r() * 26;
+        shard(g, 100 + Math.cos(a) * (14 + L / 2), 104 + Math.sin(a) * (14 + L / 2), L, 7 + r() * 4, a, shade(c.crystal, (r() - 0.5) * 0.3));
+      }
+      gem(g, 100, 104, 26, c.crystal);
+    },
+  },
+  {
+    id: 'column-collapsed', name: 'Collapsed tall column', cat: 'structure', sets: ['temple', 'crypt', 'castle', 'dungeon', 'desert'], tags: ['column', 'ruin', 'fallen', 'drums', 'rubble', 'cover', 'broken', 'tall'],
+    w: 3, h: 1, blocksMovement: true, difficult: true, c: { stone: STONE.marble }, variants: HSTONES,
+    desc: 'A great column that toppled and broke into drums, its stump still standing at the left end.',
+    draw: ({ g, c, seed }) => {
+      const r = rng(seed);
+      for (const [x, y, s] of [[96, 84, 7], [178, 18, 6], [268, 84, 8], [212, 86, 5]]) stone(g, x, y, s, c.stone, r);
+      for (const [x, rot] of [[112, 0.06], [170, -0.08]] as [number, number][]) {
+        g.save();
+        g.translate(x, 52);
+        g.rotate(rot);
+        rr(g, -26, -30, 52, 60, 6);
+        paint(g, litFill(g, -26, -30, 52, 60, c.stone, 0.3), INK, LW);
+        for (let i = 1; i < 6; i++) line(g, -26, -30 + i * 10, 26, -30 + i * 10, alpha(shade(c.stone, -0.5), 0.6), 1.3);
+        g.restore();
+      }
+      g.save();
+      g.translate(244, 52);
+      g.rotate(0.25);
+      rr(g, -30, -30, 60, 60, 3);
+      paint(g, litFill(g, -30, -30, 60, 60, shade(c.stone, 0.05), 0.3), INK, LW);
+      bevel(g, -30, -30, 60, 60, 3, 0.3);
+      g.restore();
+      colTop(g, 44, 50, 38, c.stone, r, 'flute');
+      blob(g, lumpy(44, 50, 18, 0.45, 9, r));
+      paint(g, shade(c.stone, -0.25), INK, 1.2);
+    },
+  },
+  {
+    id: 'ceiling-rubble', name: 'Fallen ceiling', cat: 'terrain', sets: ['dungeon', 'crypt', 'cave', 'castle', 'mine', 'temple'], tags: ['rubble', 'collapse', 'cave-in', 'ruin', 'debris', 'ceiling', 'blocks', 'difficult'],
+    w: 2, h: 2, difficult: true, c: { stone: STONE.grey, wood: WOOD.walnut }, variants: STONES,
+    desc: 'A heap of stone and a snapped beam where part of the high ceiling came down. Difficult terrain.',
+    draw: ({ g, c, seed }) => {
+      const r = rng(seed);
+      const dust = g.createRadialGradient(100, 100, 10, 100, 100, 96);
+      dust.addColorStop(0, alpha(shade(c.stone, 0.2), 0.45));
+      dust.addColorStop(1, alpha(shade(c.stone, 0.2), 0));
+      g.fillStyle = dust;
+      g.fillRect(0, 0, 200, 200);
+      plank(g, 104, 92, 150, 18, 0.62, c.wood, r);
+      for (const [x, y, rot] of [[60, 70, 0.3], [138, 136, -0.4], [118, 50, 0.9]]) {
+        g.save();
+        g.translate(x, y);
+        g.rotate(rot);
+        rr(g, -18, -12, 36, 24, 2);
+        paint(g, litFill(g, -18, -12, 36, 24, shade(c.stone, 0.06), 0.3), INK, 1.8);
+        bevel(g, -18, -12, 36, 24, 2, 0.3);
+        g.restore();
+      }
+      for (let i = 0; i < 16; i++) {
+        const a = r() * TAU, d = Math.sqrt(r()) * 78;
+        stone(g, 100 + Math.cos(a) * d, 100 + Math.sin(a) * d, 5 + r() * 12, shade(c.stone, (r() - 0.5) * 0.2), r);
+      }
+    },
+  },
+];
+
+const HALLS: ObjDef[] = [...HALLS_ARCH, ...HALLS_HANGING, ...HALLS_LIGHTS, ...HALLS_ROOMS, ...HALLS_LIBRARY, ...HALLS_CRYPT];
+
+export const EXTRA_OBJECTS: ObjDef[] = [...LIGHTS, ...FURNITURE, ...DRESSING, ...HALLS];

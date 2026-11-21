@@ -9,7 +9,7 @@ import { gritTex, plankTex, ironTex, stoneBlockTex, caveRockTex } from './textur
 import { buildProps, type LightSpot } from './props3d';
 import { paintedFloor } from './paint';
 
-export const WALL_H = 2.4; // 12 ft
+export const WALL_H = 4.8; // 24 ft: tall halls with a ceiling you can see
 export const EYE = 1.15;
 const THEME_FLOOR: Record<string, string> = { stone: 'stone-flagstone', cave: 'cave-floor', wood: 'wood-planks' };
 const OUTDOOR = new Set(['grass', 'dirt', 'sand', 'mud', 'ice']);
@@ -62,7 +62,7 @@ function matFor(m: GameMap, i: number, v: number) {
   return mt || THEME_FLOOR[m.theme] || 'stone-flagstone';
 }
 
-export interface BuildOpts { quality: 'low' | 'medium' | 'high'; role: 'gm' | 'player'; onTexture?: () => void; /** Rooms are open to the dark above by default, so nothing overhead blocks the view. */ ceiling?: boolean }
+export interface BuildOpts { quality: 'low' | 'medium' | 'high'; role: 'gm' | 'player'; onTexture?: () => void; /** Rooms get a lit, ribbed ceiling unless this is false. */ ceiling?: boolean }
 
 export function buildDungeon(m: GameMap, vis: VisUniforms, kitMats: Record<Bin, THREE.Material>, o: BuildOpts): Built {
   const root = new THREE.Group();
@@ -223,13 +223,17 @@ export function buildDungeon(m: GameMap, vis: VisUniforms, kitMats: Record<Bin, 
       continue;
     }
     if (kind === 'window') {
+      // tall window: sill, mullion, transoms and a pointed head
+      const WT = 3.3;
       kit.B(wallBin, O, 0, 0, 0, 1.02, 0.95, 0.24, wallCol);
-      kit.B(wallBin, O, 0, 1.75, 0, 1.02, WALL_H - 1.75, 0.24, wallCol);
+      kit.B(wallBin, O, 0, WT, 0, 1.02, WALL_H - WT, 0.24, wallCol);
       kit.B('lit', O, 0, 0.92, 0, 1.06, 0.07, 0.34, '#b8b0a2');
-      kit.B('wood', O, -0.47, 0.95, 0, 0.06, 0.8, 0.2, '#6a4a2a');
-      kit.B('wood', O, 0.47, 0.95, 0, 0.06, 0.8, 0.2, '#6a4a2a');
-      kit.B('wood', O, 0, 0.95, 0, 0.04, 0.8, 0.06, '#5a3a20');
-      kit.B('wood', O, 0, 1.33, 0, 0.9, 0.04, 0.06, '#5a3a20');
+      kit.B('lit', O, 0, WT - 0.06, 0, 1.06, 0.08, 0.32, '#a8a092');
+      kit.B('wood', O, -0.47, 0.95, 0, 0.06, WT - 0.95, 0.2, '#6a4a2a');
+      kit.B('wood', O, 0.47, 0.95, 0, 0.06, WT - 0.95, 0.2, '#6a4a2a');
+      kit.B('wood', O, 0, 0.95, 0, 0.04, WT - 0.95, 0.06, '#5a3a20');
+      for (const ty of [1.55, 2.15, 2.75]) kit.B('wood', O, 0, ty, 0, 0.9, 0.04, 0.06, '#5a3a20');
+      for (const sx of [-1, 1]) kit.P(wallBin, O, 'box', sx * 0.3, WT - 0.32, 0, 0.42, 0.12, 0.22, wallCol, 0, 0, sx * 0.75);
       continue;
     }
     if (kind === 'bars' || kind === 'ethereal') {
@@ -260,7 +264,15 @@ export function buildDungeon(m: GameMap, vis: VisUniforms, kitMats: Record<Bin, 
     kit.B(wallBin, O, 0, 0, 0, 1.0, WALL_H, 0.26, style2);
     kit.B(wallBin === 'wood' ? 'wood' : 'lit', O, 0, 0, 0, 1.0, 0.16, 0.34, wallBin === 'wood' ? '#5a3a20' : '#8f887c');
     kit.B(wallBin === 'wood' ? 'wood' : 'lit', O, 0, WALL_H - 0.14, 0, 1.0, 0.14, 0.34, wallBin === 'wood' ? '#5a3a20' : '#9a9286');
-    if (wallBin === 'wood') kit.B('wood', O, 0, 0.9, 0, 1.0, 0.08, 0.3, '#5a3a20');
+    if (wallBin === 'wood') {
+      kit.B('wood', O, 0, 0.9, 0, 1.0, 0.08, 0.3, '#5a3a20');
+      kit.B('wood', O, 0, 2.7, 0, 1.0, 0.12, 0.32, '#5a3a20');
+    } else {
+      // tall walls get a string course and a frieze band so they don't read as one blank slab
+      kit.B('lit', O, 0, 1.05, 0, 1.0, 0.06, 0.3, '#8a8276');
+      kit.B('lit', O, 0, 2.75, 0, 1.0, 0.16, 0.36, '#9a9286');
+      kit.B('lit', O, 0, WALL_H - 0.55, 0, 1.0, 0.08, 0.3, '#8f887c');
+    }
   }
   // corner posts hide the seams where walls meet
   if (!cave)
@@ -270,12 +282,13 @@ export function buildDungeon(m: GameMap, vis: VisUniforms, kitMats: Record<Bin, 
       if (n < 2) continue;
       kit.B(wallBin, { x, z: y, y: 0 }, 0, 0, 0, 0.36, WALL_H + 0.02, 0.36, wallBin === 'wood' ? '#6a4a2a' : '#9a9286');
       kit.B(wallBin === 'wood' ? 'wood' : 'lit', { x, z: y, y: 0 }, 0, 0, 0, 0.42, 0.2, 0.42, '#8a8276');
+      kit.B(wallBin === 'wood' ? 'wood' : 'lit', { x, z: y, y: 0 }, 0, WALL_H - 0.5, 0, 0.46, 0.18, 0.46, '#8a8276');
     }
 
   // ---------------- ceiling ----------------
   const ceilCells: number[] = [];
   for (let i = 0; i < m.cells.length; i++) if (m.cells[i] > 0 && !OUTDOOR.has(matFor(m, i, m.cells[i]))) ceilCells.push(i);
-  if (o.ceiling && ceilCells.length) {
+  if (o.ceiling !== false && ceilCells.length) {
     const P: number[] = [];
     for (const i of ceilCells) {
       const x = i % W, y = Math.floor(i / W);
@@ -286,19 +299,45 @@ export function buildDungeon(m: GameMap, vis: VisUniforms, kitMats: Record<Bin, 
     g.computeVertexNormals();
     geos.push(g);
     const ct = cave ? caveRockTex() : wallBin === 'wood' ? { map: plankTex().map, normal: plankTex().normal } : stoneBlockTex();
-    const cm = shade(new THREE.MeshStandardMaterial({ map: ct.map, normalMap: ct.normal, color: cave ? '#5a524a' : wallBin === 'wood' ? '#7a5636' : '#6a655e', roughness: 0.95 }), vis, { tri: 0.5 });
+    // the ceiling gets a little light of its own, so it reads as stone or timber far overhead and not a black hole
+    const cm = shade(
+      new THREE.MeshStandardMaterial({ map: ct.map, normalMap: ct.normal, color: cave ? '#7a7066' : wallBin === 'wood' ? '#8a6440' : '#8a847a', roughness: 0.95, emissive: cave ? '#2a2420' : wallBin === 'wood' ? '#2e2216' : '#2c2a28', emissiveMap: ct.map, emissiveIntensity: 0.9 }),
+      vis,
+      { tri: 0.5 },
+    );
     mats.push(cm);
     const cmesh = new THREE.Mesh(g, cm);
     cmesh.name = 'ceiling';
     ceiling.add(cmesh);
-    // beams across the shorter way of each room line, every 3 squares
     const ck = new Kit(12);
     const set = new Set(ceilCells);
+    const has = (x: number, y: number) => x >= 0 && y >= 0 && x < W && y < m.rows && set.has(y * W + x);
     for (const i of ceilCells) {
       const x = i % W, y = Math.floor(i / W);
       if (cave) {
-        if (R() < 0.18) ck.P('cave', null, 'cone', x + 0.5, WALL_H - 0.35, y + 0.5, 0.25, 0.7, 0.25, '#6e655a', Math.PI, 0, 0);
-      } else if (y % 3 === 0 && set.has(i)) ck.B('wood', null, x + 0.5, WALL_H - 0.22, y + 0.15, 1.02, 0.22, 0.2, '#5a3d24');
+        // hanging rock: clusters of stalactites of mixed length
+        if (R() < 0.32) {
+          const n = 1 + Math.floor(R() * 3);
+          for (let j = 0; j < n; j++) {
+            const h = 0.5 + R() * 1.4, r = 0.12 + R() * 0.16;
+            ck.P('cave', null, 'cone', x + 0.2 + R() * 0.6, WALL_H - h / 2 + 0.05, y + 0.2 + R() * 0.6, r, h, r, R() < 0.5 ? '#6e655a' : '#7c7266', Math.PI, R() * 3, 0);
+          }
+        }
+        if (R() < 0.25) ck.P('cave', null, 'ico', x + 0.5, WALL_H - 0.1, y + 0.5, 0.9, 0.45, 0.9, '#5e564c', R() * 3, R() * 3, 0);
+      } else if (wallBin === 'wood') {
+        // heavy tie beams every 2 rows, lighter joists every column between them
+        if (y % 2 === 0 && has(x, y - 1)) ck.B('wood', null, x + 0.5, WALL_H - 0.34, y, 1.02, 0.34, 0.26, '#5a3d24');
+        if (x % 2 === 0 && has(x - 1, y)) ck.B('wood', null, x, WALL_H - 0.16, y + 0.5, 0.12, 0.16, 1.02, '#6a4a2c');
+      } else {
+        // ribbed stone vault: ribs on every second grid line, a carved boss where they cross
+        const rx = x % 2 === 0 && has(x - 1, y), rz = y % 2 === 0 && has(x, y - 1);
+        if (rx) ck.B('lit', null, x, WALL_H - 0.26, y + 0.5, 0.18, 0.26, 1.02, '#9a9286');
+        if (rz) ck.B('lit', null, x + 0.5, WALL_H - 0.26, y, 1.02, 0.26, 0.18, '#9a9286');
+        if (x % 2 === 0 && y % 2 === 0 && has(x - 1, y) && has(x, y - 1) && has(x - 1, y - 1)) {
+          ck.P('lit', null, 'oct', x, WALL_H - 0.3, y, 0.34, 0.22, 0.34, '#b0a890', 0, Math.PI / 4, 0);
+          ck.P('deco', null, 'sph', x, WALL_H - 0.4, y, 0.12, 0.1, 0.12, '#8a7a50');
+        }
+      }
     }
     ck.flush(ceiling, kitMats, false);
   }
@@ -360,7 +399,7 @@ function makeDoor(
 ): DoorObj {
   const ry = along[0] ? 0 : Math.PI / 2;
   const O = { x: cx, z: cz, ry, y: 0 };
-  const DH = 1.85;
+  const DH = 2.3; // grand doors for tall halls
   const lift = style === 'portcullis' || style === 'bars';
   const secret = style === 'door-secret';
   // frame: jambs and lintel, wall above

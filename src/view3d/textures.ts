@@ -82,9 +82,28 @@ function pair(key: string, S: number, height: Painter, tone: (h: number, x: numb
   return { map: cache.get(key + '_d')!, normal: cache.get(key + '_n')! };
 }
 
-/** Fine grit, for painted solid things (stone props, plaster, rough wood ends). */
-export const gritTex = () =>
-  pair('grit', 256, (x, y) => fbm(x, y, 256, 8, 5, 3) * 0.7 + hash2(x, y, 9) * 0.3, (h) => 0.72 + h * 0.36, 3.5);
+/** Texture size: 512 on medium and high quality, 256 on low (set by the engine before the first map is built). */
+let DETAIL = 512;
+export function setTextureDetail(q: 'low' | 'medium' | 'high') {
+  DETAIL = q === 'low' ? 256 : 512;
+}
+
+/** Fine grit with chips and hairline cracks, for painted solid things (stone props, plaster, rough wood ends). */
+export const gritTex = () => {
+  const S = DETAIL;
+  return pair(
+    'grit',
+    S,
+    (x, y) => {
+      const n = fbm(x, y, S, 8, 5, 3);
+      const crack = Math.abs(fbm(x, y, S, 5, 4, 77) - 0.5) < 0.012 ? -0.35 : 0;
+      const chip = fbm(x, y, S, 24, 2, 5) > 0.72 ? -0.2 : 0;
+      return n * 0.7 + hash2(x, y, 9) * 0.3 + crack + chip;
+    },
+    (h) => 0.7 + h * 0.38,
+    3.5,
+  );
+};
 
 /** Dressed stone for dungeon walls: now the painted ashlar (one tile = 2 x 2 world units). */
 export const stoneBlockTex = () => ashlar();
@@ -92,55 +111,90 @@ export const stoneBlockTex = () => ashlar();
 /** Rough cave rock. */
 export const caveRockTex = () => caveRock();
 
-/** Wood grain running along V. */
-export const woodTex = () =>
-  pair(
+/** Wood grain running along V: growth lines bent round the odd knot, fine pores and long streaks. */
+export const woodTex = () => {
+  const S = DETAIL, k = S / 256;
+  const knots = [[0.3, 0.2], [0.75, 0.62], [0.18, 0.85]];
+  return pair(
     'wood',
-    256,
+    S,
     (x, y) => {
-      const warp = fbm(x, y, 256, 4, 3, 21) * 18;
-      const g = Math.sin(((x + warp) / 256) * Math.PI * 2 * 14) * 0.5 + 0.5;
-      return g * 0.6 + fbm(x * 4, y * 0.25, 256, 8, 3, 2) * 0.4;
+      let warp = fbm(x, y, S, 4, 3, 21) * 18 * k;
+      let knot = 0;
+      for (const [kx, ky] of knots) {
+        const dx = (x / S - kx) * 6, dy = (y / S - ky) * 1.6;
+        const d = Math.hypot(dx, dy);
+        warp += (Math.sign(dx) * 26 * k) / (1 + d * d * 30);
+        if (d < 0.12) knot = Math.max(knot, 1 - d / 0.12);
+      }
+      const g = Math.sin(((x + warp) / S) * Math.PI * 2 * 14) * 0.5 + 0.5;
+      const line = Math.pow(g, 6);
+      const streak = fbm(x * 6, y * 0.18, S, 8, 3, 2);
+      const pore = hash2(x, Math.floor(y / (3 * k)), 4) > 0.93 ? -0.18 : 0;
+      return g * 0.45 + streak * 0.4 - line * 0.25 + pore - knot * 0.55;
     },
-    (h) => 0.62 + h * 0.4,
-    2.2,
+    (h) => 0.58 + h * 0.46,
+    2.4,
   );
+};
 
 /** Planks, for doors and floors of wood (planks run along V, 4 to a tile). */
-export const plankTex = () =>
-  pair(
+export const plankTex = () => {
+  const S = DETAIL, k = S / 256, P = 64 * k;
+  return pair(
     'plank',
-    256,
+    S,
     (x, y) => {
-      const lx = x % 64;
-      const seam = lx < 2 || lx > 61 ? 0 : 1;
-      const warp = fbm(x, y, 256, 4, 3, 23) * 10;
-      const g = Math.sin(((x + warp) / 256) * Math.PI * 2 * 22) * 0.5 + 0.5;
-      const knot = fbm(x, y, 256, 16, 2, Math.floor(x / 64)) > 0.78 ? 0.3 : 0;
-      return seam * (0.5 + g * 0.35 + hash2(Math.floor(x / 64), 0, 8) * 0.15 - knot);
+      const lx = x % P, plank = Math.floor(x / P);
+      const seam = lx < 2 * k || lx > P - 2 * k ? 0 : 1;
+      // butt joints: each plank ends somewhere along its length
+      const endAt = hash2(plank, 0, 12) * S, butt = Math.abs(((y - endAt + S) % S)) < 1.5 * k ? 0 : 1;
+      const warp = fbm(x, y, S, 4, 3, 23) * 10 * k;
+      const g = Math.sin(((x + warp) / S) * Math.PI * 2 * 22) * 0.5 + 0.5;
+      const knot = fbm(x, y, S, 16, 2, plank) > 0.78 ? 0.3 : 0;
+      const nail = (Math.abs(lx - P / 2) < 1.6 * k && Math.abs(((y - endAt + S) % S) - 4 * k) < 1.6 * k) ? -0.4 : 0;
+      return seam * butt * (0.5 + g * 0.3 + fbm(x * 5, y * 0.2, S, 8, 2, plank) * 0.12 + hash2(plank, 0, 8) * 0.15 - knot + nail);
     },
     (h) => (h < 0.05 ? 0.3 : 0.55 + h * 0.5),
     3,
   );
+};
 
-/** Woven cloth. */
-export const clothTex = () =>
-  pair(
+/** Woven cloth with uneven threads. */
+export const clothTex = () => {
+  const S = DETAIL / 2, T = 64;
+  return pair(
     'cloth',
-    128,
+    S,
     (x, y) => {
-      const a = Math.sin((x / 128) * Math.PI * 2 * 32) * 0.5 + 0.5, b = Math.sin((y / 128) * Math.PI * 2 * 32) * 0.5 + 0.5;
-      return ((Math.floor(x / 4) + Math.floor(y / 4)) % 2 ? a : b) * 0.7 + hash2(x, y, 3) * 0.3;
+      const a = Math.sin((x / S) * Math.PI * 2 * T) * 0.5 + 0.5, b = Math.sin((y / S) * Math.PI * 2 * T) * 0.5 + 0.5;
+      const cell = S / T;
+      const slub = fbm(x, y * 0.1, S, 16, 2, 8) * 0.3;
+      return ((Math.floor(x / cell) + Math.floor(y / cell)) % 2 ? a : b) * 0.6 + hash2(x, y, 3) * 0.15 + slub;
     },
-    (h) => 0.75 + h * 0.3,
-    1.5,
+    (h) => 0.72 + h * 0.32,
+    1.6,
   );
+};
 
-/** Worn iron. */
-export const ironTex = () =>
-  pair('iron', 256, (x, y) => fbm(x, y, 256, 6, 5, 41) * 0.8 + hash2(x, y, 2) * 0.2, (h) => 0.55 + h * 0.5, 2.5);
+/** Worn iron: hammer dents, pitting and darker rust blooms. */
+export const ironTex = () => {
+  const S = DETAIL;
+  return pair(
+    'iron',
+    S,
+    (x, y) => {
+      const dent = fbm(x, y, S, 12, 2, 61);
+      const pit = hash2(x >> 1, y >> 1, 2) > 0.96 ? -0.25 : 0;
+      return fbm(x, y, S, 6, 5, 41) * 0.6 + dent * 0.3 + hash2(x, y, 2) * 0.1 + pit;
+    },
+    (h) => {
+      return 0.5 + h * 0.55;
+    },
+    2.6,
+  );
+};
 
-/** A soft round glow sprite for flames and light halos. */
 export function glowTex() {
   if (!cache.has('glow')) {
     const c = canvas(64), g = c.getContext('2d')!;

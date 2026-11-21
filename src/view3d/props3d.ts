@@ -3,6 +3,7 @@
 // with its overhead picture laid on top, so nothing the GM placed goes missing. Models for more objects can be added
 // to MODELS one by one later; the rest of the view doesn't change.
 import * as THREE from 'three';
+import { WALL_H } from './dungeon';
 import { type GameMap, type Prop, isFloor, isWall, hKey, vKey } from '../engine/map';
 import { objectById } from '../library/objects';
 import { objectSprite } from '../library/art/sprites';
@@ -135,11 +136,13 @@ const MODELS: Record<string, Model> = {
       k.S('metal', O, x * 0.38, 1.85, -0.32, 0.07, GOLD);
     }
   },
-  'pillar-round': (k, O) => pillarRound(k, O),
+  // pillars carry the ceiling, so they run the full height of the hall
+  'pillar-round': (k, O) => pillarRound(k, O, WALL_H, 0.34),
   'pillar-square': (k, O) => {
     k.B('lit', O, 0, 0, 0, 0.8, 0.2, 0.8, STONE);
-    k.B('stone', O, 0, 0.2, 0, 0.6, 2.0, 0.6, '#a8a196');
-    k.B('lit', O, 0, 2.2, 0, 0.8, 0.2, 0.8, STONE);
+    k.B('stone', O, 0, 0.2, 0, 0.62, WALL_H - 0.4, 0.62, '#a8a196');
+    for (const y of [1.2, 2.75]) k.B('lit', O, 0, y, 0, 0.68, 0.1, 0.68, STONE);
+    k.B('lit', O, 0, WALL_H - 0.2, 0, 0.84, 0.2, 0.84, STONE);
   },
   'pillar-broken': (k, O, w, d, R) => {
     k.B('lit', O, 0, 0, 0, 0.8, 0.18, 0.8, STONE);
@@ -474,6 +477,14 @@ function wallSide(m: GameMap, x: number, y: number): number | null {
   return null;
 }
 
+/**
+ * Things modelled for the old 12 ft rooms that hang from the ceiling. Lamps drop to a good height on a longer chain;
+ * rock teeth, webs and drying racks move right up under the ceiling.
+ */
+const OLD_TOP = 2.4;
+const HANG_LAMP = new Set(['chandelier', 'chandelier-tiered', 'chandelier-crystal', 'chandelier-wheel', 'chandelier-antler', 'lantern-hanging', 'candle-hoop', 'oil-lamp-hanging', 'light-orb', 'pot-rack']);
+const HANG_TOP = new Set(['stalactites', 'cobweb-corner', 'herbs-drying']);
+
 const WALL_HUNG = new Set(['torch-sconce', 'sconce-witchfire', 'sconce-magefire', 'wall-chains', 'tomb-niche', 'tool-wall', 'notice-board', 'dartboard', 'tavern-sign', 'mirror', 'magic-mirror']);
 
 export function buildProps(m: GameMap, kit: Kit, root: THREE.Group, mats: THREE.Material[], vis: VisUniforms, role: 'gm' | 'player', shadows: boolean): LightSpot[] {
@@ -515,7 +526,15 @@ export function buildProps(m: GameMap, kit: Kit, root: THREE.Group, mats: THREE.
       }
     }
     const model = MODELS[def.id];
-    if (model) flameY = model(kit, O, def.w, def.h, R, c, p);
+    const lift = HANG_TOP.has(def.id) ? WALL_H - OLD_TOP : HANG_LAMP.has(def.id) ? Math.max(0, WALL_H - OLD_TOP - 1.4) : 0;
+    if (lift) {
+      O = { ...O, y: lift };
+      if (HANG_LAMP.has(def.id)) kit.Beam('metal', O, [0, OLD_TOP - 0.02, 0], [0, WALL_H - lift, 0], 0.016, '#2e2c2a', 'cyl6');
+    }
+    if (model) {
+      flameY = model(kit, O, def.w, def.h, R, c, p);
+      if (typeof flameY === 'number') flameY += lift;
+    }
     else {
       // stand-in body with the overhead picture on top
       const flat = def.flat || def.layer === 'floor' || (HEIGHT_BY_CAT[def.cat] ?? 0.5) < 0.06;

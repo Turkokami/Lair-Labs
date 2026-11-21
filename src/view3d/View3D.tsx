@@ -79,7 +79,7 @@ export default function View3D(p: View3DProps) {
   const [hint, setHint] = useState<string | null>(null);
   const [work, setWork] = useState(p.role === 'gm');
   useEffect(() => eng.current?.setLook(work, cam === 'table'), [work, cam, ready]);
-  const view = useRef({ yaw: Math.PI, pitch: -0.25, dist: p.myTokenId ? 3.2 : p.startDist ?? 10, tyaw: Math.PI, focus: startSpot(p.map) });
+  const view = useRef({ yaw: Math.PI, pitch: -0.25, dist: p.myTokenId ? 3.2 : p.startDist ?? 15, tyaw: Math.PI, focus: startSpot(p.map) });
   const props = useRef(p);
   props.current = p;
   const camRef = useRef(cam);
@@ -201,8 +201,9 @@ export default function View3D(p: View3DProps) {
     eng.current?.showCeiling(cam !== 'table');
     const v = view.current;
     if (cam === 'table') {
-      v.pitch = -0.95;
-      v.dist = Math.max(v.dist, 9);
+      // the walls are tall now, so look down from high enough to see over them into the room
+      v.pitch = -1.12;
+      v.dist = Math.max(v.dist, 15);
     } else if (cam === 'shoulder') {
       v.pitch = -0.18;
       v.dist = 3;
@@ -439,8 +440,8 @@ export default function View3D(p: View3DProps) {
       const head = new THREE.Vector3(v.focus.x, h * 0.95, v.focus.z);
       const back = new THREE.Vector3().copy(fwd).multiplyScalar(-Math.cos(v.pitch) * v.dist);
       const want = head.clone().add(back).addScaledVector(right, 0.42);
-      // no ceiling: the camera may rise above the wall tops, which opens the room up
-      want.y = Math.min(WALL_H + 1.2, head.y + 0.45 - Math.sin(v.pitch) * v.dist * 0.8);
+      // tall halls: the camera may rise well above the hero, but stays under the ceiling
+      want.y = Math.min(WALL_H - 0.6, head.y + 0.45 - Math.sin(v.pitch) * v.dist * 0.8);
       // don't let walls get between the camera and the hero
       const dir = want.clone().sub(head);
       const len = dir.length();
@@ -535,7 +536,7 @@ export default function View3D(p: View3DProps) {
       if (pts.size === 2) {
         const [a, b] = [...pts.values()];
         const d = Math.hypot(a.x - b.x, a.y - b.y);
-        if (pinch) v.dist = Math.max(1.2, Math.min(28, v.dist * (pinch / d)));
+        if (pinch) v.dist = Math.max(1.2, Math.min(40, v.dist * (pinch / d)));
         pinch = d;
         return;
       }
@@ -554,7 +555,7 @@ export default function View3D(p: View3DProps) {
     const wheel = (ev: WheelEvent) => {
       ev.preventDefault();
       const v = view.current;
-      v.dist = Math.max(1.2, Math.min(28, v.dist * (ev.deltaY > 0 ? 1.12 : 0.89)));
+      v.dist = Math.max(1.2, Math.min(40, v.dist * (ev.deltaY > 0 ? 1.12 : 0.89)));
     };
     const key = (ev: KeyboardEvent) => {
       const tag = (ev.target as HTMLElement)?.tagName;

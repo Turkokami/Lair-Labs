@@ -8,9 +8,14 @@ import View3D, { type Cam } from './View3D';
 import { toast } from '../ui/common';
 import { TurnHud3D } from '../ui/TurnHud3D';
 
+/** Where the heroes stand when a starter map is opened for a walk-through with ?demo3d&map=<id>. */
+const TOUR_START: Record<string, [number, number]> = { crypt: [8, 22], 'great-hall': [28, 40], tavern: [12, 14], warren: [6, 26] };
+
 function setup() {
-  const map = TEMPLATES.find((t) => t.id === 'crypt')!.make();
-  map.ambient = 'dark';
+  const tour = new URLSearchParams(location.search).get('map') ?? '';
+  const tpl = TEMPLATES.find((t) => t.id === (TOUR_START[tour] ? tour : 'crypt'))!;
+  const map = tpl.make();
+  map.ambient = tour && tour !== 'crypt' ? 'dim' : 'dark';
   const core = new HostCore(newGame('DEMO3D', map));
   core.s.settings.lockMoves = true;
   core.s.settings.startLevel = 3;
@@ -22,21 +27,23 @@ function setup() {
     core.handle('gm', { t: 'gm:tokenPatch', tokenId: t.id, patch: { x, y, light: { bright: 20, dim: 20 } } });
     return t.id;
   };
-  const fighter = hero('p1', 'Sam', 'fighter', 4, 11);
-  const cleric = hero('p2', 'Jo', 'cleric', 3, 12);
-  core.handle('gm', { t: 'gm:addMonster', monsterId: 'skeleton', x: 17, y: 10 });
-  core.handle('gm', { t: 'gm:addMonster', monsterId: 'skeleton', x: 18, y: 12 });
-  core.handle('gm', { t: 'gm:addMonster', monsterId: 'zombie', x: 20, y: 11 });
+  const [sx, sy] = TOUR_START[tour] ?? TOUR_START.crypt;
+  const fighter = hero('p1', 'Sam', 'fighter', sx, sy);
+  const cleric = hero('p2', 'Jo', 'cleric', sx - 2, sy + 2);
+  if (tour && tour !== 'crypt') return { core, fighter, cleric, mons: [] as string[], name: tpl.name };
+  core.handle('gm', { t: 'gm:addMonster', monsterId: 'skeleton', x: 31, y: 20 });
+  core.handle('gm', { t: 'gm:addMonster', monsterId: 'skeleton', x: 33, y: 24 });
+  core.handle('gm', { t: 'gm:addMonster', monsterId: 'zombie', x: 36, y: 22 });
   const mons = core.s.tokens.filter((t) => t.kind === 'monster').map((t) => t.id);
   void computeSheet;
-  return { core, fighter, cleric, mons };
+  return { core, fighter, cleric, mons, name: tpl.name };
 }
 
 export default function Demo3D() {
   const g = useMemo(setup, []);
   const [, setTick] = useState(0);
   const [cam, setCam] = useState<Cam>('shoulder');
-  const [caption, setCaption] = useState('The Sunken Crypt, seen from Garrick the fighter’s phone');
+  const [caption, setCaption] = useState(`${g.name}, seen from Garrick the fighter’s phone`);
   const busy = useRef(false);
   const [target, setTarget] = useState<string | undefined>();
   const view = g.core.view('p1');
@@ -60,16 +67,64 @@ export default function Demo3D() {
         await wait(ms);
       }
     };
+    const turn = async (dir: 'left' | 'right', n = 1) => {
+      for (let i = 0; i < n; i++) {
+        (document.querySelector(`[aria-label="Turn ${dir}"]`) as HTMLButtonElement | null)?.click();
+        await wait(450);
+      }
+    };
+    if (!g.mons.length) {
+      // a walk through a starter map (?demo3d&map=great-hall&auto=1)
+      const line = (x: number, y0: number, y1: number) => Array.from({ length: Math.abs(y1 - y0) }, (_, i) => [x, y0 + Math.sign(y1 - y0) * (i + 1)] as [number, number]);
+      const row = (y: number, x0: number, x1: number) => Array.from({ length: Math.abs(x1 - x0) }, (_, i) => [x0 + Math.sign(x1 - x0) * (i + 1), y] as [number, number]);
+      setCaption(`${g.name}: 24 ft ceilings, a hall 100 ft across`);
+      await wait(2200);
+      setCaption('Walk in through the gatehouse');
+      await walk('p1', g.fighter, line(28, 40, 30), 380);
+      setCam('first');
+      setCaption('Eyes view: chandeliers hang from the ceiling on chains');
+      await walk('p1', g.fighter, line(28, 30, 24), 450);
+      await wait(1200);
+      setCaption('Pillars, feast tables and a throne at the far end');
+      await turn('left', 1);
+      await wait(1400);
+      await turn('right', 2);
+      await wait(1400);
+      await turn('left', 1);
+      await walk('p1', g.fighter, line(28, 24, 16), 420);
+      await wait(1200);
+      setCam('shoulder');
+      setCaption('Through the side doors to the library');
+      await walk('p1', g.fighter, row(20, 28, 17), 380);
+      act('p1', { t: 'door', key: vKey(15, 20) });
+      act('p1', { t: 'door', key: vKey(15, 21) });
+      await wait(1200);
+      await walk('p1', g.fighter, row(20, 17, 9), 380);
+      await wait(800);
+      setCam('first');
+      await turn('right', 2);
+      await wait(1600);
+      await turn('left', 4);
+      await wait(1600);
+      setCam('table');
+      setCaption('Table view: see over the tall walls into each room');
+      await wait(4000);
+      setCam('shoulder');
+      setCaption('Lair Labs 3D: build on the map, play in 3D');
+      busy.current = false;
+      return;
+    }
     const [s1, s2, z] = g.mons;
     setCaption('Walk with the arrow pad or tap a square');
     await wait(1500);
-    await walk('p1', g.fighter, [[5, 11], [6, 11], [7, 11]]);
+    await walk('p1', g.fighter, [[10, 22], [12, 22], [14, 22], [15, 22]]);
     setCaption('Tap a door to open it');
     await wait(500);
-    act('p1', { t: 'door', key: vKey(8, 11) });
+    act('p1', { t: 'door', key: vKey(16, 22) });
+    act('p1', { t: 'door', key: vKey(16, 23) });
     await wait(1400);
-    await walk('p1', g.fighter, [[8, 11], [9, 11], [10, 11], [11, 11], [12, 11], [13, 11]]);
-    await walk('p2', g.cleric, [[6, 12], [9, 11], [12, 11]], 300);
+    await walk('p1', g.fighter, [[17, 22], [19, 22], [21, 22], [23, 22], [25, 22], [26, 22]]);
+    await walk('p2', g.cleric, [[10, 24], [14, 23], [18, 23], [22, 23], [24, 23]], 300);
     setCaption('Three undead rise in the flooded chapel');
     await wait(1600);
     act('gm', { t: 'gm:startCombat', tokenIds: [g.fighter, g.cleric] });
@@ -80,7 +135,7 @@ export default function Demo3D() {
     act('gm', { t: 'gm:setInit', tokenId: z, init: 4 });
     setCaption('Combat: the same initiative and 30 ft of movement as the map');
     await wait(2000);
-    await walk('p1', g.fighter, [[14, 11], [15, 10], [16, 10]]);
+    await walk('p1', g.fighter, [[28, 21], [30, 20]]);
     setTarget(s1);
     setCaption('Tap a foe to aim: range and attacks show on your turn');
     await wait(2200);
@@ -97,16 +152,16 @@ export default function Demo3D() {
     await wait(1600);
     act('gm', { t: 'gm:nextTurn' });
     setCaption('Sister Oriel moves up');
-    await walk('p2', g.cleric, [[13, 11], [14, 11], [15, 11]]);
+    await walk('p2', g.cleric, [[26, 23], [28, 22], [30, 21]]);
     await wait(500);
     act('gm', { t: 'gm:nextTurn' });
-    await walk('gm', s2, [[17, 12], [16, 11]]);
+    await walk('gm', s2, [[32, 23], [31, 22]]);
     act('gm', { t: 'roll', formula: '1d20+4', label: 'Shortsword attack', attackDamage: '1d6+2' } as Intent);
     await wait(900);
     act('gm', { t: 'gm:damage', targets: [g.cleric], amount: 4 });
     await wait(1400);
     act('gm', { t: 'gm:nextTurn' });
-    await walk('gm', z, [[19, 11], [18, 11]], 600);
+    await walk('gm', z, [[34, 22], [32, 21]], 600);
     await wait(600);
     act('gm', { t: 'gm:nextTurn' });
     setCam('first');

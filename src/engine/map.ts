@@ -52,7 +52,7 @@ export const PROP_LABELS: Record<string, string> = {
 let idc = 0;
 export const pid = () => `p${Date.now().toString(36)}${(idc++).toString(36)}`;
 
-export function blankMap(cols = 30, rows = 22, name = 'New map'): GameMap {
+export function blankMap(cols = 48, rows = 36, name = 'New map'): GameMap {
   return { id: pid(), name, cols, rows, theme: 'stone', cells: new Array(cols * rows).fill(0), walls: [], doors: {}, props: [], notes: [] };
 }
 
@@ -249,6 +249,53 @@ export function moveCost(m: GameMap, fx: number, fy: number, tx: number, ty: num
   return Infinity;
 }
 
+/**
+ * Makes a map bigger: every square becomes f by f squares. Rooms, halls and corridors grow, a door becomes a
+ * row of f doors (a wide doorway), and things, notes and lights move to the same spot in the bigger room.
+ */
+export function upscaleMap(m: GameMap, f = 2): GameMap {
+  if (f <= 1) return m;
+  const cols = m.cols * f, rows = m.rows * f;
+  const cells = new Array(cols * rows).fill(0);
+  const mats: string[] | undefined = m.mats ? new Array(cols * rows).fill('') : undefined;
+  for (let y = 0; y < m.rows; y++)
+    for (let x = 0; x < m.cols; x++)
+      for (let j = 0; j < f; j++)
+        for (let i = 0; i < f; i++) {
+          const k = (y * f + j) * cols + x * f + i;
+          cells[k] = m.cells[y * m.cols + x];
+          if (mats) mats[k] = m.mats![y * m.cols + x] ?? '';
+        }
+  const edges = (k: string) => {
+    const { t, x, y } = parseEdge(k);
+    return Array.from({ length: f }, (_, i) => (t === 'h' ? hKey(x * f + i, y * f) : vKey(x * f, y * f + i)));
+  };
+  const spread = <T,>(r: Record<string, T> | undefined) => {
+    if (!r) return undefined;
+    const o: Record<string, T> = {};
+    for (const [k, v] of Object.entries(r)) for (const e of edges(k)) o[e] = v;
+    return o;
+  };
+  const sc = (n: number) => n * f;
+  return {
+    ...m,
+    cols,
+    rows,
+    cells,
+    mats,
+    walls: m.walls.flatMap(edges),
+    doors: spread(m.doors)!,
+    wallKinds: spread(m.wallKinds),
+    doorStyles: spread(m.doorStyles),
+    props: m.props.map((p) => ({ ...p, x: sc(p.x), y: sc(p.y) })),
+    notes: m.notes.map((n) => ({ ...n, x: sc(n.x), y: sc(n.y) })),
+    lights: m.lights?.map((l) => ({ ...l, x: (l.x + 0.5) * f - 0.5, y: (l.y + 0.5) * f - 0.5 })),
+    rooms: m.rooms?.map((r) => ({ ...r, rects: r.rects.map((q) => q.map(sc)), labelAt: r.labelAt?.map(sc) })),
+    encounters: m.encounters?.map((e) => ({ ...e, area: e.area.map(sc) })),
+    playerStart: m.playerStart?.map(sc),
+  };
+}
+
 // ---------- Templates and the random dungeon ----------
 type Room = { x: number; y: number; w: number; h: number };
 
@@ -266,17 +313,22 @@ function build(name: string, cols: number, rows: number, rooms: Room[], corridor
 export function addDoorsAtRoomEntrances(m: GameMap, rooms: Room[], chance = 1, rnd = Math.random): GameMap {
   const inRoom = (x: number, y: number) => rooms.some((r) => x >= r.x && x < r.x + r.w && y >= r.y && y < r.y + r.h);
   const doors = { ...m.doors };
+  const decided = new Map<string, boolean>();
+  const opening = (x: number, y: number, dx: number, dy: number) => isFloor(m, x + dx, y + dy) && !inRoom(x + dx, y + dy) && inRoom(x, y);
   for (let y = 0; y < m.rows; y++)
     for (let x = 0; x < m.cols; x++) {
       if (!isFloor(m, x, y) || !inRoom(x, y)) continue;
       for (const [dx, dy] of N4) {
-        const nx = x + dx, ny = y + dy;
-        if (!isFloor(m, nx, ny) || inRoom(nx, ny)) continue;
-        // corridor square touching a room: door if the corridor is one square wide here
-        const side1 = dx ? isFloor(m, nx, ny - 1) : isFloor(m, nx - 1, ny);
-        const side2 = dx ? isFloor(m, nx, ny + 1) : isFloor(m, nx + 1, ny);
-        if (side1 || side2) continue;
-        if (rnd() <= chance) doors[edgeBetween(x, y, nx, ny)!] = 'closed';
+        if (!opening(x, y, dx, dy)) continue;
+        // how wide is the corridor mouth here? Doors go in mouths of 1 or 2 squares (a 2-wide corridor gets double doors)
+        const px = dx ? 0 : 1, py = dx ? 1 : 0;
+        let a = 0, b = 0;
+        while (opening(x - px * (a + 1), y - py * (a + 1), dx, dy)) a++;
+        while (opening(x + px * (b + 1), y + py * (b + 1), dx, dy)) b++;
+        if (a + b + 1 > 2) continue;
+        const key = `${x - px * a},${y - py * a},${dx},${dy}`;
+        if (!decided.has(key)) decided.set(key, rnd() <= chance);
+        if (decided.get(key)) doors[edgeBetween(x, y, x + dx, y + dy)!] = 'closed';
       }
     }
   return { ...m, doors };
@@ -285,23 +337,24 @@ export function addDoorsAtRoomEntrances(m: GameMap, rooms: Room[], chance = 1, r
 export function randomDungeon(size: 'small' | 'medium' | 'large' = 'small', seed = Date.now()): GameMap {
   let s = seed >>> 0 || 1;
   const rnd = () => ((s = (s * 1664525 + 1013904223) >>> 0) / 0x100000000);
-  const target = size === 'small' ? 6 : size === 'medium' ? 12 : 20;
-  const cols = size === 'small' ? 36 : size === 'medium' ? 52 : 70;
-  const rows = size === 'small' ? 26 : size === 'medium' ? 38 : 50;
+  // big rooms: halls of 35 to 75 ft a side, so the 3D view feels like walking a real dungeon
+  const target = size === 'small' ? 6 : size === 'medium' ? 11 : 18;
+  const cols = size === 'small' ? 56 : size === 'medium' ? 80 : 104;
+  const rows = size === 'small' ? 42 : size === 'medium' ? 58 : 76;
   const rooms: Room[] = [];
-  for (let tries = 0; rooms.length < target && tries < 600; tries++) {
-    const w = 4 + Math.floor(rnd() * 6), h = 4 + Math.floor(rnd() * 5);
+  for (let tries = 0; rooms.length < target && tries < 900; tries++) {
+    const w = 7 + Math.floor(rnd() * 9), h = 7 + Math.floor(rnd() * 7);
     const x = 1 + Math.floor(rnd() * (cols - w - 2)), y = 1 + Math.floor(rnd() * (rows - h - 2));
     if (rooms.some((r) => x < r.x + r.w + 2 && x + w + 2 > r.x && y < r.y + r.h + 2 && y + h + 2 > r.y)) continue;
     rooms.push({ x, y, w, h });
   }
   rooms.sort((a, b) => a.x + a.y - (b.x + b.y));
   const center = (r: Room) => [r.x + Math.floor(r.w / 2), r.y + Math.floor(r.h / 2)] as const;
-  const corridors: [number, number, number, number][] = [];
+  const corridors: [number, number, number, number, number][] = [];
   for (let i = 1; i < rooms.length; i++) {
     const [ax, ay] = center(rooms[i - 1]);
     const [bx, by] = center(rooms[i]);
-    corridors.push(rnd() < 0.5 ? [ax, ay, bx, by] : [bx, by, ax, ay]);
+    corridors.push(rnd() < 0.5 ? [ax, ay, bx, by, 2] : [bx, by, ax, ay, 2]);
   }
   let m = build(`Random dungeon (${size})`, cols, rows, rooms, corridors, [], []);
   m = addDoorsAtRoomEntrances(m, rooms, 0.7, rnd);
@@ -314,12 +367,25 @@ export function randomDungeon(size: 'small' | 'medium' | 'large' = 'small', seed
   return m;
 }
 
+/** The doubled crypt has room for more: braziers, a chandelier over the chapel, side tombs and sconces. */
+function dressCrypt(m: GameMap): GameMap {
+  const add = (kind: string, x: number, y: number, rot = 0) => m.props.push({ id: pid(), kind, x, y, rot });
+  add('chandelier-wheel', 31, 23);
+  for (const [x, y] of [[25, 17], [40, 17], [25, 30], [40, 30]]) add('brazier', x, y);
+  for (const y of [18, 24, 28]) add('torch-sconce', 4, y), add('torch-sconce', 15, y);
+  for (const x of [28, 36]) add('sarcophagus-effigy', x, 3);
+  add('rug-runner', 31, 6), add('rug-runner', 31, 9);
+  for (const y of [16, 20, 26]) add('pillar-round', 50, y), add('pillar-round', 61, y);
+  add('skeleton-lying', 9, 26), add('cobweb-corner', 4, 18), add('debris-wood', 33, 40);
+  return m;
+}
+
 export interface MapTemplate { id: string; name: string; blurb: string; make: () => GameMap; }
 
 export const TEMPLATES: MapTemplate[] = [
   {
     id: 'crypt', name: 'The Sunken Crypt', blurb: 'Entry hall, two side chambers, a flooded chapel and a locked vault.',
-    make: () => build('The Sunken Crypt', 34, 24,
+    make: () => dressCrypt(upscaleMap(build('The Sunken Crypt', 34, 24,
       [{ x: 2, y: 9, w: 6, h: 6 }, { x: 12, y: 8, w: 9, h: 8 }, { x: 13, y: 1, w: 7, h: 5 }, { x: 13, y: 18, w: 7, h: 5 }, { x: 25, y: 7, w: 7, h: 10 }],
       [[7, 11, 12, 11], [16, 5, 16, 8], [16, 15, 16, 18], [20, 12, 25, 12]],
       [[vKey(8, 11), 'closed'], [vKey(12, 11), 'open'], [hKey(16, 6), 'closed'], [hKey(16, 18), 'secret'], [vKey(25, 12), 'locked']],
@@ -330,7 +396,7 @@ export const TEMPLATES: MapTemplate[] = [
       ],
       'stone',
       [{ x: 16, y: 12, text: 'Flooded chapel: 3 skeletons rise when the heroes reach the middle.' }, { x: 28, y: 11, text: 'Vault: key is on the altar. Wight guards it.' }, { x: 22, y: 12, text: 'Pressure plate: DC 13 Perception, 2d6 piercing darts.' }],
-    ),
+    ), 2)),
   },
   {
     id: 'warren', name: 'Goblin Warren', blurb: 'Twisting cave tunnels, a lookout, a den and the boss chamber.',
@@ -339,26 +405,51 @@ export const TEMPLATES: MapTemplate[] = [
         [{ x: 1, y: 11, w: 5, h: 5 }, { x: 9, y: 3, w: 6, h: 5 }, { x: 10, y: 16, w: 8, h: 7 }, { x: 22, y: 9, w: 10, h: 9 }, { x: 24, y: 1, w: 5, h: 4 }],
         [[5, 13, 12, 13], [12, 13, 12, 7], [12, 13, 12, 16], [17, 19, 26, 19], [26, 19, 26, 17], [15, 5, 26, 5], [26, 5, 26, 9]],
         [[hKey(26, 18), 'closed']],
-        [{ kind: 'campfire', x: 26, y: 13, rot: 0 }, { kind: 'chest', x: 30, y: 10, rot: 0 }, { kind: 'bed', x: 11, y: 21, rot: 0 }, { kind: 'bed', x: 15, y: 21, rot: 0 }, { kind: 'crate', x: 10, y: 4, rot: 0 }, { kind: 'barrel', x: 13, y: 4, rot: 0 }, { kind: 'rubble', x: 3, y: 13, rot: 0 }],
+        [{ kind: 'bedroll', x: 23, y: 10, rot: 0 }, { kind: 'bedroll', x: 30, y: 15, rot: 0 }, { kind: 'barrel-group', x: 28, y: 1, rot: 0 }, { kind: 'crate-pile', x: 25, y: 2, rot: 0 }, { kind: 'weapon-rack', x: 9, y: 7, rot: 0 }, { kind: 'skeleton-lying', x: 2, y: 15, rot: 0 }, { kind: 'torch-standing', x: 23, y: 16, rot: 0 }, { kind: 'torch-standing', x: 31, y: 9, rot: 0 }, { kind: 'campfire', x: 26, y: 13, rot: 0 }, { kind: 'chest', x: 30, y: 10, rot: 0 }, { kind: 'bed', x: 11, y: 21, rot: 0 }, { kind: 'bed', x: 15, y: 21, rot: 0 }, { kind: 'crate', x: 10, y: 4, rot: 0 }, { kind: 'barrel', x: 13, y: 4, rot: 0 }, { kind: 'rubble', x: 3, y: 13, rot: 0 }],
         'cave',
         [{ x: 12, y: 5, text: 'Lookout: 2 goblins with shortbows.' }, { x: 26, y: 13, text: 'Boss: hobgoblin chief and 3 goblins.' }],
       );
-      return setCells(m, [[14, 13], [15, 13], [16, 12], [16, 13], [16, 14]], 3);
+      return upscaleMap(setCells(m, [[14, 13], [15, 13], [16, 12], [16, 13], [16, 14]], 3), 2);
     },
   },
   {
-    id: 'tavern', name: 'The Lantern Tavern', blurb: 'A common room, kitchen, cellar stairs and two private rooms.',
-    make: () => build('The Lantern Tavern', 27, 21,
-      [{ x: 2, y: 2, w: 14, h: 10 }, { x: 17, y: 2, w: 7, h: 6 }, { x: 2, y: 13, w: 6, h: 6 }, { x: 9, y: 13, w: 7, h: 6 }, { x: 18, y: 14, w: 5, h: 5 }],
-      [[16, 4, 16, 4], [4, 12, 4, 12], [12, 12, 12, 12], [20, 8, 20, 13]],
-      [[vKey(17, 4), 'open'], [hKey(4, 13), 'closed'], [hKey(12, 13), 'closed'], [hKey(20, 8), 'closed']],
+    id: 'great-hall', name: 'The Great Hall of Harrowmere', blurb: 'A huge pillared feast hall with a throne, a library, a chapel, kitchens, barracks and the lord’s chambers.',
+    make: () => {
+      const m = build('The Great Hall of Harrowmere', 58, 46,
+        [{ x: 24, y: 36, w: 10, h: 8 }, { x: 19, y: 10, w: 20, h: 22 }, { x: 3, y: 12, w: 12, h: 16 }, { x: 43, y: 12, w: 12, h: 16 }, { x: 23, y: 1, w: 12, h: 6 }, { x: 3, y: 32, w: 13, h: 10 }, { x: 42, y: 32, w: 13, h: 10 }],
+        [[28, 32, 28, 35, 2], [15, 20, 18, 20, 2], [39, 20, 42, 20, 2], [28, 7, 28, 9, 2], [8, 28, 8, 31, 2], [48, 28, 48, 31, 2]],
+        [
+          [hKey(28, 36), 'open'], [hKey(29, 36), 'open'], [hKey(28, 32), 'open'], [hKey(29, 32), 'open'],
+          [vKey(15, 20), 'closed'], [vKey(15, 21), 'closed'], [vKey(19, 20), 'open'], [vKey(19, 21), 'open'],
+          [vKey(39, 20), 'open'], [vKey(39, 21), 'open'], [vKey(43, 20), 'closed'], [vKey(43, 21), 'closed'],
+          [hKey(28, 7), 'locked'], [hKey(29, 7), 'locked'], [hKey(28, 10), 'closed'], [hKey(29, 10), 'closed'],
+          [hKey(8, 28), 'closed'], [hKey(9, 28), 'closed'], [hKey(48, 28), 'closed'], [hKey(49, 28), 'closed'],
+        ],
       [
-        { kind: 'table', x: 5, y: 5, rot: 0 }, { kind: 'table', x: 9, y: 5, rot: 0 }, { kind: 'table', x: 5, y: 9, rot: 0 }, { kind: 'table', x: 10, y: 9, rot: 0 },
-        { kind: 'barrel', x: 14, y: 3, rot: 0 }, { kind: 'barrel', x: 14, y: 4, rot: 0 }, { kind: 'campfire', x: 21, y: 3, rot: 0 }, { kind: 'crate', x: 22, y: 6, rot: 0 },
-        { kind: 'bed', x: 3, y: 15, rot: 0 }, { kind: 'bed', x: 13, y: 16, rot: 0 }, { kind: 'stairs', x: 20, y: 16, rot: 0 }, { kind: 'well', x: 7, y: 2, rot: 0 },
+        { kind: 'rug-runner', x: 28, y: 13, rot: 0 }, { kind: 'rug-runner', x: 28, y: 16, rot: 0 }, { kind: 'rug-runner', x: 28, y: 19, rot: 0 }, { kind: 'rug-runner', x: 28, y: 22, rot: 0 }, { kind: 'rug-runner', x: 28, y: 25, rot: 0 }, { kind: 'rug-runner', x: 28, y: 28, rot: 0 }, { kind: 'column-fluted', x: 22, y: 13, rot: 0 }, { kind: 'column-fluted', x: 35, y: 13, rot: 0 }, { kind: 'column-fluted', x: 22, y: 17, rot: 0 }, { kind: 'column-fluted', x: 35, y: 17, rot: 0 }, { kind: 'column-fluted', x: 22, y: 21, rot: 0 }, { kind: 'column-fluted', x: 35, y: 21, rot: 0 }, { kind: 'column-fluted', x: 22, y: 25, rot: 0 }, { kind: 'column-fluted', x: 35, y: 25, rot: 0 }, { kind: 'column-fluted', x: 22, y: 29, rot: 0 }, { kind: 'column-fluted', x: 35, y: 29, rot: 0 }, { kind: 'table-feast', x: 24, y: 16, rot: 0 }, { kind: 'bench-long', x: 24, y: 15, rot: 0 }, { kind: 'bench-long', x: 24, y: 17, rot: 0 }, { kind: 'table-feast', x: 24, y: 22, rot: 0 }, { kind: 'bench-long', x: 24, y: 21, rot: 0 }, { kind: 'bench-long', x: 24, y: 23, rot: 0 }, { kind: 'table-feast', x: 31, y: 16, rot: 0 }, { kind: 'bench-long', x: 31, y: 15, rot: 0 }, { kind: 'bench-long', x: 31, y: 17, rot: 0 }, { kind: 'table-feast', x: 31, y: 22, rot: 0 }, { kind: 'bench-long', x: 31, y: 21, rot: 0 }, { kind: 'bench-long', x: 31, y: 23, rot: 0 }, { kind: 'chandelier-tiered', x: 27, y: 14, rot: 0 }, { kind: 'chandelier-great', x: 27, y: 19, rot: 0 }, { kind: 'chandelier-tiered', x: 27, y: 26, rot: 0 }, { kind: 'throne-dais', x: 27, y: 10, rot: 0 }, { kind: 'banner-pole', x: 26, y: 11, rot: 0 }, { kind: 'banner-pole', x: 30, y: 11, rot: 0 }, { kind: 'fireplace', x: 24, y: 10, rot: 0 }, { kind: 'fireplace', x: 32, y: 10, rot: 0 }, { kind: 'brazier-pedestal', x: 20, y: 30, rot: 0 }, { kind: 'banner-hanging-tall', x: 20, y: 23, rot: 0 }, { kind: 'banner-hanging-tall', x: 37, y: 23, rot: 0 }, { kind: 'bookcase-grand', x: 5, y: 12, rot: 0 }, { kind: 'bookcase-grand', x: 9, y: 12, rot: 0 }, { kind: 'brazier-pedestal', x: 37, y: 30, rot: 0 }, { kind: 'statue-tall-knight', x: 24, y: 29, rot: 0 }, { kind: 'statue-tall-knight', x: 32, y: 29, rot: 0 }, { kind: 'torch-sconce', x: 19, y: 12, rot: 0 }, { kind: 'torch-sconce', x: 38, y: 12, rot: 0 }, { kind: 'torch-sconce', x: 19, y: 19, rot: 0 }, { kind: 'torch-sconce', x: 38, y: 19, rot: 0 }, { kind: 'torch-sconce', x: 19, y: 26, rot: 0 }, { kind: 'torch-sconce', x: 38, y: 26, rot: 0 }, { kind: 'bookshelf-tall', x: 3, y: 13, rot: 0 }, { kind: 'bookshelf-tall', x: 3, y: 15, rot: 0 }, { kind: 'bookshelf-tall', x: 3, y: 17, rot: 0 }, { kind: 'bookshelf-tall', x: 3, y: 19, rot: 0 }, { kind: 'bookshelf-tall', x: 3, y: 21, rot: 0 }, { kind: 'bookshelf-tall', x: 3, y: 23, rot: 0 }, { kind: 'bookshelf-tall', x: 3, y: 25, rot: 0 }, { kind: 'library-stack', x: 6, y: 15, rot: 0 }, { kind: 'library-stack', x: 9, y: 15, rot: 0 }, { kind: 'library-stack', x: 6, y: 19, rot: 0 }, { kind: 'library-stack', x: 9, y: 19, rot: 0 }, { kind: 'library-stack', x: 6, y: 23, rot: 0 }, { kind: 'library-stack', x: 9, y: 23, rot: 0 }, { kind: 'table-reading', x: 12, y: 17, rot: 0 }, { kind: 'chandelier-wheel', x: 8, y: 17, rot: 0 }, { kind: 'rug-round', x: 7, y: 25, rot: 0 }, { kind: 'candles', x: 13, y: 13, rot: 0 }, { kind: 'globe-stand', x: 12, y: 25, rot: 0 }, { kind: 'altar', x: 48, y: 13, rot: 0 }, { kind: 'statue', x: 46, y: 13, rot: 0 }, { kind: 'statue', x: 51, y: 13, rot: 0 }, { kind: 'candles', x: 47, y: 14, rot: 0 }, { kind: 'candles', x: 50, y: 14, rot: 0 }, { kind: 'chandelier-crystal', x: 48, y: 19, rot: 0 }, { kind: 'organ-cathedral', x: 44, y: 26, rot: 0 }, { kind: 'pew', x: 45, y: 17, rot: 0 }, { kind: 'pew', x: 50, y: 17, rot: 0 }, { kind: 'pew', x: 45, y: 19, rot: 0 }, { kind: 'pew', x: 50, y: 19, rot: 0 }, { kind: 'pew', x: 45, y: 21, rot: 0 }, { kind: 'pew', x: 50, y: 21, rot: 0 }, { kind: 'pew', x: 45, y: 23, rot: 0 }, { kind: 'pew', x: 50, y: 23, rot: 0 }, { kind: 'bed-four-poster', x: 25, y: 2, rot: 0 }, { kind: 'fireplace', x: 30, y: 1, rot: 0 }, { kind: 'rug-round', x: 28, y: 3, rot: 0 }, { kind: 'table-reading', x: 32, y: 4, rot: 0 }, { kind: 'armor-stand', x: 24, y: 5, rot: 0 }, { kind: 'hearth-oven', x: 4, y: 32, rot: 0 }, { kind: 'stove', x: 7, y: 32, rot: 0 }, { kind: 'kitchen-table', x: 8, y: 36, rot: 0 }, { kind: 'kitchen-table', x: 11, y: 36, rot: 0 }, { kind: 'barrel-group', x: 13, y: 39, rot: 0 }, { kind: 'produce-crates', x: 4, y: 40, rot: 0 }, { kind: 'water-barrel', x: 14, y: 33, rot: 0 }, { kind: 'bunk-bed', x: 43, y: 33, rot: 0 }, { kind: 'bunk-bed', x: 45, y: 33, rot: 0 }, { kind: 'bunk-bed', x: 47, y: 33, rot: 0 }, { kind: 'bunk-bed', x: 49, y: 33, rot: 0 }, { kind: 'bunk-bed', x: 51, y: 33, rot: 0 }, { kind: 'weapon-rack', x: 43, y: 40, rot: 0 }, { kind: 'weapon-rack', x: 46, y: 40, rot: 0 }, { kind: 'armor-stand', x: 50, y: 40, rot: 0 }, { kind: 'armor-stand', x: 52, y: 40, rot: 0 }, { kind: 'table-long', x: 47, y: 37, rot: 0 }, { kind: 'torch-standing', x: 25, y: 37, rot: 0 }, { kind: 'torch-standing', x: 32, y: 37, rot: 0 }, { kind: 'crate-pile', x: 25, y: 41, rot: 0 }, { kind: 'stairs-up', x: 33, y: 40, rot: 0 }, { kind: 'barrel', x: 32, y: 42, rot: 0 },
+      ],
+        'stone',
+        [{ x: 28, y: 12, text: 'Lady Corvane holds court here. 6 guards, 2 at each door.' }, { x: 48, y: 20, text: 'Chapel: the organ hides a stair down (DC 15 Investigation).' }, { x: 28, y: 3, text: 'Solar: locked. The key is on Lady Corvane’s belt.' }],
+      );
+      m.doorStyles = { [hKey(28, 32)]: 'door-double', [hKey(29, 32)]: 'door-double', [hKey(28, 36)]: 'portcullis', [hKey(29, 36)]: 'portcullis' };
+      m.wallKinds = Object.fromEntries([hKey(21, 10), hKey(36, 10), vKey(19, 14), vKey(19, 16), vKey(19, 24), vKey(19, 27), vKey(39, 14), vKey(39, 16), vKey(39, 24), vKey(39, 27), hKey(46, 12), hKey(52, 12)].map((k) => [k, 'window' as WallKind]));
+      return m;
+    },
+  },
+  {
+    id: 'tavern', name: 'The Lantern Tavern', blurb: 'A big common room with a bar and hearth, a kitchen, the cellar, two private rooms and the stair up.',
+    make: () => build('The Lantern Tavern', 42, 34,
+      [{ x: 2, y: 2, w: 22, h: 15 }, { x: 26, y: 2, w: 12, h: 10 }, { x: 26, y: 14, w: 12, h: 9 }, { x: 2, y: 19, w: 10, h: 8 }, { x: 14, y: 19, w: 10, h: 8 }, { x: 28, y: 25, w: 8, h: 7 }],
+      [[24, 6, 25, 6, 2], [31, 12, 31, 13, 2], [6, 17, 6, 18, 2], [18, 17, 18, 18, 2], [31, 23, 31, 24, 2]],
+      [
+        [vKey(24, 6), 'open'], [vKey(24, 7), 'open'], [hKey(31, 14), 'closed'], [hKey(32, 14), 'closed'],
+        [hKey(6, 19), 'closed'], [hKey(7, 19), 'closed'], [hKey(18, 19), 'closed'], [hKey(19, 19), 'closed'], [hKey(31, 25), 'closed'], [hKey(32, 25), 'closed'],
+      ],
+      [
+        { kind: 'table-round', x: 5, y: 5, rot: 0 }, { kind: 'chair', x: 4, y: 5, rot: 0 }, { kind: 'chair', x: 6, y: 5, rot: 0 }, { kind: 'stool', x: 5, y: 6, rot: 0 }, { kind: 'table-round', x: 10, y: 5, rot: 0 }, { kind: 'chair', x: 9, y: 5, rot: 0 }, { kind: 'chair', x: 11, y: 5, rot: 0 }, { kind: 'stool', x: 10, y: 6, rot: 0 }, { kind: 'table-round', x: 5, y: 10, rot: 0 }, { kind: 'chair', x: 4, y: 10, rot: 0 }, { kind: 'chair', x: 6, y: 10, rot: 0 }, { kind: 'stool', x: 5, y: 11, rot: 0 }, { kind: 'table-round', x: 10, y: 10, rot: 0 }, { kind: 'chair', x: 9, y: 10, rot: 0 }, { kind: 'chair', x: 11, y: 10, rot: 0 }, { kind: 'stool', x: 10, y: 11, rot: 0 }, { kind: 'table-round', x: 15, y: 10, rot: 0 }, { kind: 'chair', x: 14, y: 10, rot: 0 }, { kind: 'chair', x: 16, y: 10, rot: 0 }, { kind: 'stool', x: 15, y: 11, rot: 0 }, { kind: 'table-round', x: 5, y: 13, rot: 0 }, { kind: 'chair', x: 4, y: 13, rot: 0 }, { kind: 'chair', x: 6, y: 13, rot: 0 }, { kind: 'stool', x: 5, y: 14, rot: 0 }, { kind: 'table-round', x: 10, y: 13, rot: 0 }, { kind: 'chair', x: 9, y: 13, rot: 0 }, { kind: 'chair', x: 11, y: 13, rot: 0 }, { kind: 'stool', x: 10, y: 14, rot: 0 }, { kind: 'bar-counter', x: 17, y: 4, rot: 0 }, { kind: 'bar-counter', x: 20, y: 4, rot: 0 }, { kind: 'stool-bar', x: 17, y: 5, rot: 0 }, { kind: 'stool-bar', x: 18, y: 5, rot: 0 }, { kind: 'stool-bar', x: 20, y: 5, rot: 0 }, { kind: 'stool-bar', x: 21, y: 5, rot: 0 }, { kind: 'keg-rack', x: 18, y: 2, rot: 0 }, { kind: 'keg-rack', x: 21, y: 2, rot: 0 }, { kind: 'fireplace', x: 2, y: 8, rot: 0 }, { kind: 'hearth-rug', x: 4, y: 8, rot: 0 }, { kind: 'armchair', x: 4, y: 7, rot: 0 }, { kind: 'rocking-chair', x: 4, y: 10, rot: 0 }, { kind: 'chandelier-wheel', x: 8, y: 7, rot: 0 }, { kind: 'chandelier-wheel', x: 14, y: 11, rot: 0 }, { kind: 'tavern-sign', x: 12, y: 2, rot: 0 }, { kind: 'hearth-oven', x: 27, y: 2, rot: 0 }, { kind: 'stove', x: 30, y: 2, rot: 0 }, { kind: 'kitchen-table', x: 29, y: 6, rot: 0 }, { kind: 'produce-crates', x: 34, y: 8, rot: 0 }, { kind: 'water-barrel', x: 36, y: 3, rot: 0 }, { kind: 'barrel-group', x: 35, y: 10, rot: 0 }, { kind: 'barrel-stack', x: 27, y: 15, rot: 0 }, { kind: 'barrel-stack', x: 30, y: 15, rot: 0 }, { kind: 'barrel-group', x: 34, y: 15, rot: 0 }, { kind: 'crate-pile', x: 27, y: 20, rot: 0 }, { kind: 'crate-stack', x: 36, y: 21, rot: 0 }, { kind: 'stairs-down', x: 33, y: 19, rot: 0 }, { kind: 'bed-double', x: 3, y: 20, rot: 0 }, { kind: 'side-table', x: 5, y: 20, rot: 0 }, { kind: 'rug', x: 7, y: 22, rot: 0 }, { kind: 'bed', x: 14, y: 20, rot: 0 }, { kind: 'bed', x: 16, y: 20, rot: 0 }, { kind: 'side-table', x: 18, y: 20, rot: 0 }, { kind: 'chair', x: 20, y: 23, rot: 0 }, { kind: 'stairs-up', x: 31, y: 27, rot: 0 }, { kind: 'lantern-hanging', x: 29, y: 27, rot: 0 },
       ],
       'wood',
-      [{ x: 9, y: 7, text: 'Barkeep Maddo has the rumor about the crypt.' }],
+      [{ x: 12, y: 8, text: 'Barkeep Maddo has the rumor about the crypt.' }],
     ),
   },
 ];

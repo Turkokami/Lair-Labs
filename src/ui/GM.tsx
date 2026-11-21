@@ -3,7 +3,7 @@ import QRCode from 'qrcode';
 import { HostSession } from '../net/session';
 import { peerHost } from '../net/transport';
 import { newGame, makeCode, prettyCode, DEFAULT_SAFETY, type GameState, type Intent, type Token, type AreaTemplate, type Safety } from '../engine/game';
-import { type GameMap, type DoorState, type Prop, TEMPLATES, blankMap, setCells, isFloor, edgeCells, pid, TILE_NAMES } from '../engine/map';
+import { type GameMap, type DoorState, type Prop, TEMPLATES, blankMap, upscaleMap, setCells, isFloor, edgeCells, pid, TILE_NAMES } from '../engine/map';
 import { stampRoom, furnishRoom, findRooms, autoFurnish, quickDungeon, KIT_NAMES } from '../engine/stamp';
 import { fromUvtt, type UvttFile } from '../engine/uvtt';
 import { tokensInArea } from '../engine/areas';
@@ -1040,7 +1040,8 @@ function MapSettings({ map, onChange, onLoad }: { map: GameMap; onChange: (m: Ga
           </button>
         ))}
         <div className="row gap wrap">
-          <button className="ghost" onClick={() => confirm('Start from an empty map?') && onLoad(blankMap(30, 22, 'New map'))}>Blank</button>
+          <button className="ghost" onClick={() => confirm('Start from an empty map?') && onLoad(blankMap(48, 36, 'New map'))}>Blank</button>
+          <button className="ghost" onClick={() => (map.cols * map.rows * 4 > 160 * 160 ? toast('This map is already as big as it can get.', 'error') : confirm('Double the size of this map? Every square becomes four, so rooms, halls and doorways get twice as wide.') && onLoad({ ...upscaleMap(map, 2), id: pid() }))}>Make it twice as big</button>
         </div>
       </div>
       <h3>Saved maps</h3>

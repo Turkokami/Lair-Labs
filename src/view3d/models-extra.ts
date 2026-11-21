@@ -77,6 +77,9 @@ function drawers(k: Kit, O: Spot, x: number, zFront: number, w: number, y0: numb
   }
 }
 
+/** Ceiling height of the tall 3D halls (24 ft). Ceiling-hung pieces run their chain up to just below it. */
+const HALL_H = 4.8;
+
 export const EXTRA_MODELS: Record<string, Model> = {
   // ================================================================ lighting
   'chandelier-tiered': (k, O, w, d, R, c) => {
@@ -888,6 +891,790 @@ export const EXTRA_MODELS: Record<string, Model> = {
     }
     return undefined;
   },
+  // ================================================================ tall halls (ceiling HALL_H)
+  'column-fluted': (k, O, w, d, R, c) => {
+    const st = c('stone', '#dcd8d0');
+    colFoot(k, O, st, 0.42);
+    k.C('stone', O, 0, 0.32, 0, 0.29, HALL_H - 0.95, st, 'cyl16');
+    for (let i = 0; i < 10; i++) {
+      const a = (i / 10) * TAU;
+      k.B('lit', O, Math.cos(a) * 0.285, 0.36, Math.sin(a) * 0.285, 0.05, HALL_H - 1.03, 0.05, lighten(st, 0.06));
+    }
+    colHead(k, O, st, 0.42);
+    return undefined;
+  },
+  'column-twisted': (k, O, w, d, R, c) => {
+    const st = c('stone', '#dcd8d0'), y0 = 0.32, y1 = HALL_H - 0.63, n = 12;
+    colFoot(k, O, st, 0.42);
+    k.C('stone', O, 0, y0, 0, 0.17, y1 - y0, st, 'cyl16');
+    for (const s0 of [0, Math.PI]) {
+      for (let i = 0; i < n; i++) {
+        const t0 = i / n, t1 = (i + 1) / n, a0 = s0 + t0 * TAU * 2, a1 = s0 + t1 * TAU * 2;
+        k.Beam('stone', O, [Math.cos(a0) * 0.13, y0 + t0 * (y1 - y0), Math.sin(a0) * 0.13], [Math.cos(a1) * 0.13, y0 + t1 * (y1 - y0), Math.sin(a1) * 0.13], 0.12, s0 ? lighten(st, 0.05) : st);
+      }
+    }
+    colHead(k, O, st, 0.42);
+    return undefined;
+  },
+  'column-cluster': (k, O, w, d, R, c) => {
+    const st = c('stone', '#8a8780'), y0 = 0.34, y1 = HALL_H - 0.5;
+    k.B('stone', O, 0, 0, 0, 1.76, 0.22, 1.76, shade(st));
+    k.B('lit', O, 0, 0.22, 0, 1.48, 0.12, 1.48, st);
+    k.C('stone', O, 0, y0, 0, 0.46, y1 - y0, lighten(st, 0.04), 'cyl16');
+    for (const [x, z] of [[0, -0.54], [0.54, 0], [0, 0.54], [-0.54, 0]]) {
+      k.C('stone', O, x, y0, z, 0.27, y1 - y0, st, 'cyl16');
+      k.C('lit', O, x, 2.3, z, 0.31, 0.12, lighten(st, 0.08), 'cyl16');
+    }
+    k.B('lit', O, 0, y1, 0, 1.48, 0.14, 1.48, st);
+    k.B('stone', O, 0, y1 + 0.14, 0, 1.76, HALL_H - 0.02 - y1 - 0.14, 1.76, shade(st));
+    return undefined;
+  },
+  'half-column-wall': (k, O, w, d, R, c) => {
+    const st = c('stone', '#dcd8d0'), z = -0.5;
+    k.B('stone', O, 0, 0, -0.29, 0.84, 0.22, 0.42, shade(st));
+    k.C('stone', O, 0, 0.22, z, 0.29, HALL_H - 0.7, st, 'cyl16');
+    for (let i = 0; i < 5; i++) {
+      const a = 0.45 + (i / 4) * (Math.PI - 0.9);
+      k.B('lit', O, Math.cos(a) * 0.285, 0.26, z + Math.sin(a) * 0.285, 0.05, HALL_H - 0.78, 0.05, lighten(st, 0.06));
+    }
+    k.C('lit', O, 0, HALL_H - 0.6, z, 0.34, 0.14, st, 'cyl16');
+    k.B('stone', O, 0, HALL_H - 0.46, -0.27, 0.84, 0.44, 0.46, shade(st));
+    return undefined;
+  },
+  'window-stained-tall': (k, O, w, d, R, c) => {
+    const st = c('stone', '#8a8780'), cols = [c('a', '#c0392b'), c('b', '#2f6db3'), c('cc', '#e9c46a')], lead = '#2a2a2e';
+    k.B('stone', O, 0, 0.9, -0.36, 1.74, 0.12, 0.28, lighten(st, 0.06));
+    for (const s of [-1, 1]) {
+      k.B('stone', O, s * 0.72, 1.02, -0.42, 0.22, 2.4, 0.16, st);
+      k.Beam('stone', O, [s * 0.72, 3.38, -0.42], [0, 4.32, -0.42], 0.11, st, 'box');
+    }
+    for (let row = 0; row < 3; row++) for (let col = 0; col < 2; col++) {
+      k.B('glow', O, (col - 0.5) * 0.61, 1.02 + row * 0.8, -0.475, 0.6, 0.8, 0.02, cols[(row + col) % 3]);
+    }
+    k.P('glow', O, 'pyr', 0, 3.84, -0.475, 1.22, 0.84, 0.03, cols[2]);
+    k.P('glow', O, 'cyl16', 0, 3.72, -0.462, 0.36, 0.02, 0.36, cols[0], Math.PI / 2);
+    k.B('metal', O, 0, 1.02, -0.455, 0.04, 2.8, 0.03, lead);
+    for (const y of [1.81, 2.61]) k.B('metal', O, 0, y, -0.455, 1.22, 0.04, 0.03, lead);
+    return undefined;
+  },
+  'gallery-balcony': (k, O, w, d, R, c) => {
+    const st = c('stone', '#8a8780'), FL = 2.6, W = w * 0.98;
+    k.B('stone', O, 0, FL, -0.05, W, 0.18, 0.9, st);
+    for (const x of [-1.1, 0, 1.1]) {
+      k.B('stone', O, x, FL - 0.6, -0.36, 0.26, 0.6, 0.28, shade(st));
+      k.B('stone', O, x, FL - 0.95, -0.42, 0.2, 0.35, 0.16, shade(st));
+    }
+    k.B('stone', O, 0, FL + 0.18, 0.33, W, 0.08, 0.16, st);
+    for (let i = 0; i < 10; i++) k.C('lit', O, -1.35 + i * 0.3, FL + 0.26, 0.33, 0.045, 0.7, lighten(st, 0.05), 'cyl6');
+    k.B('stone', O, 0, FL + 0.96, 0.33, W, 0.1, 0.16, lighten(st, 0.08));
+    for (const s of [-1, 1]) k.B('stone', O, s * (W / 2 - 0.04), FL + 0.18, -0.06, 0.08, 0.88, 0.84, st);
+    return undefined;
+  },
+  'stair-grand': (k, O, w, d, R, c, p) => {
+    const st = c('stone', '#dcd8d0'), cp = c('carpet', '#a3312c'), m = c('metal', GOLD), n = 13, rise = 0.2, sd = 3 / n, H = n * rise;
+    for (let i = 0; i < n; i++) k.B('stone', O, 0, 0, 2 - (i + 0.5) * sd, 2.6, (i + 1) * rise, sd + 0.002, i % 2 ? st : lighten(st, 0.04));
+    k.B('stone', O, 0, 0, -1.5, 2.6, H, 1.0, st);
+    const L = Math.hypot(3, H), ang = Math.atan2(H, 3);
+    for (const s of [-1, 1]) {
+      k.P('stone', O, 'box', s * 1.4, H / 2 + 0.2, 0.5, 0.2, 0.9, L, shade(st), ang);
+      k.B('stone', O, s * 1.4, 0, -1.5, 0.2, H + 0.65, 1.0, shade(st));
+      k.B('stone', O, s * 1.4, 0, 1.86, 0.3, 1.0, 0.28, st);
+      k.S('metal', O, s * 1.4, 1.1, 1.86, 0.09, m);
+    }
+    if (vi(p) !== 2) {
+      k.P('fabric', O, 'box', 0, H / 2 + 0.03, 0.5, 1.0, 0.03, L, cp, ang);
+      k.B('fabric', O, 0, H, -1.42, 1.0, 0.02, 1.16, cp);
+    }
+    return undefined;
+  },
+  'stair-spiral': (k, O, w, d, R, c) => {
+    const st = c('stone', '#8a8780'), m = c('metal', IRON), n = 18, rise = (HALL_H - 0.5) / n;
+    k.C('stone', O, 0, 0, 0, 0.14, HALL_H - 0.02, st, 'cyl16');
+    let prev: number[] | null = null;
+    for (let i = 0; i < n; i++) {
+      const a = -Math.PI / 2 + (i + 0.5) * (TAU / 16), y = (i + 1) * rise;
+      k.B('stone', O, Math.cos(a) * 0.5, y - 0.08, Math.sin(a) * 0.5, 0.78, 0.08, 0.38, i % 2 ? st : lighten(st, 0.06), 0, -a, 0);
+      if (i % 2 === 0) {
+        const q = [Math.cos(a) * 0.86, y + 0.9, Math.sin(a) * 0.86];
+        if (prev && q[1] < HALL_H - 0.1) k.Beam('metal', O, prev, q, 0.025, m, 'cyl6');
+        prev = q;
+      }
+    }
+    return undefined;
+  },
+  'doors-grand-frame': (k, O, w, d, R, c) => {
+    const st = c('stone', '#8a8780'), wood = c('wood', WOOD), m = c('metal', IRON), top = 3.35;
+    k.P('stone', O, 'cyl16', 0, 0.04, -0.5, 2.3, 0.08, 0.9, lighten(st, 0.06));
+    for (const s of [-1, 1]) {
+      k.B('wood', O, s * 0.5, 0.05, -0.42, 0.98, top - 0.05, 0.1, s < 0 ? wood : lighten(wood, 0.04));
+      k.B('stone', O, s * 1.2, 0, -0.38, 0.42, top, 0.3, st);
+      for (const y of [0.6, 1.7, 2.8]) k.B('metal', O, s * 0.5, y, -0.36, 0.9, 0.08, 0.02, m);
+      k.P('metal', O, 'torus', s * 0.12, 1.5, -0.35, 0.18, 0.5, 0.18, m, Math.PI / 2);
+    }
+    k.P('wood', O, 'cyl16', 0, top, -0.44, 2.0, 0.08, 2.0, shade(wood), Math.PI / 2);
+    for (let i = 0; i < 7; i++) {
+      const a = (Math.PI * (i + 0.5)) / 7, mid = i === 3;
+      k.P('stone', O, 'box', Math.cos(a) * 1.2, top + Math.sin(a) * 1.2, -0.38, mid ? 0.5 : 0.42, mid ? 0.6 : 0.52, mid ? 0.36 : 0.3, mid ? lighten(st, 0.1) : st, 0, 0, a);
+    }
+    return undefined;
+  },
+  'wall-alcove-arch': (k, O, w, d, R, c, p) => {
+    const st = c('stone', '#8a8780'), m = c('metal', '#a8743c'), dark = '#1c1612', item = vi(p);
+    k.B('cave', O, 0, 0.6, -0.47, 1.2, 2.0, 0.04, dark);
+    k.P('cave', O, 'cyl16', 0, 2.6, -0.47, 1.2, 0.04, 1.2, dark, Math.PI / 2);
+    k.B('stone', O, 0, 0, -0.33, 1.24, 0.6, 0.34, st);
+    for (const s of [-1, 1]) {
+      k.B('stone', O, s * 0.8, 0, -0.32, 0.4, 2.6, 0.36, st);
+      k.B('lit', O, s * 0.8, 2.6, -0.3, 0.46, 0.1, 0.4, lighten(st, 0.08));
+    }
+    for (let i = 0; i < 5; i++) {
+      const a = (Math.PI * (i + 0.5)) / 5;
+      k.P('stone', O, 'box', Math.cos(a) * 0.72, 2.6 + Math.sin(a) * 0.72, -0.32, 0.26, 0.48, 0.36, i === 2 ? lighten(st, 0.1) : st, 0, 0, a);
+    }
+    k.B('stone', O, 0, 3.44, -0.29, 2.0, 0.16, 0.42, shade(st));
+    if (item === 1) {
+      k.P('lit', O, 'cone', 0, 1.15, -0.3, 0.36, 1.1, 0.3, '#e8e4dc');
+      k.S('lit', O, 0, 1.76, -0.3, 0.11, '#efece6');
+    } else if (item === 2) {
+      for (const [x, h] of [[-0.36, 0.3], [-0.12, 0.45], [0.12, 0.22], [0.36, 0.36]]) candle(k, O, x, 0.6, -0.3, h, WAX, 0.4);
+    } else if (item === 3) {
+      for (const [x, y, z] of [[-0.22, 0.7, -0.26], [0, 0.7, -0.26], [0.22, 0.7, -0.26], [-0.11, 0.88, -0.32], [0.11, 0.88, -0.32]]) k.S('lit', O, x, y, z, 0.1, BONE);
+    } else {
+      k.S('metal', O, 0, 0.86, -0.3, 0.22, m);
+      k.C('metal', O, 0, 1.0, -0.3, 0.09, 0.2, m, 'cyl16');
+      k.C('metal', O, 0, 0.6, -0.3, 0.11, 0.08, shade(m), 'cyl16');
+    }
+    return undefined;
+  },
+  'archway-grand': (k, O, w, d, R, c) => {
+    const st = c('stone', '#8a8780'), sp = 3.15, H = HALL_H - 0.16;
+    for (const s of [-1, 1]) {
+      k.B('stone', O, s * 1.25, 0, 0, 0.5, H, 0.8, st);
+      k.B('lit', O, s * 1.25, sp - 0.15, 0, 0.62, 0.15, 0.9, lighten(st, 0.08));
+    }
+    for (let i = 0; i < 9; i++) {
+      const a = (Math.PI * (i + 0.5)) / 9, mid = i === 4;
+      k.P('stone', O, 'box', Math.cos(a) * 1.25, sp + Math.sin(a) * 1.25, 0, mid ? 0.6 : 0.5, 0.46, mid ? 0.9 : 0.8, mid ? lighten(st, 0.1) : st, 0, 0, a);
+    }
+    k.B('stone', O, 0, H, 0, 3.0, 0.14, 0.9, shade(st));
+    return undefined;
+  },
+  'banner-hanging-tall': (k, O, w, d, R, c) => {
+    const cl = c('cloth', CLOTH), m = c('metal', GOLD), top = 4.3;
+    k.Beam('metal', O, [-0.42, top, 0], [0.42, top, 0], 0.025, IRON);
+    for (const s of [-1, 1]) {
+      k.S('metal', O, s * 0.45, top, 0, 0.045, m);
+      k.Beam('metal', O, [s * 0.38, top, 0], [0, HALL_H - 0.02, 0], 0.008, '#3a3a3a', 'cyl6');
+      k.P('fabric', O, 'box', s * 0.19, 1.8, 0, 0.34, 0.5, 0.03, cl, 0, 0, s * 0.12);
+      k.B('deco', O, s * 0.33, 2.0, 0, 0.04, top - 2.02, 0.045, m);
+    }
+    k.B('fabric', O, 0, 2.0, 0, 0.72, top - 2.02, 0.03, cl);
+    for (const z of [-0.022, 0.022]) k.P('metal', O, 'cyl16', 0, 3.4, z, 0.36, 0.01, 0.36, m, Math.PI / 2);
+    return undefined;
+  },
+  'tapestry-tall': (k, O, w, d, R, c) => {
+    const cl = c('cloth', CLOTH), cc = c('cc', GOLD), m = c('metal', GOLD), z = -0.45, f = z + 0.018, top = 4.42;
+    k.Beam('metal', O, [-0.95, top + 0.03, -0.42], [0.95, top + 0.03, -0.42], 0.03, m);
+    for (const s of [-1, 1]) {
+      k.S('metal', O, s * 0.97, top + 0.03, -0.42, 0.05, m);
+      k.B('metal', O, s * 0.84, top - 0.06, -0.46, 0.04, 0.1, 0.1, IRON);
+      k.B('deco', O, s * 0.8, 1.06, f, 0.06, 3.3, 0.01, cc);
+    }
+    k.B('fabric', O, 0, 1.0, z, 1.72, top - 1.0, 0.03, cl);
+    for (const y of [1.06, top - 0.12]) k.B('deco', O, 0, y, f, 1.6, 0.06, 0.01, cc);
+    k.B('deco', O, 0, 1.3, f, 0.1, 1.7, 0.01, shade(cc));
+    for (const [x, y, s] of [[0, 3.35, 0.56], [-0.3, 2.95, 0.42], [0.3, 2.95, 0.42]]) k.P('deco', O, 'cyl16', x, y, f, s, 0.01, s, cc, Math.PI / 2);
+    k.B('deco', O, 0, 0.88, z, 1.7, 0.12, 0.02, cc);
+    return undefined;
+  },
+  'heraldic-crest': (k, O, w, d, R, c) => {
+    const a = c('a', CLOTH), b = c('b', GOLD), m = c('metal', '#c9ced3'), z = -0.44;
+    for (const s of [-1, 1]) {
+      const lo = [s * -0.55, 2.15, -0.47], hi = [s * 0.5, 3.7, -0.47], dx = hi[0] - lo[0], dy = hi[1] - lo[1], L = Math.hypot(dx, dy), ux = dx / L, uy = dy / L;
+      k.Beam('metal', O, lo, hi, 0.025, lighten(m, 0.2), 'box');
+      k.Beam('metal', O, [hi[0] - uy * 0.13, hi[1] + ux * 0.13, -0.47], [hi[0] + uy * 0.13, hi[1] - ux * 0.13, -0.47], 0.025, GOLD);
+      k.Beam('wood', O, hi, [hi[0] + ux * 0.22, hi[1] + uy * 0.22, -0.47], 0.03, DARKWOOD);
+      k.S('metal', O, hi[0] + ux * 0.26, hi[1] + uy * 0.26, -0.47, 0.045, GOLD);
+    }
+    k.B('lit', O, 0, 2.75, z, 0.7, 0.6, 0.06, a);
+    k.P('lit', O, 'pyr', 0, 2.55, z, 0.7, 0.4, 0.06, a, Math.PI);
+    k.B('lit', O, 0.175, 2.75, z + 0.032, 0.35, 0.6, 0.005, b);
+    k.Beam('metal', O, [-0.3, 2.86, -0.405], [0, 3.1, -0.405], 0.035, m, 'box');
+    k.Beam('metal', O, [0, 3.1, -0.405], [0.3, 2.86, -0.405], 0.035, m, 'box');
+    return undefined;
+  },
+  'cage-hanging': (k, O, w, d, R, c, p) => {
+    const m = c('metal', IRON), yb = 0.95, yt = 2.4, v = vi(p);
+    k.Beam('metal', O, [0, HALL_H - 0.02, 0], [0, yt + 0.36, 0], 0.02, m, 'cyl6');
+    k.P('metal', O, 'torus', 0, yt + 0.36, 0, 0.12, 0.5, 0.12, m, Math.PI / 2);
+    k.P('metal', O, 'hemi', 0, yt, 0, 0.68, 0.6, 0.68, m);
+    k.C('metal', O, 0, yb, 0, 0.34, 0.05, m, 'cyl16');
+    for (const y of [yb + 0.05, (yb + yt) / 2, yt]) k.Ring('metal', O, 0, y, 0, 0.33, 0.04, m);
+    for (let i = 0; i < 10; i++) {
+      const a = (i / 10) * TAU;
+      k.Beam('metal', O, [Math.cos(a) * 0.33, yb, Math.sin(a) * 0.33], [Math.cos(a) * 0.33, yt, Math.sin(a) * 0.33], 0.013, m, 'cyl6');
+    }
+    if (v === 1 || v === 3) {
+      k.S('lit', O, 0.08, yb + 0.14, 0.06, 0.09, BONE);
+      k.Beam('lit', O, [-0.18, yb + 0.07, 0.1], [0.12, yb + 0.07, -0.14], 0.022, BONE);
+      k.Beam('lit', O, [-0.1, yb + 0.07, -0.18], [-0.16, yb + 0.5, -0.24], 0.022, BONE);
+    }
+    return undefined;
+  },
+  'chains-hanging': (k, O, w, d, R, c, p) => {
+    const m = c('metal', IRON), meat = vi(p) === 1;
+    for (const [sx, sz] of [[30, 28], [70, 26], [50, 52], [26, 72], [74, 70]]) {
+      const x = (sx - 50) / 100, z = (sz - 50) / 100, yb = 1.6 + R() * 1.4;
+      k.Beam('metal', O, [x, HALL_H - 0.02, z], [x, yb, z], 0.016, m, 'cyl6');
+      k.P('metal', O, 'torus', x, yb - 0.03, z, 0.08, 0.5, 0.08, m, Math.PI / 2, R() * 3);
+      k.Beam('metal', O, [x, yb - 0.07, z], [x + 0.06, yb - 0.2, z], 0.014, m, 'cyl6');
+      k.Beam('metal', O, [x + 0.06, yb - 0.2, z], [x, yb - 0.26, z], 0.014, m, 'cyl6');
+      if (meat && R() < 0.75) k.P('fabric', O, 'ico', x + 0.02, yb - 0.42, z, 0.24, 0.36, 0.2, '#8a2a2a');
+    }
+    return undefined;
+  },
+  'censer-hanging': (k, O, w, d, R, c) => {
+    const m = c('metal', GOLD), smoke = c('smoke', '#b8b4c8'), y = 1.55;
+    k.Beam('metal', O, [0, HALL_H - 0.02, 0], [0, y + 0.42, 0], 0.012, m, 'cyl6');
+    for (let i = 0; i < 3; i++) {
+      const a = (i / 3) * TAU - Math.PI / 2;
+      k.Beam('metal', O, [0, y + 0.42, 0], [Math.cos(a) * 0.13, y + 0.05, Math.sin(a) * 0.13], 0.008, m, 'cyl6');
+    }
+    k.S('metal', O, 0, y, 0, 0.14, m);
+    k.P('metal', O, 'cone', 0, y + 0.13, 0, 0.26, 0.2, 0.26, m);
+    k.C('metal', O, 0, y - 0.18, 0, 0.06, 0.06, m, 'cyl6');
+    for (let i = 0; i < 4; i++) {
+      const a = (i / 4) * TAU + 0.4;
+      k.S('glow', O, Math.cos(a) * 0.13, y + 0.02, Math.sin(a) * 0.13, 0.025, '#ff8a3a');
+    }
+    k.S('deco', O, 0.06, y + 0.3, 0.03, 0.05, lighten(smoke, 0.3), 'ico');
+    return undefined;
+  },
+  'lantern-cluster': (k, O, w, d, R, c) => {
+    const m = c('metal', IRON), gl = c('glass', '#ffc46b'), hy = 3.7, rr = 0.56;
+    k.Ring('metal', O, 0, hy, 0, rr, 0.05, m);
+    for (let i = 0; i < 3; i++) {
+      const a = (i / 3) * TAU + 0.5;
+      k.Beam('metal', O, [Math.cos(a) * rr, hy, Math.sin(a) * rr], [0, HALL_H - 0.02, 0], 0.012, m, 'cyl6');
+    }
+    let sum = 0;
+    for (let i = 0; i < 5; i++) {
+      const a = (i / 5) * TAU - Math.PI / 2, x = Math.cos(a) * rr, z = Math.sin(a) * rr, yb = hy - 0.55 - (i % 3) * 0.35 - 0.38;
+      k.Beam('metal', O, [x, hy, z], [x, yb + 0.38, z], 0.01, m, 'cyl6');
+      lanternM(k, O, x, yb, z, 1, m, gl);
+      sum += yb + 0.15;
+    }
+    k.Beam('metal', O, [0, HALL_H - 0.02, 0], [0, 2.4 + 0.48, 0], 0.012, m, 'cyl6');
+    lanternM(k, O, 0, 2.4, 0, 1.25, m, gl);
+    return (sum + 2.6) / 6;
+  },
+  'chandelier-great': (k, O, w, d, R, c) => {
+    const m = c('metal', IRON), wax = c('wax', WAX), ro = 1.2, ri = 0.7, yo = 3.0, yi = 3.25;
+    k.Ring('metal', O, 0, yo, 0, ro, 0.07, m);
+    k.Ring('metal', O, 0, yi, 0, ri, 0.06, m);
+    for (let i = 0; i < 4; i++) {
+      const a = (i / 4) * TAU + 0.2;
+      k.Beam('metal', O, [Math.cos(a) * ri, yi, Math.sin(a) * ri], [Math.cos(a) * ro, yo, Math.sin(a) * ro], 0.025, m, 'cyl6');
+      const b = a + Math.PI / 4 - 0.2;
+      k.Beam('metal', O, [Math.cos(b) * ro, yo, Math.sin(b) * ro], [0, HALL_H - 0.02, 0], 0.02, m, 'cyl6');
+    }
+    k.S('metal', O, 0, yi, 0, 0.13, m);
+    for (let i = 0; i < 8; i++) {
+      const a = (i / 8) * TAU;
+      candle(k, O, Math.cos(a) * ro, yo + 0.02, Math.sin(a) * ro, 0.16, wax, 0.5);
+    }
+    return yo + 0.25;
+  },
+  'brazier-pedestal': (k, O, w, d, R, c) => {
+    const st = c('stone', '#dcd8d0'), m = c('metal', '#a8743c'), fl = c('fire', '#ffb02e');
+    k.B('stone', O, 0, 0, 0, 0.72, 0.14, 0.72, shade(st));
+    k.C('lit', O, 0, 0.14, 0, 0.24, 0.1, st, 'cyl16');
+    k.C('stone', O, 0, 0.24, 0, 0.16, 1.0, st, 'cyl16');
+    k.C('lit', O, 0, 1.24, 0, 0.24, 0.08, st, 'cyl16');
+    k.P('metal', O, 'hemi', 0, 1.57, 0, 0.8, 0.5, 0.8, m, Math.PI);
+    k.Ring('metal', O, 0, 1.57, 0, 0.4, 0.06, lighten(m, 0.1));
+    k.C('lit', O, 0, 1.5, 0, 0.36, 0.06, '#3a2418', 'cyl16');
+    fire(k, O, 0, 1.55, 0, 1.6, fl);
+    fire(k, O, -0.14, 1.55, 0.08, 1.0, fl);
+    fire(k, O, 0.13, 1.55, -0.07, 1.0, fl);
+    return 1.75;
+  },
+  'candle-stand-tall': (k, O, w, d, R, c) => {
+    const m = c('metal', GOLD), wax = c('wax', WAX);
+    for (let i = 0; i < 3; i++) {
+      const a = (i / 3) * TAU - Math.PI / 2;
+      k.Beam('metal', O, [0, 0.36, 0], [Math.cos(a) * 0.4, 0.02, Math.sin(a) * 0.4], 0.025, m, 'cyl6');
+    }
+    k.C('metal', O, 0, 0.3, 0, 0.03, 1.5, m, 'cyl6');
+    k.S('metal', O, 0, 1.0, 0, 0.06, m);
+    k.C('metal', O, 0, 1.77, 0, 0.1, 0.03, m, 'cyl16');
+    k.Ring('metal', O, 0, 1.8, 0, 0.2, 0.04, m);
+    for (let i = 0; i < 5; i++) {
+      const a = (i / 5) * TAU;
+      candle(k, O, Math.cos(a) * 0.2, 1.8, Math.sin(a) * 0.2, 0.26, wax, 0.45);
+    }
+    candle(k, O, 0, 1.8, 0, 0.38, wax, 0.5);
+    return 2.15;
+  },
+  'brazier-hanging': (k, O, w, d, R, c) => {
+    const m = c('metal', IRON), fl = c('fire', '#ffb02e'), y = 2.75;
+    k.P('metal', O, 'hemi', 0, y, 0, 0.62, 0.7, 0.62, m, Math.PI);
+    k.Ring('metal', O, 0, y, 0, 0.31, 0.06, m);
+    k.C('lit', O, 0, y - 0.08, 0, 0.27, 0.05, '#3a2418', 'cyl16');
+    fire(k, O, 0, y - 0.03, 0, 1.4, fl);
+    fire(k, O, -0.12, y - 0.03, 0.07, 0.9, fl);
+    fire(k, O, 0.11, y - 0.03, -0.08, 0.9, fl);
+    for (let i = 0; i < 3; i++) {
+      const a = (i / 3) * TAU - Math.PI / 2;
+      k.Beam('metal', O, [Math.cos(a) * 0.3, y, Math.sin(a) * 0.3], [0, y + 0.75, 0], 0.012, m, 'cyl6');
+    }
+    k.P('metal', O, 'torus', 0, y + 0.78, 0, 0.1, 0.5, 0.1, m, Math.PI / 2);
+    k.Beam('metal', O, [0, y + 0.82, 0], [0, HALL_H - 0.02, 0], 0.016, m, 'cyl6');
+    return y + 0.2;
+  },
+  'hearth-grand': (k, O, w, d, R, c) => {
+    const st = c('stone', '#8a8780'), wood = c('wood', WOOD), fl = c('fire', '#ffb02e');
+    k.B('stone', O, 0, 0, -0.05, 2.4, 0.08, 0.7, lighten(st, 0.06));
+    k.B('cave', O, 0, 0, -0.45, 1.8, 1.9, 0.1, '#1c1410');
+    for (const s of [-1, 1]) {
+      k.B('stone', O, s * 1.15, 0, -0.25, 0.5, 1.9, 0.5, st);
+      k.B('metal', O, s * 0.55, 0, -0.1, 0.05, 0.38, 0.05, '#33373c');
+      k.S('metal', O, s * 0.55, 0.4, -0.1, 0.05, '#55585e');
+    }
+    k.B('stone', O, 0, 1.9, -0.22, 2.9, 0.35, 0.56, st);
+    k.B('lit', O, 0, 2.25, -0.2, 3.0, 0.08, 0.6, lighten(st, 0.08));
+    k.B('stone', O, 0, 2.33, -0.35, 2.4, HALL_H - 0.02 - 2.33, 0.3, shade(st));
+    k.P('metal', O, 'cyl16', 0, 3.4, -0.19, 0.6, 0.04, 0.6, GOLD, Math.PI / 2);
+    k.P('wood', O, 'cyl', -0.1, 0.17, -0.22, 0.17, 0.95, 0.17, wood, 0, 0.1, Math.PI / 2);
+    k.P('wood', O, 'cyl', 0.12, 0.17, -0.08, 0.16, 0.9, 0.16, shade(wood), 0, -0.2, Math.PI / 2);
+    k.P('wood', O, 'cyl', 0, 0.32, -0.16, 0.15, 0.8, 0.15, wood, 0, 0.35, Math.PI / 2);
+    fire(k, O, 0, 0.3, -0.17, 2.6, fl);
+    fire(k, O, -0.32, 0.22, -0.12, 1.6, fl);
+    fire(k, O, 0.3, 0.22, -0.2, 1.6, fl);
+    return 0.6;
+  },
+  'throne-dais': (k, O, w, d, R, c) => {
+    const st = c('stone', '#8a8780'), m = c('metal', GOLD), cl = c('cloth', CLOTH), zc = -0.04;
+    k.B('stone', O, 0, 0, zc, 2.88, 0.2, 2.88, shade(st));
+    k.B('stone', O, 0, 0.2, zc, 2.28, 0.2, 2.28, st);
+    k.B('stone', O, 0, 0.4, zc, 1.68, 0.2, 1.68, lighten(st, 0.06));
+    k.P('fabric', O, 'box', 0, 0.33, 1.15, 0.56, 0.02, 0.92, cl, Math.atan2(0.6, 0.7));
+    k.B('fabric', O, 0, 0.6, 0.45, 0.56, 0.015, 0.7, cl);
+    k.B('metal', O, 0, 0.6, -0.15, 0.9, 0.45, 0.7, m);
+    k.B('fabric', O, 0, 1.05, -0.12, 0.72, 0.08, 0.6, cl);
+    k.B('metal', O, 0, 1.05, -0.47, 0.95, 1.9, 0.14, m);
+    k.B('fabric', O, 0, 1.15, -0.395, 0.7, 1.5, 0.02, cl);
+    k.P('metal', O, 'pyr', 0, 3.15, -0.47, 0.5, 0.4, 0.14, m);
+    for (const s of [-1, 1]) {
+      k.S('metal', O, s * 0.48, 2.98, -0.47, 0.09, m);
+      k.B('metal', O, s * 0.47, 1.05, -0.15, 0.12, 0.35, 0.7, lighten(m, 0.06));
+    }
+    k.S('glow', O, 0, 2.6, -0.39, 0.06, '#d6402f', 'oct');
+    return undefined;
+  },
+  'feast-hall-table': (k, O, w, d, R, c) => {
+    const wood = c('wood', WOOD), cl = c('cloth', CLOTH), m = c('metal', GOLD);
+    k.B('wood', O, 0, 0.74, 0, 5.8, 0.07, 0.96, wood);
+    for (const x of [-2.3, 0, 2.3]) k.B('wood', O, x, 0, 0, 0.1, 0.74, 0.8, DARKWOOD);
+    k.B('wood', O, 0, 0.3, 0, 4.7, 0.08, 0.08, DARKWOOD);
+    for (const z of [-0.75, 0.75]) {
+      k.B('wood', O, 0, 0.42, z, 5.4, 0.06, 0.3, shade(wood));
+      for (const x of [-2.4, 0, 2.4]) k.B('wood', O, x, 0, z, 0.08, 0.42, 0.26, DARKWOOD);
+    }
+    k.B('fabric', O, 0, 0.81, 0, 5.4, 0.01, 0.28, cl);
+    for (let i = 0; i < 6; i++) k.C('lit', O, -2.4 + i * 0.96, 0.81, i % 2 ? 0.3 : -0.3, 0.11, 0.02, '#d9d2c3', 'cyl16');
+    k.C('metal', O, 0, 0.82, 0, 0.32, 0.02, '#d9d2c3', 'cyl16');
+    k.P('lit', O, 'sph', 0, 0.9, 0, 0.45, 0.2, 0.3, '#8a4a22');
+    for (const x of [-1.8, 1.8]) {
+      k.C('metal', O, x, 0.82, 0, 0.03, 0.3, m, 'cyl6');
+      flameCup(k, O, x, 1.12, 0, 0.5);
+    }
+    return undefined;
+  },
+  'statue-tall-knight': (k, O, w, d, R, c) => {
+    const st = c('stone', '#8a8780'), b = c('body', '#b8b2a6'), y = 1.3;
+    plinthM(k, O, 1.64, y, st);
+    for (const s of [-1, 1]) {
+      k.B('lit', O, s * 0.17, y, 0, 0.24, 1.25, 0.3, b);
+      k.S('lit', O, s * 0.42, y + 2.2, 0, 0.2, lighten(b, 0.05));
+      k.Beam('lit', O, [s * 0.38, y + 2.1, 0.05], [s * 0.08, y + 1.35, 0.34], 0.09, b);
+      k.S('lit', O, s * 0.07, y + 1.33, 0.35, 0.075, b);
+    }
+    k.C('lit', O, 0, y + 1.05, 0, 0.36, 0.4, b, 'cyl16');
+    k.P('lit', O, 'cyl16', 0, y + 1.8, 0, 0.78, 0.9, 0.5, b);
+    k.C('lit', O, 0, y + 2.25, 0, 0.17, 0.36, b, 'cyl16');
+    k.S('lit', O, 0, y + 2.6, 0, 0.17, b);
+    k.B('lit', O, 0, y + 2.68, 0, 0.05, 0.18, 0.38, lighten(b, 0.08));
+    k.B('lit', O, 0, y + 0.2, -0.28, 0.85, 2.05, 0.08, shade(b), -0.05);
+    k.B('lit', O, 0, y, 0.36, 0.1, 1.15, 0.03, lighten(b, 0.1));
+    k.B('lit', O, 0, y + 1.15, 0.36, 0.5, 0.06, 0.06, b);
+    k.C('lit', O, 0, y + 1.21, 0.36, 0.03, 0.22, b, 'cyl6');
+    k.S('lit', O, 0, y + 1.46, 0.36, 0.05, b);
+    return undefined;
+  },
+  'statue-tall-robed': (k, O, w, d, R, c, p) => {
+    const st = c('stone', '#8a8780'), b = c('body', '#b8b2a6'), gl = c('glow', '#ffd27a'), y = 1.3, item = vi(p);
+    plinthM(k, O, 1.64, y, st);
+    k.P('lit', O, 'cone', 0, y + 1.2, 0, 1.0, 2.4, 0.85, b);
+    k.P('lit', O, 'sph', 0, y + 2.1, 0, 0.7, 0.4, 0.5, b);
+    k.S('lit', O, 0, y + 2.45, -0.02, 0.24, shade(b));
+    k.S('cave', O, 0, y + 2.42, 0.12, 0.13, '#1c1612');
+    k.Beam('lit', O, [-0.3, y + 2.0, 0.05], [-0.1, y + 1.45, 0.35], 0.1, b);
+    k.Beam('lit', O, [0.3, y + 2.0, 0.05], item === 2 ? [0.28, y + 1.5, 0.3] : [0.1, y + 1.45, 0.35], 0.1, b);
+    if (item === 1) lanternM(k, O, 0, y + 1.1, 0.42, 1, b, gl);
+    else if (item === 2) {
+      k.Beam('lit', O, [0.28, y + 0.02, 0.32], [0.28, y + 3.0, 0.32], 0.04, lighten(b, 0.05));
+      k.S('lit', O, 0.28, y + 3.08, 0.32, 0.09, b);
+    } else if (item === 3) k.S('glow', O, 0, y + 1.52, 0.42, 0.14, gl);
+    else k.B('lit', O, 0, y + 1.38, 0.4, 0.4, 0.07, 0.3, lighten(b, 0.1));
+    return undefined;
+  },
+  'statue-tall-winged': (k, O, w, d, R, c) => {
+    const st = c('stone', '#8a8780'), b = c('body', '#b8b2a6'), y = 1.2;
+    plinthM(k, O, 1.4, y, st);
+    k.P('lit', O, 'cone', 0, y + 1.0, 0, 0.7, 2.0, 0.55, b);
+    k.P('lit', O, 'sph', 0, y + 1.95, 0, 0.6, 0.6, 0.42, b);
+    k.S('lit', O, 0, y + 2.45, 0, 0.16, lighten(b, 0.05));
+    for (const s of [-1, 1]) {
+      for (let j = 0; j < 3; j++) {
+        const th = 0.35 + j * 0.38, L = 1.3 - j * 0.28, bx = s * 0.2, by = y + 2.0;
+        k.P('lit', O, 'box', bx + s * Math.sin(th) * L / 2, by + Math.cos(th) * L / 2, -0.18 - j * 0.02, 0.34, L, 0.05, j ? shade(b) : b, 0, 0, -s * th);
+      }
+    }
+    k.Beam('lit', O, [0.42, y + 0.05, 0.25], [0.42, y + 3.1, 0.25], 0.035, shade(b));
+    k.P('lit', O, 'cone', 0.42, y + 3.2, 0.25, 0.1, 0.22, 0.1, lighten(b, 0.08));
+    k.Beam('lit', O, [0.22, y + 2.0, 0], [0.4, y + 1.7, 0.22], 0.08, b);
+    k.Beam('lit', O, [-0.22, y + 2.0, 0], [-0.3, y + 1.3, 0.1], 0.08, b);
+    return undefined;
+  },
+  'fountain-grand': (k, O, w, d, R, c) => {
+    const st = c('stone', '#dcd8d0'), wa = c('water', '#4f8fb0'), fall = lighten(wa, 0.4);
+    k.C('stone', O, 0, 0, 0, 1.45, 0.45, st, 'cyl16');
+    k.C('deco', O, 0, 0.45, 0, 1.3, 0.04, wa, 'cyl16');
+    k.P('stone', O, 'torus', 0, 0.5, 0, 2.75, 0.6, 2.75, lighten(st, 0.06));
+    k.C('stone', O, 0, 0.45, 0, 0.18, 1.0, st, 'cyl16');
+    k.P('stone', O, 'hemi', 0, 1.5, 0, 1.24, 0.5, 1.24, st, Math.PI);
+    k.C('deco', O, 0, 1.45, 0, 0.55, 0.03, wa, 'cyl16');
+    k.C('stone', O, 0, 1.5, 0, 0.11, 0.75, st, 'cyl16');
+    k.P('stone', O, 'hemi', 0, 2.4, 0, 0.64, 0.3, 0.64, st, Math.PI);
+    k.C('deco', O, 0, 2.36, 0, 0.28, 0.03, wa, 'cyl16');
+    k.S('stone', O, 0, 2.55, 0, 0.12, lighten(st, 0.06));
+    k.P('stone', O, 'cone', 0, 2.76, 0, 0.12, 0.24, 0.12, st);
+    for (let i = 0; i < 6; i++) {
+      const a = (i / 6) * TAU + 0.3;
+      k.Beam('deco', O, [Math.cos(a) * 0.6, 1.48, Math.sin(a) * 0.6], [Math.cos(a) * 0.82, 0.48, Math.sin(a) * 0.82], 0.03, fall, 'cyl6');
+    }
+    for (let i = 0; i < 4; i++) {
+      const a = (i / 4) * TAU;
+      k.Beam('deco', O, [Math.cos(a) * 0.31, 2.38, Math.sin(a) * 0.31], [Math.cos(a) * 0.44, 1.47, Math.sin(a) * 0.44], 0.022, fall, 'cyl6');
+    }
+    return undefined;
+  },
+  'organ-cathedral': (k, O, w, d, R, c) => {
+    const wood = c('wood', '#6b4428'), m = c('metal', '#c9ced3');
+    k.B('wood', O, 0, 0, -0.3, 3.8, 1.2, 0.4, wood);
+    k.B('wood', O, 0, 1.2, -0.46, 3.8, 2.5, 0.06, shade(wood));
+    k.B('wood', O, 0, 0, 0.11, 1.28, 0.9, 0.3, wood);
+    k.B('lit', O, 0, 0.9, 0.18, 1.08, 0.04, 0.12, '#efe8d8');
+    k.B('lit', O, 0, 0.98, 0.08, 1.08, 0.04, 0.1, '#efe8d8');
+    k.B('wood', O, 0, 0, 0.39, 0.8, 0.45, 0.14, DARKWOOD);
+    const tower = (x0: number, x1: number, r: number, hMax: number) => {
+      for (let i = 0; i < 6; i++) {
+        const x = x0 + ((i + 0.5) / 6) * (x1 - x0), h = hMax - Math.abs(i - 2.5) * 0.22;
+        k.C('metal', O, x, 1.2, -0.26, r, h, i % 2 ? m : lighten(m, 0.08), 'cyl16');
+      }
+    };
+    tower(-1.84, -0.74, 0.085, 2.4);
+    tower(-0.62, 0.62, 0.1, 3.3);
+    tower(0.74, 1.84, 0.085, 2.4);
+    return undefined;
+  },
+  'lectern-dais': (k, O, w, d, R, c) => {
+    const st = c('stone', '#dcd8d0'), wood = c('wood', WOOD), m = c('metal', GOLD), wax = c('wax', WAX), tilt = -0.35;
+    k.C('stone', O, 0, 0, 0, 0.94, 0.16, shade(st), 'cyl16');
+    k.C('stone', O, 0, 0.16, -0.04, 0.66, 0.16, st, 'cyl16');
+    k.C('wood', O, 0, 0.32, 0.04, 0.2, 0.06, wood, 'cyl16');
+    k.C('wood', O, 0, 0.38, 0.04, 0.07, 0.78, wood, 'cyl6');
+    k.B('wood', O, 0, 1.13, 0.04, 0.68, 0.05, 0.44, wood, tilt);
+    for (const s of [-1, 1]) {
+      k.B('lit', O, s * 0.14, 1.18, 0.04, 0.27, 0.03, 0.34, PAPER, tilt);
+      k.C('metal', O, s * 0.48, 0.32, -0.24, 0.035, 0.4, m, 'cyl6');
+      candle(k, O, s * 0.48, 0.72, -0.24, 0.12, wax, 0.35);
+    }
+    return undefined;
+  },
+  'war-table': (k, O, w, d, R, c) => {
+    const wood = c('wood', WOOD), mp = c('map', '#e6d6aa'), a = c('a', CLOTH), b = c('b', '#2f5d8a'), y = 0.9;
+    k.B('wood', O, 0, 0.82, 0, 2.88, 0.08, 1.88, wood);
+    for (const s of [-1, 1]) {
+      k.B('wood', O, s * 1.0, 0.06, 0, 0.3, 0.76, 1.2, DARKWOOD);
+      k.B('wood', O, s * 1.0, 0, 0, 0.5, 0.08, 1.5, DARKWOOD);
+    }
+    k.B('deco', O, 0, y, 0, 2.48, 0.005, 1.52, '#9ab4bf');
+    k.P('deco', O, 'disc', -0.1, y + 0.007, 0.04, 1.9, 1, 1.16, mp);
+    k.P('deco', O, 'disc', -0.35, y + 0.01, 0.2, 0.5, 1, 0.4, '#6e8a5a');
+    for (const x of [0.42, 0.56, 0.7]) k.P('lit', O, 'cone', x, y + 0.05, -0.24, 0.1, 0.09, 0.1, '#7a6a5a');
+    for (const [x, z, col] of [[-0.4, -0.18, a], [-0.26, -0.08, a], [-0.5, 0.2, a], [0.46, 0.18, b], [0.58, 0.04, b], [0.32, 0.4, b]] as [number, number, string][]) {
+      k.C('lit', O, x, y, z, 0.045, 0.1, col, 'cyl6');
+    }
+    for (const [x, z, col] of [[0.02, -0.5, a], [0.76, 0.2, b]] as [number, number, string][]) {
+      k.Beam('wood', O, [x, y, z], [x, y + 0.2, z], 0.008, DARKWOOD, 'cyl6');
+      k.B('fabric', O, x + 0.06, y + 0.13, z, 0.12, 0.07, 0.005, col);
+    }
+    k.Beam('metal', O, [0.86, y + 0.02, -0.64], [1.16, y + 0.02, -0.44], 0.018, '#c9ced3', 'box');
+    k.Beam('metal', O, [0.8, y + 0.02, -0.6], [0.88, y + 0.02, -0.72], 0.02, GOLD, 'box');
+    candle(k, O, -1.06, y, 0.56, 0.14, WAX, 0.35);
+    return undefined;
+  },
+  'altar-reredos': (k, O, w, d, R, c) => {
+    const st = c('stone', '#dcd8d0'), m = c('metal', GOLD), cl = c('cloth', '#e6e0d2'), wax = c('wax', WAX), dark = '#221a14';
+    k.B('stone', O, 0, 0, -0.78, 2.92, 3.6, 0.44, st);
+    for (const x of [-0.94, 0, 0.94]) {
+      k.B('cave', O, x, 1.2, -0.555, 0.5, 1.3, 0.02, dark);
+      k.P('lit', O, 'cone', x, 1.6, -0.62, 0.22, 0.8, 0.18, lighten(st, 0.1));
+      k.P('stone', O, 'pyr', x, x ? 4.1 : 4.17, -0.78, x ? 0.4 : 0.5, x ? 1.0 : 1.15, x ? 0.4 : 0.5, lighten(st, 0.05));
+    }
+    k.P('metal', O, 'cyl16', 0, 2.95, -0.55, 0.5, 0.04, 0.5, m, Math.PI / 2);
+    k.B('stone', O, 0, 0, 0.46, 2.28, 0.14, 0.36, lighten(st, 0.06));
+    k.B('stone', O, 0, 0, -0.05, 1.88, 0.95, 0.7, st);
+    k.B('fabric', O, 0, 0.95, -0.05, 1.62, 0.02, 0.78, cl);
+    k.B('fabric', O, 0, 0.55, 0.31, 1.62, 0.42, 0.02, cl);
+    for (const s of [-1, 1]) {
+      k.C('metal', O, s * 0.64, 0.97, -0.24, 0.04, 0.3, m, 'cyl6');
+      candle(k, O, s * 0.64, 1.27, -0.24, 0.25, wax, 0.45);
+    }
+    k.B('metal', O, 0, 0.97, -0.1, 0.36, 0.2, 0.24, m);
+    return undefined;
+  },
+  'idol-colossal': (k, O, w, d, R, c) => {
+    const st = c('stone', '#b8a27c'), gem = c('gem', '#e63946');
+    k.B('stone', O, 0, 0, -0.27, 2.72, 1.2, 2.3, shade(st));
+    for (const s of [-1, 1]) {
+      k.B('stone', O, s * 0.46, 0, 0.98, 0.5, 1.72, 0.44, st);
+      k.B('stone', O, s * 0.5, 0, 1.22, 0.42, 0.22, 0.4, lighten(st, 0.04));
+      k.B('stone', O, s * 0.46, 1.2, 0.375, 0.56, 0.5, 1.65, st);
+      k.S('stone', O, s * 0.84, 2.9, -0.5, 0.36, st);
+      k.Beam('stone', O, [s * 0.86, 2.8, -0.45], [s * 0.9, 1.95, 0.2], 0.22, st);
+      k.Beam('stone', O, [s * 0.9, 1.95, 0.2], [s * 0.62, 1.85, 0.98], 0.19, lighten(st, 0.03));
+      k.S('glow', O, s * 0.15, 3.58, -0.09, 0.04, gem);
+    }
+    k.P('stone', O, 'cyl16', 0, 2.15, -0.5, 1.7, 1.9, 1.0, st);
+    k.C('stone', O, 0, 3.0, -0.42, 0.24, 0.2, st, 'cyl16');
+    k.B('stone', O, 0, 3.15, -0.42, 0.68, 0.8, 0.66, lighten(st, 0.04));
+    k.P('stone', O, 'pyr', 0, 4.25, -0.45, 1.0, 0.6, 0.8, lighten(st, 0.08));
+    k.S('glow', O, 0, 3.74, -0.08, 0.08, gem, 'oct');
+    return undefined;
+  },
+  'bookcase-grand': (k, O, w, d, R, c) => {
+    const wood = c('wood', '#6b4428'), m = c('metal', GOLD), z = -0.23, top = 4.32;
+    k.B('wood', O, 0, 0, -0.47, 2.92, top, 0.04, DARKWOOD);
+    for (const x of [-1.44, -0.48, 0.48, 1.44]) k.B('wood', O, x, 0, z, 0.06, top, 0.5, shade(wood));
+    for (let i = 0; i < 6; i++) {
+      const y = i * 0.72;
+      k.B('wood', O, 0, y, z, 2.92, 0.05, 0.5, wood);
+      for (const x0 of [-1.41, -0.45, 0.51]) books(k, O, x0, x0 + 0.9, y + 0.05, z + 0.02, 0.36, R, 0.55, 1);
+    }
+    k.B('wood', O, 0, top, z + 0.02, 3.0, 0.1, 0.56, wood);
+    k.Beam('metal', O, [-1.46, 3.95, 0.06], [1.46, 3.95, 0.06], 0.02, m, 'cyl6');
+    const xa = 0.4, xb = 0.72, lo = [0, 0.45], hi = [3.95, 0.08];
+    for (const x of [xa, xb]) k.Beam('wood', O, [x, lo[0], lo[1]], [x, hi[0], hi[1]], 0.025, DARKWOOD, 'cyl6');
+    for (const t of [0.25, 0.5, 0.75]) {
+      const yy = lo[0] + (hi[0] - lo[0]) * t, zz = lo[1] + (hi[1] - lo[1]) * t;
+      k.Beam('wood', O, [xa, yy, zz], [xb, yy, zz], 0.018, DARKWOOD, 'cyl6');
+    }
+    return undefined;
+  },
+  'reading-nook': (k, O, w, d, R, c) => {
+    const wood = c('wood', '#6b4428'), cl = c('cloth', '#3e6b3a'), rug = c('rug', CLOTH), wax = c('wax', WAX), C = sub(O, -0.22, -0.18, 0.5);
+    k.P('fabric', O, 'disc', 0, 0.012, 0, 1.8, 1, 1.8, rug);
+    k.Ring('deco', O, 0, 0.016, 0, 0.78, 0.03, lighten(rug, 0.4));
+    k.B('wood', C, 0, 0, 0.02, 0.74, 0.42, 0.62, wood);
+    k.B('fabric', C, 0, 0.42, 0.06, 0.56, 0.1, 0.5, cl);
+    k.B('fabric', C, 0, 0.42, -0.26, 0.74, 0.66, 0.16, cl);
+    for (const s of [-1, 1]) k.B('fabric', C, s * 0.32, 0.42, 0.02, 0.12, 0.22, 0.62, shade(cl));
+    k.B('wood', O, 0.3, 0, 0.4, 0.36, 0.22, 0.28, wood);
+    k.B('fabric', O, 0.3, 0.22, 0.4, 0.4, 0.1, 0.32, cl);
+    k.C('wood', O, 0.48, 0, -0.4, 0.12, 0.03, DARKWOOD, 'cyl16');
+    k.C('wood', O, 0.48, 0.03, -0.4, 0.04, 0.57, DARKWOOD, 'cyl6');
+    k.C('wood', O, 0.48, 0.6, -0.4, 0.22, 0.04, wood, 'cyl16');
+    candle(k, O, 0.44, 0.64, -0.46, 0.12, wax, 0.35);
+    k.B('fabric', O, 0.54, 0.64, -0.34, 0.16, 0.04, 0.12, '#7a2a22', 0, 0.4);
+    for (let i = 0; i < 4; i++) k.B('fabric', O, -0.6, i * 0.06, 0.4, 0.24, 0.06, 0.17, BOOK_COLS[i + 1], 0, (R() - 0.5) * 0.6);
+    return undefined;
+  },
+  'astrolabe-stand': (k, O, w, d, R, c) => {
+    const m = c('metal', GOLD), wood = c('wood', '#6b4428'), y = 1.75;
+    for (let i = 0; i < 3; i++) {
+      const a = (i / 3) * TAU + Math.PI / 2;
+      k.Beam('wood', O, [0, 0.9, 0], [Math.cos(a) * 0.44, 0, Math.sin(a) * 0.44], 0.03, wood, 'cyl6');
+    }
+    k.C('wood', O, 0, 0.85, 0, 0.035, 0.5, wood, 'cyl6');
+    k.P('metal', O, 'torus', 0, y, 0, 0.8, 0.4, 0.8, m, Math.PI / 2);
+    k.P('metal', O, 'cyl16', 0, y, -0.01, 0.72, 0.02, 0.72, shade(m), Math.PI / 2);
+    for (const rz of [0, 1.05, 2.1]) k.P('metal', O, 'box', 0, y, 0.012, 0.68, 0.025, 0.012, lighten(m, 0.15), 0, 0, rz);
+    k.P('metal', O, 'box', 0, y, 0.026, 0.8, 0.04, 0.015, m, 0, 0, 0.6);
+    k.S('metal', O, 0, y, 0.03, 0.04, m);
+    k.P('metal', O, 'torus', 0, y + 0.46, 0, 0.12, 0.5, 0.12, m, Math.PI / 2);
+    return undefined;
+  },
+  'globe-great': (k, O, w, d, R, c) => {
+    const wood = c('wood', '#6b4428'), sea = c('sea', '#3f6f9a'), land = c('land', '#9aa86a'), m = c('metal', GOLD), y = 1.3;
+    for (const [x, z] of [[-0.64, -0.64], [0.64, -0.64], [-0.64, 0.64], [0.64, 0.64]]) k.C('wood', O, x, 0, z, 0.07, y, wood, 'cyl6');
+    k.Beam('wood', O, [-0.64, 0.25, -0.64], [0.64, 0.25, 0.64], 0.035, shade(wood), 'cyl6');
+    k.Beam('wood', O, [0.64, 0.25, -0.64], [-0.64, 0.25, 0.64], 0.035, shade(wood), 'cyl6');
+    k.P('wood', O, 'torus', 0, y, 0, 1.6, 0.6, 1.6, wood);
+    k.S('lit', O, 0, y, 0, 0.62, sea);
+    for (const [ax, ay, az, s] of [[-0.4, 0.3, -0.3, 0.22], [0.42, 0.12, -0.26, 0.17], [-0.12, -0.2, 0.44, 0.19]]) {
+      const L = Math.hypot(ax, ay, az), r = 0.48;
+      k.S('lit', O, (ax / L) * r, y + (ay / L) * r, (az / L) * r, s, land, 'ico');
+    }
+    k.P('metal', O, 'ring', 0, y, 0, 1.4, 0.8, 1.4, m, 0, 0.3, Math.PI / 2);
+    return undefined;
+  },
+  'archive-stacks': (k, O, w, d, R, c) => {
+    const wood = c('wood', WOOD), paper = c('paper', '#e8dcb8'), H = 3.4;
+    for (const s of [-1, 1]) k.B('wood', O, s * 0.94, 0, 0, 0.06, H, 0.84, shade(wood));
+    for (let i = 1; i < 6; i++) k.B('wood', O, -0.94 + i * 0.313, 0, 0, 0.035, H, 0.84, wood);
+    k.B('wood', O, 0, 0, 0, 1.88, H, 0.03, DARKWOOD);
+    for (let i = 0; i < 6; i++) {
+      const y = i * 0.672;
+      k.B('wood', O, 0, y, 0, 1.92, 0.05, 0.84, wood);
+      if (i < 5) for (const s of [-1, 1]) k.B('lit', O, 0, y + 0.05, s * 0.22, 1.82, 0.36 + R() * 0.12, 0.36, i % 2 ? paper : lighten(paper, 0.08));
+    }
+    for (let i = 0; i < 3; i++) k.P('lit', O, 'cyl6', -0.6 + i * 0.55, 0.9 + i * 1.34, 0.44, 0.07, 0.3, 0.07, lighten(paper, 0.1), Math.PI / 2 - 0.15);
+    return undefined;
+  },
+  'gate-iron-tall': (k, O, w, d, R, c) => {
+    const m = c('metal', '#33373c'), st = c('stone', '#8a8780');
+    for (const s of [-1, 1]) {
+      k.B('stone', O, s * 0.83, 0, 0, 0.26, 4.0, 0.44, st);
+      k.P('stone', O, 'pyr', s * 0.83, 4.15, 0, 0.36, 0.3, 0.36, lighten(st, 0.06), 0, Math.PI / 4, 0);
+    }
+    for (let i = 0; i < 11; i++) {
+      const x = -0.63 + i * 0.126, h = 3.3 + 0.35 * Math.cos((x / 0.7) * (Math.PI / 2));
+      k.C('metal', O, x, 0, 0, 0.02, h, m, 'cyl6');
+      if (i % 2 === 0) k.P('metal', O, 'cone', x, h + 0.08, 0, 0.07, 0.16, 0.07, lighten(m, 0.1));
+    }
+    for (const y of [0.2, 1.6, 3.0]) k.B('metal', O, 0, y, 0, 1.4, 0.06, 0.05, m);
+    k.B('metal', O, 0, 1.45, 0.03, 0.16, 0.24, 0.05, lighten(m, 0.15));
+    return undefined;
+  },
+  'sarcophagus-row': (k, O, w, d, R, c) => {
+    const st = c('stone', '#8a8780'), wax = c('wax', WAX);
+    k.B('stone', O, 0, 0, 0, 3.92, 0.25, 1.88, shade(st));
+    for (const x of [-1.27, 0, 1.27]) {
+      k.B('stone', O, x, 0.25, 0, 0.82, 0.62, 1.56, st);
+      k.B('stone', O, x, 0.87, 0, 0.9, 0.12, 1.64, lighten(st, 0.06));
+      k.S('lit', O, x, 1.06, -0.5, 0.12, lighten(st, 0.1));
+      k.P('lit', O, 'sph', x, 0.99, 0.06, 0.42, 0.18, 1.0, lighten(st, 0.08));
+    }
+    for (const x of [-0.63, 0.64]) candle(k, O, x, 0.25, -0.56, 0.2, wax, 0.4);
+    return undefined;
+  },
+  'bone-heap': (k, O, w, d, R, c) => {
+    const bone = c('bone', BONE), rad = 0.85, mh = 0.5;
+    k.P('lit', O, 'hemi', 0, 0, 0.04, rad * 2, mh * 2, rad * 1.84, shade(bone));
+    const hAt = (x: number, z: number) => mh * Math.sqrt(Math.max(0, 1 - (x * x + z * z) / (rad * rad)));
+    for (let i = 0; i < 14; i++) {
+      const a = R() * TAU, dd = Math.sqrt(R()) * 0.72, x = Math.cos(a) * dd, z = Math.sin(a) * dd, b = R() * Math.PI, L = 0.12 + R() * 0.12;
+      const x0 = x - Math.cos(b) * L, z0 = z - Math.sin(b) * L, x1 = x + Math.cos(b) * L, z1 = z + Math.sin(b) * L;
+      k.Beam('lit', O, [x0, hAt(x0, z0) + 0.02, z0], [x1, hAt(x1, z1) + 0.02, z1], 0.025, lighten(bone, (R() - 0.5) * 0.2));
+    }
+    for (let i = 0; i < 5; i++) {
+      const a = R() * TAU, dd = Math.sqrt(R()) * 0.55, x = Math.cos(a) * dd, z = Math.sin(a) * dd;
+      k.S('lit', O, x, hAt(x, z) + 0.05, z, 0.09, bone);
+    }
+    return undefined;
+  },
+  'torture-wheel': (k, O, w, d, R, c) => {
+    const wood = c('wood', WOOD), m = c('metal', IRON), rope = c('rope', '#8a6a4a'), y = 1.3, rw = 0.76;
+    k.P('wood', O, 'torus', 0, y, 0, rw * 2, 0.7, rw * 2, wood, Math.PI / 2);
+    for (let i = 0; i < 4; i++) k.P('wood', O, 'box', 0, y, 0, rw * 1.9, 0.06, 0.05, shade(wood), 0, 0, (i * Math.PI) / 4);
+    k.P('metal', O, 'cyl16', 0, y, 0, 0.2, 0.2, 0.2, m, Math.PI / 2);
+    k.Beam('metal', O, [0, y, -0.42], [0, y, 0.42], 0.04, m);
+    for (const z of [-0.38, 0.38]) {
+      for (const s of [-1, 1]) k.Beam('wood', O, [s * 0.52, 0, z], [0, y + 0.12, z], 0.06, shade(wood), 'box');
+      k.B('wood', O, 0, 0, z, 1.2, 0.1, 0.12, DARKWOOD);
+    }
+    for (const a of [0.4, 2.7]) k.B('fabric', O, Math.cos(a) * rw, y - Math.sin(a) * rw - 0.08, 0.06, 0.1, 0.16, 0.04, rope);
+    return undefined;
+  },
+  'gibbet-post': (k, O, w, d, R, c, p) => {
+    const wood = c('wood', '#6b4428'), m = c('metal', IRON), v = vi(p), cx = 0.5;
+    k.B('stone', O, -0.68, 0, 0, 0.5, 0.2, 0.5, STONE);
+    k.B('wood', O, -0.68, 0, 0, 0.2, 3.7, 0.2, wood);
+    k.B('wood', O, -0.14, 3.5, 0, 1.3, 0.16, 0.16, wood);
+    k.Beam('wood', O, [-0.68, 2.8, 0], [-0.2, 3.5, 0], 0.05, shade(wood), 'box');
+    k.Beam('metal', O, [cx, 3.5, 0], [cx, 3.02, 0], 0.018, m, 'cyl6');
+    k.S('metal', O, cx, 3.0, 0, 0.1, m);
+    const rings: [number, number][] = [[2.95, 0.12], [2.6, 0.24], [1.2, 0.15]];
+    k.Ring('metal', O, cx, 2.6, 0, 0.24, 0.04, m);
+    k.Ring('metal', O, cx, 1.9, 0, 0.2, 0.04, m);
+    k.Ring('metal', O, cx, 1.2, 0, 0.15, 0.04, m);
+    for (let i = 0; i < 6; i++) {
+      const a = (i / 6) * TAU;
+      for (let j = 0; j < 2; j++) {
+        const [y0, r0] = rings[j], [y1, r1] = rings[j + 1];
+        k.Beam('metal', O, [cx + Math.cos(a) * r0, y0, Math.sin(a) * r0], [cx + Math.cos(a) * r1, y1, Math.sin(a) * r1], 0.012, m, 'cyl6');
+      }
+    }
+    if (v === 1 || v === 3) {
+      k.S('lit', O, cx, 2.8, 0, 0.1, BONE);
+      k.P('lit', O, 'sph', cx, 2.2, 0, 0.3, 0.42, 0.22, '#cfc6ae');
+      k.Beam('lit', O, [cx - 0.06, 1.95, 0], [cx - 0.05, 1.3, 0.02], 0.025, BONE);
+    }
+    return undefined;
+  },
+  'stalactites-tall': (k, O, w, d, R, c) => {
+    const rock = c('rock', '#8a8478'), wa = c('water', '#5a8aa8');
+    k.P('cave', O, 'ico', 0.08, HALL_H - 0.24, 0.12, 1.6, 0.4, 1.3, rock);
+    const spots: [number, number, number][] = [[70, 70, 22], [128, 60, 16], [104, 112, 26], [150, 120, 18], [60, 136, 14], [124, 158, 12], [160, 80, 11]];
+    for (const [sx, sz, s] of spots) {
+      const x = (sx - 100) / 100, z = (sz - 100) / 100, r = s / 100, L = 0.7 + (s / 26) * 1.5;
+      k.P('cave', O, 'cone', x, HALL_H - 0.04 - L / 2, z, r * 2, L, r * 2, s % 2 ? rock : shade(rock), Math.PI);
+      if (s >= 18) {
+        k.S('deco', O, x, HALL_H - L - 0.12, z, 0.025, lighten(wa, 0.3));
+        k.P('cave', O, 'cone', x, 0.12, z, r * 0.9, 0.24, r * 0.9, rock);
+      }
+    }
+    k.P('deco', O, 'disc', 0.08, 0.01, 0.12, 1.2, 1, 0.92, wa);
+    return undefined;
+  },
+  'crystal-spire': (k, O, w, d, R, c) => {
+    const cr = c('crystal', '#8fd8ff'), rock = c('rock', '#5a5560');
+    for (const [sx, sz, s] of [[70, 130, 30], [130, 136, 26], [100, 80, 28], [140, 86, 18]]) k.S('cave', O, (sx - 100) / 100, s / 300, (sz - 100) / 100, s / 100, rock, 'ico');
+    k.P('glow', O, 'oct', 0, 1.8, 0.04, 0.55, 3.6, 0.55, cr);
+    for (let i = 0; i < 7; i++) {
+      const a = (i / 7) * TAU + R() * 0.4, h = 1.0 + R() * 1.0, rb = 0.32;
+      k.Beam('glow', O, [Math.cos(a) * rb, -0.1, Math.sin(a) * rb], [Math.cos(a) * (rb + 0.45 + R() * 0.2), h, Math.sin(a) * (rb + 0.45 + R() * 0.2)], 0.11, i % 2 ? cr : lighten(cr, 0.3), 'oct');
+    }
+    return 1.8;
+  },
+  'column-collapsed': (k, O, w, d, R, c) => {
+    const st = c('stone', '#dcd8d0');
+    k.B('stone', O, -1.06, 0, 0, 0.76, 0.2, 0.76, shade(st));
+    k.C('stone', O, -1.06, 0.2, 0, 0.29, 0.9, st, 'cyl16');
+    k.P('stone', O, 'ico', -1.06, 1.12, 0, 0.5, 0.3, 0.5, st);
+    for (const [x, rot] of [[-0.38, -0.06], [0.2, 0.08]]) k.P('stone', O, 'cyl16', x, 0.3, 0.02, 0.6, 0.52, 0.6, st, 0, rot, Math.PI / 2);
+    k.B('stone', O, 0.94, 0, 0, 0.6, 0.34, 0.6, lighten(st, 0.05), 0.06, -0.25, 0.1);
+    for (const [sx, sz, s] of [[96, 84, 7], [178, 18, 6], [268, 84, 8], [212, 86, 5]]) k.S('stone', O, (sx - 150) / 100, s / 120, (sz - 50) / 100, s / 100, shade(st), 'ico');
+    return undefined;
+  },
+  'ceiling-rubble': (k, O, w, d, R, c) => {
+    const st = c('stone', '#8a8780'), wood = c('wood', '#6b4428');
+    k.P('cave', O, 'ico', 0, 0.12, 0, 0.9, 0.45, 0.8, st);
+    for (const [sx, sz, rot] of [[60, 70, 0.3], [138, 136, -0.4], [118, 50, 0.9]]) {
+      k.B('stone', O, (sx - 100) / 100, 0, (sz - 100) / 100, 0.36, 0.24, 0.24, lighten(st, 0.05), R() * 0.3, -rot, R() * 0.3);
+    }
+    for (let i = 0; i < 10; i++) {
+      const a = R() * TAU, dd = Math.sqrt(R()) * 0.78, r = 0.05 + R() * 0.12;
+      k.S('cave', O, Math.cos(a) * dd, r * 0.6, Math.sin(a) * dd, r, i % 2 ? st : shade(st), 'ico');
+    }
+    k.P('wood', O, 'box', 0.04, 0.3, -0.08, 1.5, 0.18, 0.18, wood, 0, -0.62, 0.3);
+    k.Beam('wood', O, [0.6, HALL_H - 0.02, -0.5], [0.25, HALL_H - 1.1, -0.2], 0.08, wood, 'box');
+    k.S('cave', O, -0.3, HALL_H - 0.3, 0.2, 0.25, shade(st), 'ico');
+    return undefined;
+  },
 };
 
 /** A slightly darker tone of a colour for carcass sides. */
@@ -895,4 +1682,33 @@ function shade(hex: string) {
   const n = parseInt(hex.slice(1, 7), 16);
   const f = (v: number) => Math.round(v * 0.82).toString(16).padStart(2, '0');
   return `#${f((n >> 16) & 255)}${f((n >> 8) & 255)}${f(n & 255)}`;
+}
+
+// ---------------------------------------------------------------- tall hall helpers
+
+/** Base of a tall column: square plinth and a round torus moulding, top at 0.32. */
+function colFoot(k: Kit, O: Spot, st: string, s: number) {
+  k.B('stone', O, 0, 0, 0, s * 2.05, 0.2, s * 2.05, shade(st));
+  k.C('lit', O, 0, 0.2, 0, s * 0.85, 0.12, st, 'cyl16');
+}
+
+/** Head of a tall column: necking ring, flared bell and a square abacus just under the ceiling. */
+function colHead(k: Kit, O: Spot, st: string, s: number) {
+  k.C('lit', O, 0, HALL_H - 0.63, 0, s * 0.82, 0.14, st, 'cyl16');
+  k.P('lit', O, 'cone', 0, HALL_H - 0.37, 0, s * 2.0, 0.24, s * 2.0, st, Math.PI);
+  k.B('stone', O, 0, HALL_H - 0.25, 0, s * 2.05, 0.23, s * 2.05, shade(st));
+}
+
+/** A tall statue plinth (base, die and cap), top at h. */
+function plinthM(k: Kit, O: Spot, size: number, h: number, st: string) {
+  k.B('stone', O, 0, 0, 0, size, 0.2, size, shade(st));
+  k.B('stone', O, 0, 0.2, 0, size * 0.86, h - 0.4, size * 0.86, st);
+  k.B('lit', O, 0, h - 0.2, 0, size, 0.2, size, lighten(st, 0.05));
+}
+
+/** A small hanging lantern standing on y: base plate, glowing panes and a pointed cap. Top at y + 0.38 * s. */
+function lanternM(k: Kit, O: Spot, x: number, y: number, z: number, s: number, metal: string, glass: string) {
+  k.B('metal', O, x, y, z, 0.2 * s, 0.04 * s, 0.2 * s, metal);
+  k.B('glow', O, x, y + 0.04 * s, z, 0.15 * s, 0.2 * s, 0.15 * s, glass);
+  k.P('metal', O, 'pyr', x, y + 0.31 * s, z, 0.26 * s, 0.14 * s, 0.26 * s, metal, 0, Math.PI / 4, 0);
 }
