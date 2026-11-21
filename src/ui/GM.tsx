@@ -378,6 +378,7 @@ function GMTable({ host, onEnd }: { host: HostSession; onEnd: () => void }) {
                 combatActive={s.combat?.active}
                 speedLeft={(() => { const t = s.tokens.find((k) => k.id === (selected ?? core.currentTokenId())); return t ? t.speed - t.movedFeet : undefined; })()}
                 log={v.log}
+                hud={mode === 'play' && s.combat?.active ? <GmHud3D t={s.tokens.find((k) => k.id === core.currentTokenId())} gm={gm} roll={roll} round={s.combat.round} /> : undefined}
                 onMove={(id, x, y) => gm({ t: 'move', tokenId: id, x, y })}
                 onExit={() => setView3d(false)}
                 onTap={(info) => {
@@ -826,6 +827,36 @@ function CombatTab({ s, gm, core, selected, setSelected }: { s: GameState; gm: (
         <button className="bad" onClick={() => gm({ t: 'gm:endCombat' })}>End combat</button>
       </div>
     </div>
+  );
+}
+
+/** The GM's turn controls over the 3D view: whose turn, their attacks, next turn. */
+function GmHud3D({ t, gm, roll, round }: { t?: Token; gm: (i: Intent) => boolean; roll: RollFn; round: number }) {
+  const mon = t?.monsterId ? monsterById(t.monsterId) : undefined;
+  const acts = (mon?.actions ?? []).filter((a) => a.hit !== undefined).slice(0, 3);
+  return (
+    <>
+      <div className="v3d-chip">
+        Round {round}
+        {t && (
+          <>
+            {' '}· <b>{t.name}</b> {t.hp}/{t.maxHp} HP · {Math.max(0, t.speed - t.movedFeet)} ft
+          </>
+        )}
+      </div>
+      <div className="v3d-acts">
+        {t &&
+          acts.map((a) => (
+            <button key={a.name} onClick={() => roll(d20Formula(a.hit!, 'none'), `${t.name}: ${a.name} attack`, a.dmg ? { attackDamage: a.dmg } : undefined)}>
+              {a.name}
+              <small>{fmtMod(a.hit!)}{a.dmg ? ` · ${a.dmg}` : ''}</small>
+            </button>
+          ))}
+        <button className="end" onClick={() => gm({ t: 'gm:nextTurn' })}>
+          Next turn
+        </button>
+      </div>
+    </>
   );
 }
 

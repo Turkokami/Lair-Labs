@@ -16,6 +16,7 @@ export interface LightSpot { x: number; y: number; z: number; color: string; ran
 import { type Model, WOOD, DARKWOOD, IRON, STONE, GOLD, CLOTH, barrel, crate, legsTable, chair, flameCup, pillarRound, tree } from './modelkit';
 import { MORE_MODELS } from './models-more';
 import { EXTRA_MODELS } from './models-extra';
+import { MORE_MODELS2 } from './models-more2';
 
 const MODELS: Record<string, Model> = {
   barrel: (k, O) => barrel(k, O),
@@ -437,7 +438,7 @@ const MODELS: Record<string, Model> = {
   rug: () => {},
 };
 // more models live in their own files; an id already modelled above wins
-for (const [k, v] of Object.entries({ ...MORE_MODELS, ...EXTRA_MODELS })) if (!MODELS[k]) MODELS[k] = v;
+for (const [k, v] of Object.entries({ ...MORE_MODELS, ...MORE_MODELS2, ...EXTRA_MODELS })) if (!MODELS[k]) MODELS[k] = v;
 
 /** A sprite card laid flat: the object's own overhead art, on the floor or on top of a stand-in body. */
 const spriteTexCache = new Map<string, THREE.Texture>();
@@ -560,3 +561,5 @@ export function disposePropTextures() {
   for (const t of spriteTexCache.values()) t.dispose();
   spriteTexCache.clear();
 }
+/** Whether an object id has a real 3D model (not the stand-in box). */
+export const hasModel = (id: string) => !!MODELS[id];

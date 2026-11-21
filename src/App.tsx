@@ -1,6 +1,7 @@
 import { Suspense, lazy, useState } from 'react';
 
 const Demo3D = lazy(() => import('./view3d/Demo3D'));
+const Showroom3D = lazy(() => import('./view3d/Showroom3D'));
 import { GMApp } from './ui/GM';
 import { PlayerApp } from './ui/Player';
 import { About } from './ui/About';
@@ -12,6 +13,15 @@ export function App() {
   const q = new URLSearchParams(location.search);
   const joinCode = q.get('join') ?? undefined;
   const [route, setRoute] = useState<Route>(joinCode ? 'join' : 'home');
+  if (q.has('showroom3d'))
+    return (
+      <>
+        <Suspense fallback={<div className="curtain">Setting out the showroom…</div>}>
+          <Showroom3D />
+        </Suspense>
+        <Toasts />
+      </>
+    );
   if (q.has('demo3d'))
     return (
       <>

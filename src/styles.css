@@ -334,3 +334,24 @@ canvas.thumb { display: block; }
 .v3d-caption { padding: 8px 12px; background: #120f0c; color: var(--gold); font-weight: 600; text-align: center; min-height: 38px; }
 .v3d-demo-bar { display: flex; gap: 12px; justify-content: center; align-items: center; padding: 8px; background: #120f0c; }
 .v3d-btn.on { background: var(--gold); color: #1a140c; }
+/* 3D view: numbers that float over figures, and the turn controls */
+.v3d-floats { position: absolute; inset: 0; pointer-events: none; z-index: 3; overflow: hidden; }
+.v3d-float { position: absolute; left: 0; top: 0; font-weight: 800; font-size: 1.15rem; color: #fff; text-shadow: 0 2px 3px #000, 0 0 6px rgba(0, 0, 0, 0.8); white-space: nowrap; will-change: transform, opacity; }
+.v3d-float.dmg { color: #ff6b5a; font-size: 1.4rem; }
+.v3d-float.heal { color: #6fe08a; font-size: 1.3rem; }
+.v3d-float.down { color: #ff3b30; font-size: 1.3rem; letter-spacing: 0.04em; }
+.v3d-float.crit { color: #ffd34d; font-size: 1.45rem; }
+.v3d-float.miss { color: #b9b2a6; }
+.v3d-float.dmgroll { color: #ffb08a; }
+.v3d-float.roll { color: #f3e9d2; font-size: 1.05rem; }
+.v3d-hud { position: absolute; right: 8px; bottom: 10px; left: 176px; z-index: 4; display: flex; flex-direction: column; align-items: flex-end; gap: 6px; pointer-events: none; }
+.v3d-hud > * { pointer-events: auto; }
+.v3d-chip { white-space: nowrap; max-width: 100%; overflow: hidden; text-overflow: ellipsis; background: rgba(20, 17, 13, 0.86); color: #fff; padding: 5px 10px; border-radius: 12px; font-size: 0.85rem; border: 1px solid rgba(255, 255, 255, 0.12); }
+.v3d-chip b { color: var(--gold); }
+.v3d-chip.target { border-color: #ff4a3d; }
+.v3d-acts { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 6px; max-width: 100%; }
+.v3d-acts button { min-height: 40px; padding: 4px 10px; border-radius: 12px; background: rgba(20, 17, 13, 0.86); color: #fff; border: 1px solid rgba(255, 255, 255, 0.16); font-size: 0.85rem; line-height: 1.15; }
+.v3d-acts button small { display: block; color: var(--gold); font-weight: 700; }
+.v3d-acts button.end { background: var(--gold); color: #1a140c; font-weight: 700; }
+.v3d-acts button:disabled { opacity: 0.45; }
+.v3d-canvas::after { content: ''; position: absolute; inset: 0; pointer-events: none; background: radial-gradient(ellipse at 50% 55%, transparent 58%, rgba(0, 0, 0, 0.42) 100%); }

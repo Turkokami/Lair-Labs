@@ -5,6 +5,7 @@ import { normalizeCode, prettyCode, type Intent, type PlayerView } from '../engi
 import type { Character } from '../rules/character';
 import { computeSheet } from '../rules/character';
 import { conditionName } from '../rules/core';
+import { TurnHud3D } from './TurnHud3D';
 import { MapCanvas, lineToTemplate, type TemplateShape } from './MapCanvas';
 import { CharBuilder } from './CharBuilder';
 import { SheetPanel, ActionsPanel, BagPanel } from './Sheet';
@@ -95,6 +96,7 @@ function PlayerTable({ s, onLeave }: { s: ClientSession; onLeave: () => void }) 
   useEffect(() => store.set('view3d', view3d), [view3d]);
   const [area, setArea] = useState<TemplateShape>({ shape: 'sphere', size: 20, color: '#4cc9f0' });
   const [safetyOpen, setSafetyOpen] = useState(false);
+  const [target, setTarget] = useState<string | undefined>();
   const ch = v.myCharacter;
   const send = (i: Intent) => s.send(i);
   const safe = (p: Promise<void>) => p.catch((e: Error) => toast(e.message, 'error'));
@@ -191,11 +193,16 @@ function PlayerTable({ s, onLeave }: { s: ClientSession; onLeave: () => void }) 
                   canMove={(t) => t.id === v.myTokenId && (!v.combat.active || myTurn)}
                   onMove={(id, x, y) => safe(send({ t: 'move', tokenId: id, x, y }))}
                   onExit={() => setView3d(false)}
+                  hud={<TurnHud3D v={v} ch={ch} target={target} setTarget={setTarget} roll={roll} endTurn={() => safe(send({ t: 'endTurn' }))} />}
+                  targetId={target && v.tokens.some((t) => t.id === target && !t.hidden) ? target : undefined}
                   onTap={(info) => {
                     if (info.edge && v.map.doors[info.edge]) safe(send({ t: 'door', key: info.edge }));
                     else if (info.tokenId) {
                       const t = v.tokens.find((k) => k.id === info.tokenId);
-                      if (t) toast(`${t.name}${t.hpLabel ? ` · ${t.hpLabel}` : ''}${t.conditions.length ? ` · ${t.conditions.map(conditionName).join(', ')}` : ''}`);
+                      if (!t) return;
+                      // tap someone else to aim at them; tap them again to stop
+                      if (t.id !== v.myTokenId) setTarget((cur) => (cur === t.id ? undefined : t.id));
+                      if (t.conditions.length) toast(`${t.name} · ${t.conditions.map(conditionName).join(', ')}`);
                     }
                   }}
                 />

@@ -6,6 +6,7 @@ import { TEMPLATES, vKey } from '../engine/map';
 import { premade, computeSheet, freshState } from '../rules/character';
 import View3D, { type Cam } from './View3D';
 import { toast } from '../ui/common';
+import { TurnHud3D } from '../ui/TurnHud3D';
 
 function setup() {
   const map = TEMPLATES.find((t) => t.id === 'crypt')!.make();
@@ -37,6 +38,7 @@ export default function Demo3D() {
   const [cam, setCam] = useState<Cam>('shoulder');
   const [caption, setCaption] = useState('The Sunken Crypt, seen from Garrick the fighter’s phone');
   const busy = useRef(false);
+  const [target, setTarget] = useState<string | undefined>();
   const view = g.core.view('p1');
   const bump = () => setTick((n) => n + 1);
   const act = (from: string, it: Intent) => {
@@ -79,8 +81,11 @@ export default function Demo3D() {
     setCaption('Combat: the same initiative and 30 ft of movement as the map');
     await wait(2000);
     await walk('p1', g.fighter, [[14, 11], [15, 10], [16, 10]]);
+    setTarget(s1);
+    setCaption('Tap a foe to aim: range and attacks show on your turn');
+    await wait(2200);
     setCaption('Garrick attacks the skeleton');
-    act('p1', { t: 'roll', formula: '1d20+5', label: 'Longsword attack', attackDamage: '1d8+3' } as Intent);
+    act('p1', { t: 'roll', formula: '1d20+5', label: 'Longsword attack vs Skeleton', attackDamage: '1d8+3' } as Intent);
     await wait(900);
     act('gm', { t: 'gm:damage', targets: [s1], amount: 8 });
     await wait(1600);
@@ -107,11 +112,12 @@ export default function Demo3D() {
     setCam('first');
     setCaption('Eyes view: Garrick’s turn again');
     await wait(1800);
-    act('p1', { t: 'roll', formula: '1d20+5', label: 'Longsword attack', attackDamage: '1d8+3' } as Intent);
+    act('p1', { t: 'roll', formula: '1d20+5', label: 'Longsword attack vs Skeleton', attackDamage: '1d8+3' } as Intent);
     await wait(900);
     act('gm', { t: 'gm:damage', targets: [s1], amount: 11 });
     setCaption('The skeleton falls');
     await wait(2600);
+    setTarget(undefined);
     setCam('table');
     setCaption('Table view: the whole room at once');
     await wait(4000);
@@ -121,7 +127,7 @@ export default function Demo3D() {
   };
 
   useEffect(() => {
-    (window as unknown as { __demo: unknown }).__demo = { run, setCam, core: g.core };
+    (window as unknown as { __demo: unknown }).__demo = { run, setCam, core: g.core, act, g, setTarget };
     if (new URLSearchParams(location.search).get('auto') === '1') setTimeout(run, 2500);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -144,13 +150,15 @@ export default function Demo3D() {
         speedLeft={me && myTurn ? me.speed - me.movedFeet : undefined}
         log={view.log}
         cam={cam}
+        targetId={target}
+        hud={view.myCharacter ? <TurnHud3D v={view} ch={view.myCharacter} target={target} setTarget={setTarget} roll={(formula, label, opts) => Promise.resolve(act('p1', { t: 'roll', formula, label, ...opts } as Intent))} endTurn={() => act('p1', { t: 'endTurn' })} /> : undefined}
         canMove={(t) => t.id === view.myTokenId && (!view.combat.active || myTurn)}
         onMove={(id, x, y) => act('p1', { t: 'move', tokenId: id, x, y })}
         onTap={(info) => {
           if (info.edge && view.map.doors[info.edge]) act('p1', { t: 'door', key: info.edge });
           else if (info.tokenId) {
             const t = view.tokens.find((k) => k.id === info.tokenId);
-            if (t) toast(t.name);
+            if (t && t.id !== view.myTokenId) setTarget((c) => (c === t.id ? undefined : t.id));
           }
         }}
       />

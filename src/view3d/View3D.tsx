@@ -2,12 +2,15 @@
 // move the overhead map sends, so initiative, movement left and the GM's controls all work the same way.
 // Cameras: first person, over the shoulder, and a tilted table view. Drag to look around, tap a square to walk there,
 // tap a door to open it, tap a figure to see who it is. The arrow pad steps one square at a time.
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import * as THREE from 'three';
 import type { GameMap } from '../engine/map';
 import type { Token, LogEntry } from '../engine/game';
 import { Engine3D, defaultQuality, QUALITY, type Quality } from './engine';
 import { Figure } from './figures';
+import { registerCustomModels } from './custom-models';
+
+registerCustomModels();
 import { reach, route } from './path';
 import { EYE, WALL_H } from './dungeon';
 
@@ -36,6 +39,12 @@ export interface View3DProps {
   preview?: boolean;
   /** Set the camera from outside (the demo uses this). */
   cam?: Cam;
+  /** How far back a free camera starts (squares). */
+  startDist?: number;
+  /** Turn controls drawn over the 3D view (attacks, end turn, HP): the table's rules, not the view's. */
+  hud?: ReactNode;
+  /** The token this player is aiming at: marked with a red ring under its feet. */
+  targetId?: string;
 }
 
 const ANG = Math.PI / 4;
@@ -70,13 +79,17 @@ export default function View3D(p: View3DProps) {
   const [hint, setHint] = useState<string | null>(null);
   const [work, setWork] = useState(p.role === 'gm');
   useEffect(() => eng.current?.setLook(work, cam === 'table'), [work, cam, ready]);
-  const view = useRef({ yaw: Math.PI, pitch: -0.25, dist: p.myTokenId ? 3.2 : 10, tyaw: Math.PI, focus: startSpot(p.map) });
+  const view = useRef({ yaw: Math.PI, pitch: -0.25, dist: p.myTokenId ? 3.2 : p.startDist ?? 10, tyaw: Math.PI, focus: startSpot(p.map) });
   const props = useRef(p);
   props.current = p;
   const camRef = useRef(cam);
   camRef.current = cam;
   const hl = useRef<THREE.InstancedMesh | null>(null);
   const seenLog = useRef<string | null>(null);
+  // numbers that float up over a figure: damage, healing, dice totals
+  const floatLayer = useRef<HTMLDivElement>(null);
+  const floats = useRef<{ el: HTMLDivElement; tokenId: string; born: number; up: number }[]>([]);
+  const targetMark = useRef<THREE.Mesh | null>(null);
 
   const steerId = p.myTokenId ?? (p.role === 'gm' ? p.currentTokenId : undefined);
   const steerRef = useRef(steerId);
@@ -95,6 +108,24 @@ export default function View3D(p: View3DProps) {
       return;
     }
     eng.current = e;
+    // red notched ring under the token you're aiming at
+    {
+      const g = new THREE.RingGeometry(0.42, 0.5, 24, 1);
+      const m = new THREE.MeshBasicMaterial({ color: '#ff4a3d', transparent: true, opacity: 0.85, depthWrite: false, side: THREE.DoubleSide });
+      const ring = new THREE.Mesh(g, m);
+      ring.rotation.x = -Math.PI / 2;
+      ring.renderOrder = 3;
+      ring.visible = false;
+      for (let i = 0; i < 4; i++) {
+        const tick = new THREE.Mesh(new THREE.PlaneGeometry(0.08, 0.16), m);
+        const a = (i / 4) * Math.PI * 2;
+        tick.position.set(Math.cos(a) * 0.58, Math.sin(a) * 0.58, 0);
+        tick.rotation.z = a + Math.PI / 2;
+        ring.add(tick);
+      }
+      e.scene.add(ring);
+      targetMark.current = ring;
+    }
     e.setMap(props.current.map, props.current.role);
     e.setLook(props.current.role === 'gm', camRef.current === 'table');
     applyVision();
@@ -107,6 +138,7 @@ export default function View3D(p: View3DProps) {
     e.onFrame = (dt) => {
       for (const f of figs.current.values()) f.update(dt);
       placeCamera(dt);
+      placeFloats();
       acc += dt;
       n++;
       if (acc > 1) {
@@ -131,6 +163,14 @@ export default function View3D(p: View3DProps) {
       for (const f of figs.current.values()) f.dispose();
       figs.current.clear();
       hl.current = null;
+      if (targetMark.current) {
+        targetMark.current.geometry.dispose();
+        (targetMark.current.material as THREE.Material).dispose();
+        for (const c of targetMark.current.children) (c as THREE.Mesh).geometry.dispose();
+        targetMark.current = null;
+      }
+      for (const f of floats.current) f.el.remove();
+      floats.current = [];
       e.dispose();
       eng.current = null;
     };
@@ -198,6 +238,7 @@ export default function View3D(p: View3DProps) {
           v.yaw = v.tyaw = snap8(Math.atan2(-(q.map.cols / 2 - f.group.position.x), -(q.map.rows / 2 - f.group.position.z)));
         }
       } else {
+        hpPops(f.token, t);
         const moved = t.x !== f.token.x || t.y !== f.token.y;
         const path = moved ? route(q.map, f.token.x, f.token.y, t.x, t.y, t.size) : undefined;
         // a walk that didn't come from the arrow pad (a tapped square, a scripted move): turn the view the way it goes
@@ -232,9 +273,17 @@ export default function View3D(p: View3DProps) {
     if (first || last.kind !== 'roll' || !last.roll) return;
     const label = `${last.roll.label} ${last.text ?? ''}`;
     const isAttack = !!last.damageFormula || /attack|hit|strike|bite|claw|slam|shot|bolt/i.test(label);
-    if (!isAttack) return;
-    const who = p.tokens.find((t) => t.id === p.currentTokenId) ?? p.tokens.find((t) => t.name === last.from);
+    const who = p.tokens.find((t) => t.name === last.from) ?? p.tokens.find((t) => last.roll!.label.startsWith(t.name + ':')) ?? p.tokens.find((t) => t.id === p.currentTokenId);
     if (!who) return;
+    // the dice total floats up over whoever rolled it
+    const r = last.roll;
+    const dmg = /damage|dmg/i.test(r.label);
+    popFloat(
+      who.id,
+      dmg ? `${r.total} dmg` : r.isD20 && r.natural === 20 ? `Crit! ${r.total}` : r.isD20 && r.natural === 1 ? `Nat 1` : `🎲 ${r.total}`,
+      dmg ? 'dmgroll' : r.isD20 && r.natural === 20 ? 'crit' : r.isD20 && r.natural === 1 ? 'miss' : 'roll',
+    );
+    if (!isAttack) return;
     const f = figs.current.get(who.id);
     if (!f) return;
     // face the nearest token of the other side
@@ -250,6 +299,72 @@ export default function View3D(p: View3DProps) {
     if (best) f.lookAt(...Figure.centre(best));
     f.play('attack', 0.1);
   }, [p.log, p.tokens, p.currentTokenId]);
+
+  // ---------- floating numbers ----------
+  function popFloat(tokenId: string, text: string, cls: string) {
+    const layer = floatLayer.current;
+    if (!layer) return;
+    const el = document.createElement('div');
+    el.className = 'v3d-float ' + cls;
+    el.textContent = text;
+    layer.appendChild(el);
+    // two pops on one figure at once stack instead of overlapping
+    const up = floats.current.filter((f) => f.tokenId === tokenId).length * 0.28;
+    floats.current.push({ el, tokenId, born: performance.now(), up });
+  }
+  const tmpV = useMemo(() => new THREE.Vector3(), []);
+  function placeFloats() {
+    const e = eng.current, el = host.current;
+    const now = performance.now();
+    // the target ring follows its figure and turns slowly
+    const tm = targetMark.current, tf = props.current.targetId ? figs.current.get(props.current.targetId) : undefined;
+    if (tm) {
+      tm.visible = !!tf && tf.group.visible;
+      if (tf) {
+        tm.position.set(tf.group.position.x, 0.03, tf.group.position.z);
+        tm.rotation.z = now / 900;
+        const s = 0.5 + Math.max(1, tf.token.size) * 0.5;
+        tm.scale.setScalar(s * (1 + Math.sin(now / 220) * 0.04));
+      }
+    }
+    if (!e || !el || !floats.current.length) return;
+    const w = el.clientWidth, h = el.clientHeight;
+    floats.current = floats.current.filter((f) => {
+      const age = (now - f.born) / 1700;
+      if (age >= 1) {
+        f.el.remove();
+        return false;
+      }
+      const fig = figs.current.get(f.tokenId);
+      if (!fig || !fig.group.visible) {
+        f.el.style.opacity = '0';
+        return true;
+      }
+      tmpV.copy(fig.group.position).setY(fig.height + 0.3 + f.up + age * 0.55).project(e.camera);
+      if (tmpV.z > 1) {
+        f.el.style.opacity = '0';
+        return true;
+      }
+      const x = (tmpV.x * 0.5 + 0.5) * w, y = (-tmpV.y * 0.5 + 0.5) * h;
+      f.el.style.transform = `translate(${x.toFixed(1)}px, ${y.toFixed(1)}px) translate(-50%, -100%) scale(${age < 0.12 ? 0.7 + age * 2.5 : 1})`;
+      f.el.style.opacity = String(age > 0.7 ? (1 - age) / 0.3 : 1);
+      return true;
+    });
+  }
+  /** Compare a token's old and new state and pop what changed: damage, healing, bloodied, down. */
+  function hpPops(a: VTok, b: VTok) {
+    if (a.hp >= 0 && b.hp >= 0 && a.maxHp > 0) {
+      if (b.hp < a.hp) popFloat(b.id, `−${a.hp - b.hp}`, 'dmg');
+      else if (b.hp > a.hp) popFloat(b.id, `+${b.hp - a.hp}`, 'heal');
+      if (b.hp === 0 && a.hp > 0) popFloat(b.id, 'Down', 'down');
+      return;
+    }
+    // HP hidden from this phone: only the bloodied/down label changes
+    if ((b.hpLabel ?? '') !== (a.hpLabel ?? '')) {
+      if (b.hpLabel === 'Bloodied') popFloat(b.id, 'Bloodied', 'dmg');
+      else if (b.hpLabel === 'Down' || (b.hp === 0 && a.hp !== 0)) popFloat(b.id, 'Down', 'down');
+    } else if (b.hp === 0 && a.hp !== 0) popFloat(b.id, 'Down', 'down');
+  }
 
   // ---------- squares you can reach this turn ----------
   function reachable() {
@@ -501,10 +616,10 @@ export default function View3D(p: View3DProps) {
       q.onTap?.({ x: 0, y: 0, gx: h.point.x, gy: h.point.z, edge: k });
       return;
     }
-    if (h.object.userData.floor || h.point.y < 0.2) {
+    if (steerRef.current && (h.object.userData.floor || h.point.y < 0.2)) {
       const gx = Math.floor(h.point.x), gy = Math.floor(h.point.z);
       moveTo(gx, gy);
-    }
+    } else q.onTap?.({ x: 0, y: 0, gx: h.point.x, gy: h.point.z, edge: '' });
   }
 
   useEffect(() => {
@@ -517,6 +632,7 @@ export default function View3D(p: View3DProps) {
   return (
     <div className="v3d">
       <div ref={host} className="v3d-canvas" />
+      <div ref={floatLayer} className="v3d-floats" aria-hidden />
       <div className="v3d-top">
         {p.onExit && (
           <button className="v3d-btn" onClick={p.onExit} aria-label="Back to the map">
@@ -539,7 +655,7 @@ export default function View3D(p: View3DProps) {
           {quality === 'high' ? 'High' : quality === 'medium' ? 'Med' : 'Low'} · {fps}
         </button>
       </div>
-      {steerTok && p.combatActive && p.currentTokenId === steerTok.id && p.speedLeft !== undefined && <div className="v3d-feet">{p.speedLeft} ft left</div>}
+      {p.hud ? <div className="v3d-hud">{p.hud}</div> : steerTok && p.combatActive && p.currentTokenId === steerTok.id && p.speedLeft !== undefined && <div className="v3d-feet">{p.speedLeft} ft left</div>}
       {hint && <div className="v3d-hint">{hint}</div>}
       <div className="v3d-pad">
         <button onClick={() => turn(ANG)} aria-label="Turn left">⟲</button>

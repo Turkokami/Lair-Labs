@@ -327,6 +327,59 @@ function nameplate(t: Token, def: ReturnType<typeof creatureById>) {
   return { sprite: sp, draw };
 }
 
+// ---------- your own models ----------
+/** A character model of your own, ready to stand in a figure's place. */
+export interface CustomFigure {
+  /** The model (a glTF scene, or any three.js object). Feet at y=0 is best; it is scaled to the figure's height and centred. */
+  object: THREE.Object3D;
+  /** Its moves. Either keyed by name, or a list (e.g. a glTF's animations) matched by name: idle, walk/run, attack/slash/cast, hurt/hit, die/death. */
+  clips?: Partial<Record<ClipName, THREE.AnimationClip>> | THREE.AnimationClip[];
+  /** Height in squares (1 square = 5 ft). Defaults to the stand-in's height for the creature's size. */
+  height?: number;
+  /** Turn the model to face forward (+z), in radians. */
+  yaw?: number;
+}
+export type FigureModelLoader = (t: Token) => CustomFigure | Promise<CustomFigure>;
+const FIGURE_MODELS = new Map<string, FigureModelLoader>();
+/**
+ * Put your own model on figures. key is matched against, in order: the token's creature art id, its monster id,
+ * its character id, then "pc" / "monster" / "npc", then "*". Moves you don't supply fall back to simple built-in ones.
+ */
+export function registerFigureModel(key: string, load: FigureModelLoader) {
+  FIGURE_MODELS.set(key, load);
+}
+/** The same, from a .glb/.gltf file (loaded only when a figure needs it). */
+export function registerFigureGLTF(key: string, url: string, opts: { height?: number; yaw?: number } = {}) {
+  const cache = new Map<string, Promise<{ scene: THREE.Object3D; animations: THREE.AnimationClip[] }>>();
+  registerFigureModel(key, async () => {
+    if (!cache.has(url))
+      cache.set(
+        url,
+        import('three/examples/jsm/loaders/GLTFLoader.js').then(({ GLTFLoader }) => new GLTFLoader().loadAsync(url)),
+      );
+    const g = await cache.get(url)!;
+    const { clone } = await import('three/examples/jsm/utils/SkeletonUtils.js');
+    return { object: clone(g.scene), clips: g.animations, ...opts };
+  });
+}
+function loaderFor(t: Token) {
+  for (const k of [t.art, t.monsterId, t.charId, t.kind, '*']) if (k && FIGURE_MODELS.has(k)) return FIGURE_MODELS.get(k)!;
+  return undefined;
+}
+const CLIP_WORDS: Record<ClipName, RegExp> = { idle: /idle|stand|breath/i, walk: /walk|run|move/i, attack: /attack|slash|swing|punch|strike|cast|shoot/i, hurt: /hurt|hit|damage|flinch/i, die: /die|death|dead/i };
+/** Simple moves for a model that brought none of its own: they move the whole body, so they work on anything. */
+function fallbackClips(): Record<ClipName, THREE.AnimationClip> {
+  const P = (n: string, t: number[], v: number[]) => new THREE.VectorKeyframeTrack(`lairBody.${n}`, t, v);
+  const Q = (t: number[], ax: number[]) => new THREE.QuaternionKeyframeTrack('lairBody.quaternion', t, ax.flatMap((a) => new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(1, 0, 0), a).toArray()));
+  return {
+    idle: new THREE.AnimationClip('idle', 2.4, [P('scale', [0, 1.2, 2.4], [1, 1, 1, 1.01, 0.985, 1.01, 1, 1, 1])]),
+    walk: new THREE.AnimationClip('walk', 0.5, [P('position', [0, 0.125, 0.25, 0.375, 0.5], [0, 0, 0, 0, 0.05, 0, 0, 0, 0, 0, 0.05, 0, 0, 0, 0])]),
+    attack: new THREE.AnimationClip('attack', 0.55, [P('position', [0, 0.18, 0.55], [0, 0, 0, 0, 0.02, 0.3, 0, 0, 0]), Q([0, 0.18, 0.55], [0, 0.2, 0])]),
+    hurt: new THREE.AnimationClip('hurt', 0.45, [P('position', [0, 0.1, 0.45], [0, 0, 0, 0, 0, -0.15, 0, 0, 0]), Q([0, 0.1, 0.45], [0, -0.15, 0])]),
+    die: new THREE.AnimationClip('die', 1.1, [Q([0, 1.1], [0, -Math.PI / 2 + 0.1]), P('position', [0, 1.1], [0, 0, 0, 0, 0.12, 0])]),
+  };
+}
+
 export class Figure {
   group = new THREE.Group();
   mixer: THREE.AnimationMixer;
@@ -343,6 +396,7 @@ export class Figure {
   lastHp: number;
   private lastPlate = '';
   private materials: THREE.Material[] = [];
+  private gone = false;
 
   constructor(public token: Token & { hpLabel?: string }, vis: VisUniforms) {
     const def = token.art ? creatureById(token.art) : undefined;
@@ -399,6 +453,64 @@ export class Figure {
     this.place(token);
     this.dead = token.maxHp > 0 && token.hp <= 0 && token.kind !== 'pc';
     if (this.dead) this.play('die', 0);
+    const load = loaderFor(token);
+    if (load)
+      Promise.resolve()
+        .then(() => load(token))
+        .then((m) => !this.gone && this.useModel(m))
+        .catch((err) => console.warn('Custom figure model failed; keeping the stand-in', err));
+  }
+
+  /** Swap the stand-in body for a model of your own. Its moves replace the stand-in's; missing ones use simple built-in moves. */
+  useModel(m: CustomFigure) {
+    const old = this.group.children[0];
+    const root = new THREE.Group();
+    const body = new THREE.Group();
+    body.name = 'lairBody';
+    const obj = m.object;
+    if (m.yaw) obj.rotation.y += m.yaw;
+    obj.updateMatrixWorld(true);
+    const box = new THREE.Box3().setFromObject(obj);
+    const h = box.max.y - box.min.y || 1;
+    const want = m.height ?? this.height;
+    const s = want / h;
+    obj.scale.multiplyScalar(s);
+    obj.position.set(-((box.min.x + box.max.x) / 2) * s, -box.min.y * s, -((box.min.z + box.max.z) / 2) * s);
+    obj.traverse((o) => {
+      const mesh = o as THREE.Mesh;
+      if (mesh.isMesh) mesh.castShadow = true;
+    });
+    body.add(obj);
+    root.add(body);
+    root.rotation.y = old.rotation.y;
+    // the body must stay the group's first child: the camera and facing code look for it there
+    const rest = this.group.children.filter((c) => c !== old);
+    this.group.clear();
+    this.group.add(root, ...rest);
+    this.height = want;
+    this.plate.sprite.position.y = this.height + 0.28;
+    // new moves
+    this.mixer.stopAllAction();
+    this.mixer = new THREE.AnimationMixer(root);
+    const base = fallbackClips();
+    const list = Array.isArray(m.clips) ? m.clips : Object.values(m.clips ?? {}).filter(Boolean) as THREE.AnimationClip[];
+    const named = Array.isArray(m.clips) ? {} : (m.clips ?? {});
+    for (const k of Object.keys(base) as ClipName[]) {
+      const clip = named[k] ?? list.find((c) => CLIP_WORDS[k].test(c.name)) ?? base[k];
+      const a = this.mixer.clipAction(clip);
+      if (k === 'attack' || k === 'hurt' || k === 'die') {
+        a.setLoop(THREE.LoopOnce, 1);
+        a.clampWhenFinished = true;
+      }
+      this.actions[k] = a;
+    }
+    this.mixer.addEventListener('finished', (e) => {
+      if (e.action !== this.actions.die) this.play(this.path.length ? 'walk' : 'idle', 0.2);
+    });
+    const now = this.dead ? 'die' : this.path.length ? 'walk' : 'idle';
+    this.current = now;
+    this.actions[now].play();
+    if (this.dead) this.actions.die.time = this.actions.die.getClip().duration;
   }
 
   /** Centre of the token's squares, in world units. */
@@ -423,14 +535,17 @@ export class Figure {
   }
 
   /** Called when the server's copy of the token changes. */
+  private lastLabel?: string;
   sync(t: Token & { hpLabel?: string }, current: boolean, path?: [number, number][]) {
     const key = `${t.name}|${t.hp}|${t.maxHp}|${t.hpLabel ?? ''}|${current ? 1 : 0}`;
     if (key !== this.lastPlate) {
       this.plate.draw(t, current);
       this.lastPlate = key;
     }
-    if (t.hp < this.lastHp && t.hp > 0) this.play('hurt', 0.08);
-    if (t.maxHp > 0 && t.hp <= 0 && !this.dead && t.kind !== 'pc') {
+    // hidden HP comes through as -1, with only a Bloodied/Down label
+    if ((t.hp < this.lastHp && t.hp > 0) || (t.hpLabel === 'Bloodied' && this.lastLabel !== 'Bloodied')) this.play('hurt', 0.08);
+    this.lastLabel = t.hpLabel;
+    if ((t.maxHp > 0 || t.maxHp === -1) && t.hp === 0 && !this.dead && t.kind !== 'pc') {
       this.play('die', 0.15);
       this.dead = true;
     }
@@ -479,6 +594,7 @@ export class Figure {
   }
 
   dispose() {
+    this.gone = true;
     this.mixer.stopAllAction();
     for (const m of this.materials) m.dispose();
     (this.plate.sprite.material as THREE.SpriteMaterial).map?.dispose();
