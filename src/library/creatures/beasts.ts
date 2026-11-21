@@ -1337,6 +1337,54 @@ function drawCrab(g: G, c: Colors, r: Rand, f: Flags) {
   if (f.scar) scar(g, 34, 56, 42, 70);
 }
 
+
+function drawDino(g: G, c: Colors, r: Rand, f: Flags, kind: 'rex' | 'allo' | 'trike' | 'ptera') {
+  if (kind === 'trike') {
+    // bony frill fanning behind the head, edged with knobs
+    const fr: number[][] = [];
+    for (let i = 0; i <= 12; i++) { const a = Math.PI * (1.05 + (i / 12) * 0.9); fr.push([50 + Math.cos(a) * 46, 52 + Math.sin(a) * 44]); }
+    fr.push([92, 62], [8, 62]);
+    shape(g, fr, c.frill, 50, 30, 44);
+    for (let i = 0; i <= 10; i++) { const a = Math.PI * (1.08 + (i / 10) * 0.84); ellipse(g, 50 + Math.cos(a) * 44, 52 + Math.sin(a) * 42, 4, 4); paint(g, shade(c.frill, -0.25), INK, 1); }
+    mir((s) => { ellipse(g, 50 + s * 22, 26, 7, 5); paint(g, shade(c.frill, 0.25), INK, 1.2); });
+    bust(g, c.scale, 74, 40);
+    shape(g, [[50, 34], [70, 40], [74, 58], [66, 78], [50, 92], [34, 78], [26, 58], [30, 40]], c.scale, 44, 50, 34);
+    scaleTex(g, r, 30, 40, 40, 30, alpha(shade(c.scale, -0.45), 0.5), 16, 2.6);
+    // parrot beak
+    shape(g, [[42, 78], [58, 78], [56, 92], [50, 100], [44, 92]], c.beak, 48, 84, 12, 1.8);
+    // brow horns and nose horn
+    mir((s) => horn(g, [50 + s * 14, 42], [50 + s * 22, 22], [50 + s * 18, 2], 6, c.horn, 2));
+    horn(g, [50, 70], [50, 64], [50, 54], 4, c.horn, 0);
+    eyes(g, 50, 50, 15, 4, 3.6, c.eye, { pupil: 'round', pr: 0.4, brow: 0.5, lid: shade(c.scale, -0.15) });
+    nostrils(g, 50, 74, 5, 1.6, 1.2, 0.4);
+  } else if (kind === 'ptera') {
+    // wings spread wide behind
+    mir((s) => { poly(g, mx([[56, 58], [100, 30], [104, 52], [86, 76], [60, 80]], s)); paint(g, domeFill(g, 50 + s * 32, 54, 30, c.wing, 0.3), INK, LW); for (let i = 0; i < 3; i++) curve(g, [50 + s * 8, 66], [50 + s * (24 + i * 8), 50 + i * 6], [50 + s * (44 + i * 8), 40 + i * 12], alpha(INK, 0.5), 1); });
+    bust(g, c.skin, 74, 26);
+    // long crest swept back and long toothless beak pointing down
+    shape(g, [[50, 30], [60, 8], [66, 2], [62, 20], [56, 36]], c.crest, 58, 18, 18, 1.8);
+    shape(g, [[38, 36], [50, 26], [62, 36], [62, 52], [50, 58], [38, 52]], c.skin, 46, 40, 18);
+    shape(g, [[44, 50], [56, 50], [53, 80], [50, 98], [47, 80]], c.beak, 48, 66, 20, 1.8);
+    g.beginPath(); g.moveTo(50, 56); g.lineTo(50, 94); g.strokeStyle = alpha(INK, 0.6); g.lineWidth = 1; g.stroke();
+    eyes(g, 50, 40, 9, 3, 3, c.eye, { pupil: 'bead' });
+  } else {
+    const rex = kind === 'rex';
+    bust(g, c.scale, 72, rex ? 46 : 40);
+    scaleTex(g, r, 10, 76, 80, 24, alpha(shade(c.scale, -0.45), 0.5), 16, 3);
+    // huge boxy skull with the jaws open toward us
+    shape(g, [[50, 14], [74, 20], [84, 40], [82, 58], [50, 62], [18, 58], [16, 40], [26, 20]], c.scale, 44, 32, 40);
+    scaleTex(g, r, 22, 18, 56, 30, alpha(shade(c.scale, -0.45), 0.5), 22, 2.8);
+    blob(g, [[22, 56], [50, 60], [78, 56], [72, 82], [50, 90], [28, 82]]); paint(g, '#5a1418', INK, 2);
+    blob(g, [[34, 74], [50, 70], [66, 74], [60, 84], [50, 87], [40, 84]]); paint(g, '#a83a3e', null as unknown as string, 0);
+    for (let i = 0; i < 9; i++) { const t = i / 8; fang(g, 25 + t * 50, 57 + Math.sin(t * Math.PI) * 3, rex ? 7 : 6, 3.4, '#f3ead2', 1, 0.8); }
+    for (let i = 0; i < 7; i++) { const t = i / 6; fang(g, 30 + t * 40, 86 - Math.sin(t * Math.PI) * 4, 5, 3, '#f3ead2', -1, 0.8); }
+    shape(g, [[26, 84], [50, 90], [74, 84], [68, 98], [50, 102], [32, 98]], shade(c.scale, -0.1), 50, 92, 18, 1.8);
+    if (!rex) { mir((s) => { blob(g, mx([[60, 26], [66, 14], [72, 26]], s)); paint(g, c.crest, INK, 1.4); }); for (let i = -2; i <= 2; i++) spike(g, 50 + i * 4, 18, -Math.PI / 2, 5, 3, c.crest, 1); }
+    nostrils(g, 50, 26, 8, 2.2, 1.4, 0.4);
+    eyes(g, 50, 38, 24, 4.6, 3.6, c.eye, { pupil: 'slit', rot: 0.25, brow: 0.8, lid: shade(c.scale, -0.2) });
+  }
+  if (f.scar) scar(g, 30, 30, 40, 52);
+}
 // ===================================================================================================
 // Definitions
 // ===================================================================================================
@@ -1379,6 +1427,14 @@ const BEASTS: CreatureDef[] = [
   mk('lion', 'Lion', 'beast', 'Large', '1', ['cat', 'big cat', 'savanna', 'mane'], { fur: '#c9964e', mane: '#8a5426', muzzle: '#f0dfbe', inner: '#6a4a2a', nose: '#b8705a', eye: '#e3a83a' },
     [V('Golden'), V('Dark mane', { mane: '#3e2414' }), V('White', { fur: '#e8e0cc', mane: '#c8b8a0', muzzle: '#faf6ec', eye: '#7cc0d8' }), V('Lioness', {}, { nomane: 1 }), V('Scarred', {}, { scar: 1 })],
     (g, c, r, f) => drawCat(g, c, r, f, { mane: !f.nomane })),
+  mk('tyrannosaurus-rex', 'Tyrannosaurus Rex', 'beast', 'Huge', '8', ['dinosaur', 'prehistoric', 'jungle', 'lost world', 'giant'], { scale: '#6a6a3a', eye: '#f0b020' },
+    [V('Olive'), V('Rust', { scale: '#7a4a2e' }), V('Grey', { scale: '#6a6a66' }), V('Scarred', {}, { scar: 1 })], (g, c, r, f) => drawDino(g, c, r, f, 'rex'), 'tyrannosaurusRex'),
+  mk('allosaurus', 'Allosaurus', 'beast', 'Large', '2', ['dinosaur', 'prehistoric', 'jungle', 'lost world'], { scale: '#7a6a4a', crest: '#c8502a', eye: '#e8c040' },
+    [V('Tan'), V('Green', { scale: '#4a6a3a', crest: '#e8a030' }), V('Striped dark', { scale: '#4a3e30', crest: '#c8302a' })], (g, c, r, f) => drawDino(g, c, r, f, 'allo'), 'allosaurus'),
+  mk('triceratops', 'Triceratops', 'beast', 'Huge', '5', ['dinosaur', 'prehistoric', 'horns', 'plains', 'lost world'], { scale: '#6a7a52', frill: '#b8783a', horn: '#efe2c4', beak: '#4a4038', eye: '#2a1a10' },
+    [V('Green'), V('Grey', { scale: '#7a7670', frill: '#9a5a4a' }), V('Bright frill', { frill: '#d84a2a' })], (g, c, r, f) => drawDino(g, c, r, f, 'trike'), 'triceratops'),
+  mk('pteranodon', 'Pteranodon', 'beast', 'Medium', '1/4', ['dinosaur', 'prehistoric', 'flying', 'coast', 'cliff'], { skin: '#9a8a74', wing: '#7a5a48', crest: '#c8482a', beak: '#d8c8a0', eye: '#111' },
+    [V('Brown'), V('Grey', { skin: '#8a8a8e', wing: '#5a5a62' }), V('Sea', { wing: '#3a5a6a', crest: '#e8a030' })], (g, c, r, f) => drawDino(g, c, r, f, 'ptera'), 'pteranodon'),
   mk('tiger', 'Tiger', 'beast', 'Large', '1', ['cat', 'big cat', 'jungle', 'stripes'], { fur: '#d9822b', muzzle: '#f6ecde', inner: '#3a2414', nose: '#c86a5a', eye: '#e8c040', stripe: '#1e140e' },
     [V('Orange'), V('White', { fur: '#ebe6dc', muzzle: '#ffffff', nose: '#d89a9a', eye: '#6ab0e0', stripe: '#2a2624' }), V('Golden', { fur: '#e6b45a', stripe: '#a0602a' }), V('Scarred', {}, { scar: 1 })], (g, c, r, f) => drawCat(g, c, r, f, { stripes: true })),
   mk('saber-toothed-tiger', 'Saber-Toothed Tiger', 'beast', 'Large', '2', ['cat', 'big cat', 'prehistoric', 'winter', 'smilodon'], { fur: '#b88a52', muzzle: '#efe0c4', inner: '#4a3220', nose: '#8a5a4a', eye: '#e8b84a', stripe: '#6a4a2a' },

@@ -1,5 +1,7 @@
 import type { CreatureDef } from '../art/types';
 import { CORE_CREATURES } from './core';
+import { PEOPLE_CREATURES } from './people';
+import { UNDEAD_FEY_CREATURES } from './undead-fey';
 import { BEAST_CREATURES } from './beasts';
 import { PLANAR_CREATURES } from './planar';
 
@@ -7,7 +9,7 @@ import { PLANAR_CREATURES } from './planar';
 const NOT_FREE = new Set(['twigBlight', 'needleBlight', 'vineBlight', 'myconid', 'grick']);
 const seen = new Set<string>(NOT_FREE);
 /** Every creature and hero token. Ids are stable: tokens refer to them. When two sets draw the same id, the first wins. */
-export const CREATURES: CreatureDef[] = [...CORE_CREATURES, ...BEAST_CREATURES, ...PLANAR_CREATURES].filter((c) => !seen.has(c.id) && !!seen.add(c.id));
+export const CREATURES: CreatureDef[] = [...CORE_CREATURES, ...PEOPLE_CREATURES, ...UNDEAD_FEY_CREATURES, ...BEAST_CREATURES, ...PLANAR_CREATURES].filter((c) => !seen.has(c.id) && !!seen.add(c.id));
 
 const byId = new Map(CREATURES.map((c) => [c.id, c]));
 export const creatureById = (id: string): CreatureDef | undefined => byId.get(id);
@@ -18,7 +20,20 @@ const bySrd = new Map<string, CreatureDef>();
 for (const c of CREATURES) if (c.srd && !bySrd.has(normMonsterId(c.srd))) bySrd.set(normMonsterId(c.srd), c);
 const byName = new Map(CREATURES.map((c) => [normMonsterId(c.name.toLowerCase()), c]));
 /** The token art for a stat-block monster id from src/rules/monsters.ts. */
-export const creatureForMonster = (monsterId: string): CreatureDef | undefined => bySrd.get(normMonsterId(monsterId)) ?? byName.get(normMonsterId(monsterId));
+// Stat blocks whose token is a close cousin's art.
+const ALIAS: Record<string, string> = {
+  rat: 'giant-rat', shriekerFungus: 'shrieker', goblinMinion: 'goblin', goblinWarrior: 'goblin', merfolkSkirmisher: 'merfolk',
+  giantVenomousSnake: 'snake', swarmOfBats: 'bat', tough: 'thug', skeletonWarhorse: 'warhorse-skeleton', willOWisp: 'will-o-wisp',
+};
+export const creatureForMonster = (monsterId: string): CreatureDef | undefined => {
+  const id = normMonsterId(monsterId);
+  const hit = bySrd.get(id) ?? byName.get(id) ?? (ALIAS[id] ? byId.get(ALIAS[id]) : undefined) ?? byId.get(id.replace(/[A-Z]/g, (c) => '-' + c.toLowerCase()));
+  if (hit) return hit;
+  const w = /^([a-z]+)DragonWyrmling$/.exec(id);
+  if (w) return byId.get(`dragon-${w[1]}-wyrmling`);
+  const d = /^(young|adult|ancient)([A-Z][a-z]+)Dragon$/.exec(id);
+  return d ? byId.get(`dragon-${d[2].toLowerCase()}-${d[1]}`) : undefined;
+};
 
 /** Stat block ids that could belong to a creature token, best guess first. */
 export function monsterIdCandidates(c: CreatureDef): string[] {

@@ -242,7 +242,7 @@ export function leaf(g: G, x: number, y: number, len: number, wid: number, a: nu
   g.quadraticCurveTo(0, wid, -len / 2, 0);
   g.closePath();
   paint(g, litFill(g, -len / 2, -wid, len, wid * 2, col, 0.25), alpha(shade(col, -0.65), 0.9), lw);
-  line(g, -len / 2, 0, len / 2 - 1, 0, alpha(shade(col, -0.5), 0.6), 0.6);
+  if (len >= 13) line(g, -len / 2, 0, len / 2 - 1, 0, alpha(shade(col, -0.5), 0.6), 0.6);
   g.restore();
 }
 
@@ -426,7 +426,6 @@ function drawBody(b: B) {
   bodyPath(b);
   paint(g, domeFill(g, 38, top + 10, 62, fillCol, isMetal ? 0.4 : 0.22), INK, LW);
   g.save();
-  bodyPath(b);
   g.clip();
   const neckV = (depth: number, col: string) => {
     poly(g, [[39, top - 2], [50, top + depth], [61, top - 2]]);
@@ -823,7 +822,7 @@ function drawMantle(b: B) {
     g.strokeStyle = alpha(shade(col, -0.5), 0.7);
     g.lineWidth = 1;
     g.beginPath();
-    for (let i = 0; i < 16; i++) {
+    for (let i = 0; i < 10; i++) {
       const x = 10 + r() * 80, y = top - 2 + r() * 14;
       g.moveTo(x, y); g.lineTo(x + (x < 50 ? -2 : 2), y + 4);
     }
@@ -1038,7 +1037,7 @@ function drawFrontHorns(b: B) {
       default:
         return;
     }
-    taper(g, pts, w0, 0.6);
+    taper(g, pts, w0, 0.6, 3);
     paint(g, domeFill(g, HX + s * hw * 0.8, HY - hh * 1.2, 20, col, 0.4), INK, 1.7);
     ridges(4);
   }
@@ -1059,7 +1058,6 @@ function drawFace(b: B) {
   facePath(b);
   paint(g, domeFill(g, HX - hw * 0.25, HY - hh * 0.25, hh * 1.3, skin, 0.28), INK, LW);
   g.save();
-  facePath(b);
   g.clip();
   // jaw shade on the right
   const jg = g.createLinearGradient(HX - hw, 0, HX + hw * 1.1, 0);
@@ -1139,11 +1137,11 @@ function faceScales(b: B) {
   g.strokeStyle = alpha(shade(skin, -0.55), 0.5);
   g.lineWidth = 0.9;
   g.beginPath();
-  for (let row = 0; row < 4; row++) {
-    const y = HY - hh * 0.95 + row * 5.2;
-    for (let x = HX - hw + (row % 2) * 3; x < HX + hw; x += 6) {
-      g.moveTo(x + 3, y);
-      g.arc(x, y, 3, 0, Math.PI);
+  for (let row = 0; row < 3; row++) {
+    const y = HY - hh * 0.92 + row * 6;
+    for (let x = HX - hw + (row % 2) * 3.5; x < HX + hw; x += 7) {
+      g.moveTo(x + 3.5, y);
+      g.arc(x, y, 3.5, 0, Math.PI);
     }
   }
   g.stroke();
@@ -1731,10 +1729,12 @@ function drawWarpaint(b: B) {
   g.fillStyle = alpha(o.warpaint, 0.85);
   g.fill();
   // chin stripes
-  for (const s of [-1, 0, 1]) {
-    rr(g, HX + s * hw * 0.22 - 1.4, b.HY + hh * 0.78, 2.8, hh * 0.3, 1.4);
-    g.fill();
-  }
+  g.beginPath();
+  for (const s of [-1, 0, 1]) { g.moveTo(HX + s * hw * 0.22, b.HY + hh * 0.8); g.lineTo(HX + s * hw * 0.22, b.HY + hh * 1.05); }
+  g.strokeStyle = alpha(o.warpaint, 0.85);
+  g.lineWidth = 2.8;
+  g.lineCap = 'round';
+  g.stroke();
   g.restore();
 }
 
@@ -1789,7 +1789,6 @@ function paintHair(b: B, pts: number[][]) {
   blob(g, pts);
   paint(g, domeFill(g, HX - 6, HY - hh * 0.9, hh * 1.1, hair, 0.35), INK, LW);
   g.save();
-  blob(g, pts);
   g.clip();
   g.strokeStyle = alpha(shade(hair, -0.45), 0.55);
   g.lineWidth = 1.1;
@@ -2029,7 +2028,7 @@ function drawHoodFrame(b: B) {
     g.clip('evenodd');
     g.setLineDash([0.1, 3.4]);
     g.lineCap = 'round';
-    for (let y = HY - hh - 18, row = 0; y < b.top + 12; y += 3.3, row++) {
+    for (let y = HY - hh - 18, row = 0; y < b.top + 12; y += 3.7, row++) {
       g.beginPath(); g.moveTo(row % 2 ? 1.7 : 0, y); g.lineTo(100, y);
       g.strokeStyle = alpha(shade(col, -0.55), 0.9); g.lineWidth = 2.4; g.stroke();
     }
