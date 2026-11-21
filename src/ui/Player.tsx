@@ -5,7 +5,7 @@ import { normalizeCode, prettyCode, type Intent, type PlayerView } from '../engi
 import type { Character } from '../rules/character';
 import { computeSheet } from '../rules/character';
 import { conditionName } from '../rules/core';
-import { MapCanvas } from './MapCanvas';
+import { MapCanvas, lineToTemplate, type TemplateShape } from './MapCanvas';
 import { CharBuilder } from './CharBuilder';
 import { SheetPanel, ActionsPanel, BagPanel } from './Sheet';
 import { DiceTray, LogView, Modal, clientId, store, toast, vibrate, type RollFn } from './common';
@@ -88,6 +88,9 @@ function PlayerTable({ s, onLeave }: { s: ClientSession; onLeave: () => void }) 
   const [building, setBuilding] = useState<false | 'new' | 'levelup'>(false);
   const [seenHandout, setSeenHandout] = useState(0);
   const [menu, setMenu] = useState(false);
+  const [mapTool, setMapTool] = useState<'move' | 'measure' | 'area'>('move');
+  const [area, setArea] = useState<TemplateShape>({ shape: 'sphere', size: 20, color: '#4cc9f0' });
+  const [safetyOpen, setSafetyOpen] = useState(false);
   const ch = v.myCharacter;
   const send = (i: Intent) => s.send(i);
   const safe = (p: Promise<void>) => p.catch((e: Error) => toast(e.message, 'error'));
@@ -178,7 +181,18 @@ function PlayerTable({ s, onLeave }: { s: ClientSession; onLeave: () => void }) 
                 canDragToken={(t) => t.id === v.myTokenId}
                 speedLeft={combat.movedLeft}
                 onTokenDrop={(id, x, y) => safe(send({ t: 'move', tokenId: id, x, y }))}
+                visible={v.visible}
+                lit={v.lit}
+                templates={v.templates}
+                dragTool={mapTool === 'move' ? null : 'line'}
+                templateShape={mapTool === 'area' ? area : undefined}
+                onLine={(a, b) => mapTool === 'area' && safe(send({ t: 'template', template: { ...area, ...lineToTemplate(area.shape, a, b) } }))}
                 onTap={(info) => {
+                  if (mapTool === 'area') {
+                    const mine = [...(v.templates ?? [])].reverse().find((t) => t.by === v.you && Math.hypot(info.gx - t.x, info.gy - t.y) < 0.8);
+                    if (mine) safe(send({ t: 'removeTemplate', id: mine.id }));
+                    return;
+                  }
                   if (v.map.doors[info.edge] && edgeNear(info.gx, info.gy, info.edge)) safe(send({ t: 'door', key: info.edge }));
                   else if (info.tokenId) {
                     const t = v.tokens.find((k) => k.id === info.tokenId);
@@ -196,7 +210,26 @@ function PlayerTable({ s, onLeave }: { s: ClientSession; onLeave: () => void }) 
                 </div>
               ))}
             </div>
-            {!v.combat.active && <p className="hint">Drag your token to move. Tap a door to open it.</p>}
+            {!v.curtain && (
+              <div className="map-tools phone-tools">
+                <button className={mapTool === 'measure' ? 'on' : ''} onClick={() => setMapTool(mapTool === 'measure' ? 'move' : 'measure')} aria-label="Ruler">📏</button>
+                <button className={mapTool === 'area' ? 'on' : ''} onClick={() => setMapTool(mapTool === 'area' ? 'move' : 'area')} aria-label="Spell area">🎯</button>
+                {myToken && <button className={myToken.light ? 'on' : ''} onClick={() => safe(send({ t: 'torch', tokenId: myToken.id, on: !myToken.light }))} aria-label="Torch">🔥</button>}
+              </div>
+            )}
+            {mapTool === 'area' && (
+              <div className="area-bar card">
+                <div className="chip-scroll">
+                  {(['sphere', 'cone', 'line', 'cube'] as const).map((k) => <button key={k} className={'chip-btn small' + (area.shape === k ? ' on' : '')} onClick={() => setArea({ ...area, shape: k })}>{k[0].toUpperCase() + k.slice(1)}</button>)}
+                  <select value={area.size} onChange={(e) => setArea({ ...area, size: Number(e.target.value) })} aria-label="Size in feet">
+                    {[5, 10, 15, 20, 30, 40, 60, 90, 120].map((f) => <option key={f} value={f}>{f} ft</option>)}
+                  </select>
+                </div>
+                <span className="small muted">Drag from you toward the target. Tap the start of your area to remove it.</span>
+              </div>
+            )}
+            {!v.combat.active && mapTool === 'move' && <p className="hint">Drag your token to move. Tap a door to open it.</p>}
+            {mapTool === 'measure' && <p className="hint">Drag to measure. Every square is 5 ft.</p>}
           </div>
         )}
         {tab === 'sheet' && <div className="pad scroll"><SheetPanel ch={ch} roll={roll} send={send} canEdit /></div>}
@@ -223,6 +256,17 @@ function PlayerTable({ s, onLeave }: { s: ClientSession; onLeave: () => void }) 
           <p className="pre">{v.handout.text}</p>
         </Modal>
       )}
+      {safetyOpen && (
+        <Modal title="Table safety" onClose={() => setSafetyOpen(false)}>
+          <div className="stack safety-card">
+            <b>Lines: never in our game</b>
+            {v.safety.lines.length ? <ul>{v.safety.lines.map((l) => <li key={l}>{l}</li>)}</ul> : <p className="muted small">None set yet. Tell your GM if something should be off the table.</p>}
+            <b>Veils: happens off screen</b>
+            {v.safety.veils.length ? <ul>{v.safety.veils.map((l) => <li key={l}>{l}</li>)}</ul> : <p className="muted small">None set yet.</p>}
+            {v.safety.xcard && <p className="small">Anything feel wrong? Tap the X-card in the menu. The GM sees it without your name and changes the scene.</p>}
+          </div>
+        </Modal>
+      )}
       {menu && (
         <Modal title="Table" onClose={() => setMenu(false)}>
           <div className="stack">
@@ -230,6 +274,10 @@ function PlayerTable({ s, onLeave }: { s: ClientSession; onLeave: () => void }) 
             <ul className="small">{v.players.map((p) => <li key={p.id}>{p.name}{p.connected ? '' : ' (away)'}</li>)}</ul>
             <button className="ghost" onClick={() => { setMenu(false); setBuilding('new'); }}>Switch to a new hero</button>
             {v.handout && <button className="ghost" onClick={() => { setSeenHandout(0); setMenu(false); }}>Show the last handout</button>}
+            <button className="ghost" onClick={() => { setMenu(false); setSafetyOpen(true); }}>Table safety: lines and veils</button>
+            {v.safety.xcard && (
+              <button className="xcard-btn" onClick={() => safe(send({ t: 'xcard' })).then(() => { setMenu(false); toast('The GM will change the scene. No one will ask why.'); })}>✕ X-card: change the scene</button>
+            )}
             <button className="bad" onClick={onLeave}>Leave table</button>
           </div>
         </Modal>

@@ -7,7 +7,9 @@ export type ToClient =
   | { t: 'view'; view: PlayerView }
   | { t: 'ack'; rid: number; ok: boolean; error?: string }
   | { t: 'notice'; text: string }
-  | { t: 'kicked'; reason: string };
+  | { t: 'kicked'; reason: string }
+  /** A map's background picture (Universal VTT imports). Sent once per connection, apart from the view. */
+  | { t: 'backdrop'; id: string; data: string };
 
 export interface Conn {
   send(msg: unknown): void;

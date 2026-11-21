@@ -4,8 +4,18 @@ export type DoorState = 'closed' | 'open' | 'locked' | 'secret';
 export type Tile = 0 | 1 | 2 | 3 | 4; // 0 rock, 1 floor, 2 water, 3 difficult, 4 pit
 export const TILE_NAMES: Record<number, string> = { 0: 'Rock', 1: 'Floor', 2: 'Water', 3: 'Rubble (difficult)', 4: 'Pit' };
 
-export interface Prop { id: string; kind: string; x: number; y: number; rot: number; gmOnly?: boolean; }
-export interface Note { id: string; x: number; y: number; text: string; }
+/** A placed object. `kind` is an object id from src/library/objects (old maps use short names that map to them). */
+export interface Prop { id: string; kind: string; x: number; y: number; rot: number; gmOnly?: boolean; /** variant index */ v?: number; /** light switched off */ off?: boolean; }
+export interface Note { id: string; x: number; y: number; text: string; gmOnly?: boolean; }
+/** A light that isn't an object, in grid units (cell centre = x + 0.5). Radii in feet. */
+export interface MapLight { id: string; x: number; y: number; bright: number; dim: number; color: string; }
+export interface RoomInfo { id: string; name: string; rects: number[][]; readAloud?: string; gmNotes?: string; labelAt?: number[]; }
+export interface EncounterInfo { name: string; area: number[]; trigger: string; difficulty: string; monsters: { srd: string; count: number }[]; }
+/** Walls that stop feet but not eyes (windows, bars), or neither (low walls you can see and step over with cover). */
+export type WallKind = 'window' | 'bars' | 'low' | 'ethereal';
+export type Ambient = 'bright' | 'dim' | 'dark';
+/** A picture under the grid (from a Universal VTT import). The data is sent to phones separately, once. */
+export interface MapBackdrop { id: string; w: number; h: number; }
 
 export interface GameMap {
   id: string;
@@ -18,6 +28,19 @@ export interface GameMap {
   doors: Record<string, DoorState>;
   props: Prop[];
   notes: Note[];
+  // Everything below is optional so older saved maps still load.
+  /** Floor material id per cell ('' = the theme's plain floor). */
+  mats?: string[];
+  wallStyle?: string;
+  wallKinds?: Record<string, WallKind>;
+  /** Door look per door edge: door-wood, door-iron, door-double, door-secret, portcullis, bars. */
+  doorStyles?: Record<string, string>;
+  ambient?: Ambient;
+  lights?: MapLight[];
+  rooms?: RoomInfo[];
+  encounters?: EncounterInfo[];
+  playerStart?: number[];
+  backdrop?: MapBackdrop;
 }
 
 export const PROP_KINDS = ['chest', 'barrel', 'crate', 'table', 'bed', 'bookshelf', 'altar', 'statue', 'pillar', 'rubble', 'campfire', 'torch', 'stairs', 'well', 'trap'];
@@ -65,8 +88,12 @@ function manualWalls(m: GameMap) {
   return set;
 }
 
+/** Doors you can see through when shut (portcullis, bars). */
+export const SEE_THROUGH_DOORS = new Set(['portcullis', 'bars']);
+
 export function isWall(m: GameMap, k: string): boolean {
   if (m.doors[k]) return true;
+  if (m.wallKinds?.[k] === 'low') return false;
   const [[ax, ay], [bx, by]] = edgeCells(k);
   if (isFloor(m, ax, ay) !== isFloor(m, bx, by)) return true;
   return isFloor(m, ax, ay) && manualWalls(m).has(k);
@@ -76,6 +103,14 @@ export function isWall(m: GameMap, k: string): boolean {
 export function blocks(m: GameMap, k: string): boolean {
   const d = m.doors[k];
   if (d) return d !== 'open';
+  return isWall(m, k);
+}
+
+/** Does this edge stop sight? Closed doors and walls do; windows, bars and portcullises don't. */
+export function blocksSight(m: GameMap, k: string): boolean {
+  const d = m.doors[k];
+  if (d) return d !== 'open' && !SEE_THROUGH_DOORS.has(m.doorStyles?.[k] ?? '');
+  if (m.wallKinds?.[k]) return false; // windows, bars, low walls and force walls are all see-through
   return isWall(m, k);
 }
 

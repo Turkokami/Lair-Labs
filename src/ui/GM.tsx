@@ -2,20 +2,28 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import QRCode from 'qrcode';
 import { HostSession } from '../net/session';
 import { peerHost } from '../net/transport';
-import { newGame, makeCode, prettyCode, type GameState, type Intent, type Token } from '../engine/game';
-import { type GameMap, type DoorState, TEMPLATES, randomDungeon, blankMap, setCells, isFloor, edgeCells, PROP_KINDS, PROP_LABELS, pid, TILE_NAMES } from '../engine/map';
+import { newGame, makeCode, prettyCode, DEFAULT_SAFETY, type GameState, type Intent, type Token, type AreaTemplate, type Safety } from '../engine/game';
+import { type GameMap, type DoorState, type Prop, TEMPLATES, blankMap, setCells, isFloor, edgeCells, pid, TILE_NAMES } from '../engine/map';
+import { stampRoom, furnishRoom, findRooms, autoFurnish, quickDungeon, KIT_NAMES } from '../engine/stamp';
+import { fromUvtt, type UvttFile } from '../engine/uvtt';
+import { tokensInArea } from '../engine/areas';
+import { objectById } from '../library/objects';
+import { creatureById, monsterIdCandidates, normMonsterId } from '../library/creatures';
+import type { CreatureDef } from '../library/art/types';
+import { ObjectBrowser, CreatureBrowser, StarterMaps, RoomTemplates, fetchLibraryMap, type ObjChoice, type CreatureChoice } from './Library';
 import { MONSTERS, monsterById } from '../rules/monsters';
 import { CONDITIONS, conditionName, fmtMod, mod } from '../rules/core';
 import { computeSheet } from '../rules/character';
 import { d20Formula } from '../engine/dice';
-import { MapCanvas, type MapCanvasProps } from './MapCanvas';
+import { MapCanvas, lineToTemplate, type MapCanvasProps, type TemplateShape } from './MapCanvas';
 import { SheetPanel, ActionsPanel, BagPanel } from './Sheet';
 import { DiceTray, LogView, Modal, store, toast, type RollFn } from './common';
 import { peerParams, safeDiscord } from './Player';
 
 type Tool =
   | 'select' | 'room' | 'corridor' | 'erase' | 'water' | 'rubble' | 'pit' | 'door' | 'wall' | 'prop' | 'note'
-  | 'revealRoom' | 'revealBrush' | 'hideBrush' | 'place';
+  | 'stamp' | 'furnish'
+  | 'revealRoom' | 'revealBrush' | 'hideBrush' | 'place' | 'creature' | 'measure' | 'area';
 type PlayTab = 'combat' | 'monsters' | 'party' | 'fog' | 'log' | 'table';
 
 export function GMApp({ onExit }: { onExit: () => void }) {
@@ -33,11 +41,18 @@ export function GMApp({ onExit }: { onExit: () => void }) {
       for (const p of Object.values(state.players)) p.connected = false;
     } else {
       state = newGame(makeCode(), TEMPLATES[0].make());
+      try {
+        state = { ...state, map: await fetchLibraryMap('maps', 'crypt-of-the-ashen-saint') };
+      } catch {
+        /* offline: keep the built-in starter */
+      }
     }
     for (let attempt = 0; attempt < 4; attempt++) {
       const h = new HostSession(state, peerHost());
       try {
         await h.start();
+        const bg = store.get<{ id: string; data: string } | null>('gm.backdrop', null);
+        if (bg && state.map.backdrop?.id === bg.id) h.backdrops.set(bg.id, bg.data);
         setHost(h);
         setStatus('idle');
         return;
@@ -90,7 +105,15 @@ function GMTable({ host, onEnd }: { host: HostSession; onEnd: () => void }) {
   const [mode, setMode] = useState<'build' | 'play'>('build');
   const [tool, setTool] = useState<Tool>('select');
   const [playTab, setPlayTab] = useState<PlayTab>('table');
-  const [prop, setProp] = useState('chest');
+  const [obj, setObj] = useState<ObjChoice>({ kind: 'chest', rot: 0, v: 0 });
+  const [creature, setCreature] = useState<CreatureChoice | null>(null);
+  const [roomId, setRoomId] = useState('');
+  const [roomTpl, setRoomTpl] = useState<GameMap | null>(null);
+  const [roomTurns, setRoomTurns] = useState(0);
+  const [kit, setKit] = useState('storeroom');
+  const [area, setArea] = useState<TemplateShape>({ shape: 'sphere', size: 20, color: '#ff7a3d' });
+  const [lastArea, setLastArea] = useState<string | null>(null);
+  const [monsterView, setMonsterView] = useState<'art' | 'stats'>('art');
   const [corridorW, setCorridorW] = useState(1);
   const [placeMonster, setPlaceMonster] = useState('goblin');
   const [placeCount, setPlaceCount] = useState(1);
@@ -135,6 +158,8 @@ function GMTable({ host, onEnd }: { host: HostSession; onEnd: () => void }) {
   const s = core.s;
   const map = s.map;
   const sel = s.tokens.find((t) => t.id === selected);
+  const partySees = useMemo(() => (core.vis ? [...core.vis.visible] : undefined), [core.vis]);
+  const xcardFresh = s.xcardAt && Date.now() - s.xcardAt < 30 * 60 * 1000;
 
   const editMap = (next: GameMap) => {
     undo.current.push(map);
@@ -146,7 +171,44 @@ function GMTable({ host, onEnd }: { host: HostSession; onEnd: () => void }) {
 
   // ---------- map interactions ----------
   const dragTool: MapCanvasProps['dragTool'] =
-    mode === 'build' ? (['room', 'erase', 'water', 'rubble', 'pit'].includes(tool) ? 'rect' : tool === 'corridor' ? 'corridor' : null) : tool === 'revealBrush' || tool === 'hideBrush' ? 'brush' : null;
+    mode === 'build'
+      ? (['room', 'erase', 'water', 'rubble', 'pit'].includes(tool) ? 'rect' : tool === 'corridor' ? 'corridor' : null)
+      : tool === 'revealBrush' || tool === 'hideBrush' ? 'brush' : tool === 'measure' || tool === 'area' ? 'line' : null;
+
+  /** The prop whose footprint covers a square, topmost first. */
+  const propAt = (x: number, y: number): Prop | undefined =>
+    [...map.props].reverse().find((p) => {
+      const d = objectById(p.kind);
+      const w = d ? (p.rot % 180 ? d.h : d.w) : 1, h = d ? (p.rot % 180 ? d.w : d.h) : 1;
+      return x >= p.x && y >= p.y && x < p.x + w && y < p.y + h;
+    });
+
+  const monsterFor = (c: CreatureDef) => monsterIdCandidates(c).find((id) => monsterById(id)) ?? MONSTERS.find((m) => m.name.toLowerCase() === c.name.toLowerCase())?.id;
+
+  const placeEncounter = (en: NonNullable<GameMap['encounters']>[number]) => {
+    const [ax, ay, aw, ah] = en.area;
+    const spots: [number, number][] = [];
+    for (let y = ay; y < ay + ah; y++) for (let x = ax; x < ax + aw; x++) if (isFloor(map, x, y)) spots.push([x, y]);
+    const missing: string[] = [];
+    let placed = 0;
+    for (const g of en.monsters) {
+      const id = [normMonsterId(g.srd), g.srd].find((k) => monsterById(k));
+      if (!id) { missing.push(g.srd.replace(/-/g, ' ')); continue; }
+      for (let i = 0; i < g.count; i++) {
+        const [x, y] = spots.length ? spots[Math.floor(Math.random() * spots.length)] : [ax, ay];
+        if (gm({ t: 'gm:addMonster', monsterId: id, x, y, hidden: true })) placed++;
+      }
+    }
+    toast(`${en.name}: ${placed} placed, hidden${missing.length ? `. No stat block yet for ${missing.join(', ')}` : ''}`, missing.length ? 'info' : undefined);
+  };
+
+  const onLine = (a: [number, number], b: [number, number]) => {
+    if (tool !== 'area') return;
+    const t = lineToTemplate(area.shape, a, b);
+    gm({ t: 'template', template: { ...area, ...t } });
+    const tmp = core.s.templates?.[core.s.templates.length - 1];
+    if (tmp) setLastArea(tmp.id);
+  };
 
   const onDragCells: MapCanvasProps['onDragCells'] = (start, end, cells) => {
     if (tool === 'corridor') {
@@ -187,10 +249,22 @@ function GMTable({ host, onEnd }: { host: HostSession; onEnd: () => void }) {
         return editMap({ ...map, walls });
       }
       if (tool === 'prop') {
-        const here = map.props.find((p) => p.x === x && p.y === y);
-        if (here) return editMap({ ...map, props: map.props.filter((p) => p !== here) });
+        const here = propAt(x, y);
+        if (here && here.kind === obj.kind && here.x === x && here.y === y) return editMap({ ...map, props: map.props.filter((p) => p !== here) });
         if (!isFloor(map, x, y)) return toast('Put things on the floor.', 'error');
-        return editMap({ ...map, props: [...map.props, { id: pid(), kind: prop, x, y, rot: 0, gmOnly: prop === 'trap' }] });
+        const d = objectById(obj.kind);
+        return editMap({ ...map, props: [...map.props, { id: pid(), kind: obj.kind, x, y, rot: obj.rot, v: obj.v || undefined, gmOnly: d?.gmOnly || undefined }] });
+      }
+      if (tool === 'stamp') {
+        if (!roomTpl) return toast('Pick a room first.', 'error');
+        toast(`${roomTpl.name} added`);
+        return editMap(stampRoom(map, roomTpl, x, y, roomTurns));
+      }
+      if (tool === 'furnish') {
+        const room = findRooms(map).find((r) => r.cells.includes(y * map.cols + x));
+        if (!room) return toast('Tap inside a room.', 'error');
+        toast(`Furnished as a ${KIT_NAMES[kit].toLowerCase()}`);
+        return editMap(furnishRoom({ ...map, props: map.props.filter((p) => !room.cells.includes(p.y * map.cols + p.x)) }, room.cells, kit));
       }
       if (tool === 'note') {
         const here = map.notes.find((n) => n.x === x && n.y === y);
@@ -202,7 +276,9 @@ function GMTable({ host, onEnd }: { host: HostSession; onEnd: () => void }) {
       }
       if (tool === 'select') {
         const note = map.notes.find((n) => n.x === x && n.y === y);
-        if (note) toast(note.text);
+        if (note) return toast(note.text);
+        const p = propAt(x, y);
+        if (p) toast(objectById(p.kind)?.name ?? p.kind);
       }
       return;
     }
@@ -211,6 +287,23 @@ function GMTable({ host, onEnd }: { host: HostSession; onEnd: () => void }) {
     if (tool === 'place') {
       if (!isFloor(map, x, y)) return toast('Pick a floor square.', 'error');
       gm({ t: 'gm:addMonster', monsterId: placeMonster, x, y, count: placeCount, hidden: placeHidden });
+      return;
+    }
+    if (tool === 'creature') {
+      const c = creature && creatureById(creature.id);
+      if (!c) return toast('Pick a creature first.', 'error');
+      if (!isFloor(map, x, y)) return toast('Pick a floor square.', 'error');
+      const mid = monsterFor(c);
+      if (mid) return gm({ t: 'gm:addMonster', monsterId: mid, x, y, count: placeCount, hidden: placeHidden, art: c.id, artV: creature!.v });
+      const size = { Tiny: 1, Small: 1, Medium: 1, Large: 2, Huge: 3, Gargantuan: 4 }[c.size];
+      const same = s.tokens.filter((t) => t.art === c.id).length;
+      for (let i = 0; i < placeCount; i++)
+        gm({ t: 'gm:addToken', token: { name: placeCount + same > 1 ? `${c.name} ${same + i + 1}` : c.name, x, y, size, art: c.id, artV: creature!.v, hidden: placeHidden, kind: c.family === 'humanoid' ? 'npc' : 'monster' } });
+      return;
+    }
+    if (tool === 'measure' || tool === 'area') {
+      const tp = [...(s.templates ?? [])].reverse().find((t) => tokensInArea(t, [{ id: 'tap', x, y, size: 1 }]).length);
+      if (tp) setLastArea(tp.id);
       return;
     }
     if (info.tokenId) return setSelected(info.tokenId === selected ? undefined : info.tokenId);
@@ -225,7 +318,7 @@ function GMTable({ host, onEnd }: { host: HostSession; onEnd: () => void }) {
   const buildTools: [Tool, string, string][] = [
     ['select', '✋', 'Move'], ['room', '⬛', 'Room'], ['corridor', '➖', 'Corridor'], ['erase', '🧽', 'Erase'],
     ['door', '🚪', 'Door'], ['wall', '🧱', 'Wall'], ['water', '💧', 'Water'], ['rubble', '🪨', 'Rubble'], ['pit', '🕳️', 'Pit'],
-    ['prop', '📦', 'Things'], ['note', '📝', 'GM note'],
+    ['prop', '📦', 'Things'], ['stamp', '🏠', 'Add a room'], ['furnish', '🪑', 'Furnish'], ['note', '📝', 'GM note'],
   ];
   const help: Partial<Record<Tool, string>> = {
     select: 'Drag to look around. Pinch or scroll to zoom.',
@@ -237,7 +330,12 @@ function GMTable({ host, onEnd }: { host: HostSession; onEnd: () => void }) {
     water: 'Drag over floor to flood it. Water costs double movement.',
     rubble: 'Drag over floor for difficult terrain (double movement).',
     pit: 'Drag over floor to dig pits.',
-    prop: 'Pick a thing below, then tap a square. Tap it again to remove it.',
+    prop: 'Pick a thing below, then tap a square. Tap the same thing again to remove it.',
+    stamp: 'Pick a room below, then tap where its top-left corner should go.',
+    furnish: 'Pick a kind of room, then tap a room to fill it. Doorways stay clear.',
+    creature: 'Tap the map to drop the creature there.',
+    measure: 'Drag from one square to another to measure. Every square is 5 ft.',
+    area: 'Drag from the caster toward the target. A sphere lands where you lift your finger.',
     note: 'Tap a square to leave yourself a note. Players never see notes.',
     revealRoom: 'Tap a room to show it to players.',
     revealBrush: 'Drag to show squares to players.',
@@ -279,8 +377,38 @@ function GMTable({ host, onEnd }: { host: HostSession; onEnd: () => void }) {
             canDragToken={() => tool === 'select'}
             onTokenDrop={(id, x, y) => gm({ t: 'move', tokenId: id, x, y })}
             fitKey={map.id}
+            visible={mode === 'play' ? partySees : undefined}
+            templates={s.templates}
+            templateShape={tool === 'area' ? area : undefined}
+            onLine={onLine}
+            roomLabels={mode === 'build'}
+            backdrop={map.backdrop ? host.backdrops.get(map.backdrop.id) : undefined}
           />
           {help[tool] && tool !== 'select' && <div className="tool-help">{help[tool]}</div>}
+          {mode === 'play' && (
+            <div className="map-tools">
+              <button className={tool === 'measure' ? 'on' : ''} onClick={() => setTool(tool === 'measure' ? 'select' : 'measure')} title="Ruler">📏</button>
+              <button className={tool === 'area' ? 'on' : ''} onClick={() => setTool(tool === 'area' ? 'select' : 'area')} title="Spell area">🎯</button>
+              {(s.templates?.length ?? 0) > 0 && <button onClick={() => gm({ t: 'gm:clearTemplates' })} title="Clear all areas">🧹</button>}
+            </div>
+          )}
+          {mode === 'play' && tool === 'area' && (
+            <AreaBar
+              area={area}
+              setArea={setArea}
+              last={s.templates?.find((t) => t.id === lastArea)}
+              tokens={s.tokens}
+              onRemove={(id) => { gm({ t: 'removeTemplate', id }); setLastArea(null); }}
+              onSelect={(ids) => { setSelected(ids[0]); toast(`${ids.length} in the area`); }}
+              onDamage={(ids, amount, half) => gm({ t: 'gm:damage', targets: ids, amount: half ? Math.floor(amount / 2) : amount })}
+            />
+          )}
+          {xcardFresh && (
+            <div className="xcard-banner" role="alert">
+              <b>Someone tapped the X-card.</b> Pause, skip or change the scene. No one needs to explain why.
+              <button className="small" onClick={() => gm({ t: 'gm:clearXcard' })}>Done</button>
+            </div>
+          )}
         </div>
         <aside className="gm-panel">
           {mode === 'build' ? (
@@ -302,12 +430,43 @@ function GMTable({ host, onEnd }: { host: HostSession; onEnd: () => void }) {
                   {[1, 2].map((w) => <button key={w} className={corridorW === w ? 'on' : ''} onClick={() => setCorridorW(w)}>{w * 5} ft wide</button>)}
                 </div>
               )}
-              {tool === 'prop' && (
-                <div className="propgrid">
-                  {PROP_KINDS.map((k) => <button key={k} className={'chip-btn' + (prop === k ? ' on' : '')} onClick={() => setProp(k)}>{PROP_LABELS[k]}</button>)}
+              {tool === 'prop' && <ObjectBrowser value={obj} onChange={setObj} />}
+              {tool === 'stamp' && (
+                <div className="stack">
+                  <div className="row gap wrap">
+                    <span className="small">Turn the room</span>
+                    <button className="small" onClick={() => setRoomTurns((roomTurns + 3) % 4)} aria-label="Turn left">⟲</button>
+                    <button className="small" onClick={() => setRoomTurns((roomTurns + 1) % 4)} aria-label="Turn right">⟳</button>
+                    <span className="muted small">{roomTurns * 90}°</span>
+                  </div>
+                  <RoomTemplates value={roomId} onPick={(id) => { setRoomId(id); fetchLibraryMap('rooms', id).then(setRoomTpl, () => toast('Could not load that room.', 'error')); }} />
                 </div>
               )}
-              <MapSettings map={map} onChange={editMap} onLoad={(m) => { undo.current = []; gm({ t: 'gm:setMap', map: m }); setSelected(undefined); }} />
+              {tool === 'furnish' && (
+                <div className="stack">
+                  <div className="chips">
+                    {Object.entries(KIT_NAMES).map(([k, name]) => <button key={k} className={'chip-btn small' + (kit === k ? ' on' : '')} onClick={() => setKit(k)}>{name}</button>)}
+                  </div>
+                  <button className="ghost" onClick={() => { editMap(autoFurnish(map)); toast('Empty rooms furnished'); }}>Furnish every empty room</button>
+                </div>
+              )}
+              <MapSettings
+                map={map}
+                onChange={editMap}
+                onLoad={(m, bg) => {
+                  undo.current = [];
+                  if (m.backdrop && bg) {
+                    host.backdrops.set(m.backdrop.id, bg);
+                    try {
+                      store.set('gm.backdrop', { id: m.backdrop.id, data: bg });
+                    } catch {
+                      toast('The picture is too big to keep after a refresh, but it works for this session.', 'info');
+                    }
+                  }
+                  gm({ t: 'gm:setMap', map: m });
+                  setSelected(undefined);
+                }}
+              />
               <button className="primary block" onClick={() => { setMode('play'); setTool('select'); setPlayTab(players.length ? 'combat' : 'table'); }}>Done building: start playing</button>
             </div>
           ) : (
@@ -334,24 +493,62 @@ function GMTable({ host, onEnd }: { host: HostSession; onEnd: () => void }) {
                 {playTab === 'combat' && <CombatTab s={s} gm={gm} core={core} selected={selected} setSelected={setSelected} />}
                 {playTab === 'monsters' && (
                   <div className="stack">
-                    <p className="muted small">Pick a monster, then tap the map where it should appear.</p>
-                    <Bestiary
-                      value={placeMonster}
-                      onPick={(id) => { setPlaceMonster(id); setTool('place'); }}
-                      roll={roll}
-                    />
+                    {(map.encounters?.length ?? 0) > 0 && (
+                      <details className="card">
+                        <summary><b>This map's encounters</b> <span className="muted small">({map.encounters!.length})</span></summary>
+                        <div className="stack">
+                          {map.encounters!.map((en) => (
+                            <div key={en.name} className="row between">
+                              <span className="small"><b>{en.name}</b> <span className="muted">{en.difficulty} · {en.monsters.map((x) => `${x.count} ${x.srd.replace(/-/g, ' ')}`).join(', ')}</span></span>
+                              <button className="small" onClick={() => placeEncounter(en)}>Place hidden</button>
+                            </div>
+                          ))}
+                        </div>
+                      </details>
+                    )}
+                    <div className="seg">
+                      <button className={monsterView === 'art' ? 'on' : ''} onClick={() => setMonsterView('art')}>Creatures</button>
+                      <button className={monsterView === 'stats' ? 'on' : ''} onClick={() => setMonsterView('stats')}>Stat blocks</button>
+                    </div>
+                    {monsterView === 'art' ? (
+                      <CreatureBrowser value={creature} onChange={(c) => { setCreature(c); setTool('creature'); }} statBlock={(c) => monsterFor(c)} />
+                    ) : (
+                      <Bestiary
+                        value={placeMonster}
+                        onPick={(id) => { setPlaceMonster(id); setTool('place'); }}
+                        roll={roll}
+                      />
+                    )}
                     <div className="row gap wrap">
                       <label className="inline">How many
                         <select value={placeCount} onChange={(e) => setPlaceCount(Number(e.target.value))}>{[1, 2, 3, 4, 5, 6, 8].map((n) => <option key={n}>{n}</option>)}</select>
                       </label>
                       <label className="inline"><input type="checkbox" checked={placeHidden} onChange={(e) => setPlaceHidden(e.target.checked)} /> Hidden from players</label>
-                      <button className={tool === 'place' ? 'primary' : 'ghost'} onClick={() => setTool(tool === 'place' ? 'select' : 'place')}>{tool === 'place' ? `Placing ${monsterById(placeMonster)?.name}: tap the map` : 'Place on map'}</button>
+                      {monsterView === 'stats' ? (
+                        <button className={tool === 'place' ? 'primary' : 'ghost'} onClick={() => setTool(tool === 'place' ? 'select' : 'place')}>{tool === 'place' ? `Placing ${monsterById(placeMonster)?.name}: tap the map` : 'Place on map'}</button>
+                      ) : (
+                        <button className={tool === 'creature' ? 'primary' : 'ghost'} disabled={!creature} onClick={() => setTool(tool === 'creature' ? 'select' : 'creature')}>{tool === 'creature' && creature ? `Placing ${creatureById(creature.id)?.name}: tap the map` : 'Place on map'}</button>
+                      )}
                     </div>
                   </div>
                 )}
                 {playTab === 'party' && <PartyTab s={s} gm={gm} onSheet={setSheetFor} />}
                 {playTab === 'fog' && (
                   <div className="stack">
+                    <label className="inline">What players see
+                      <select value={s.settings.vision ?? 'auto'} onChange={(e) => gm({ t: 'gm:settings', patch: { vision: e.target.value as 'auto' | 'rooms' } })}>
+                        <option value="auto">Line of sight and light (walls, doors, torches, darkvision)</option>
+                        <option value="rooms">Whole rooms, as I reveal them</option>
+                      </select>
+                    </label>
+                    <label className="inline">Light in this place
+                      <select value={map.ambient ?? 'bright'} onChange={(e) => gm({ t: 'gm:editMap', map: { ...map, ambient: e.target.value as GameMap['ambient'] } })}>
+                        <option value="bright">Daylight</option>
+                        <option value="dim">Dim</option>
+                        <option value="dark">Dark</option>
+                      </select>
+                    </label>
+                    {(s.settings.vision ?? 'auto') === 'auto' && <p className="muted small">Heroes see what their eyes reach: walls and shut doors block sight, torches and braziers light the way, darkvision sees in the dark. Places they've been stay on their map, dimmed.</p>}
                     <div className="toolgrid">
                       {([['select', '✋', 'Move'], ['revealRoom', '💡', 'Show room'], ['revealBrush', '🖌️', 'Show brush'], ['hideBrush', '🌑', 'Hide brush']] as [Tool, string, string][]).map(([t, ico, label]) => (
                         <button key={t} className={'tool' + (tool === t ? ' on' : '')} onClick={() => setTool(t)}><span>{ico}</span>{label}</button>
@@ -383,6 +580,44 @@ function GMTable({ host, onEnd }: { host: HostSession; onEnd: () => void }) {
         <Modal title={s.characters[sheetFor].build.name} onClose={() => setSheetFor(null)} wide>
           <GMSheet ch={s.characters[sheetFor]} gm={gm} roll={roll} />
         </Modal>
+      )}
+    </div>
+  );
+}
+
+const SHAPES: [TemplateShape['shape'], string][] = [['sphere', 'Sphere'], ['cone', 'Cone'], ['line', 'Line'], ['cube', 'Cube']];
+const AREA_COLORS = ['#ff7a3d', '#4cc9f0', '#a06cd5', '#7bd389', '#ffd166'];
+
+/** Spell areas on the map: pick a shape and size, drag it out, then damage whoever is inside. */
+function AreaBar({ area, setArea, last, tokens, onRemove, onSelect, onDamage }: {
+  area: TemplateShape; setArea: (a: TemplateShape) => void; last?: AreaTemplate; tokens: Token[];
+  onRemove: (id: string) => void; onSelect: (ids: string[]) => void; onDamage: (ids: string[], amount: number, half: boolean) => void;
+}) {
+  const [amt, setAmt] = useState('');
+  const inside = last ? tokensInArea(last, tokens) : [];
+  const n = parseInt(amt, 10) || 0;
+  return (
+    <div className="area-bar card">
+      <div className="chip-scroll">
+        {SHAPES.map(([k, label]) => <button key={k} className={'chip-btn small' + (area.shape === k ? ' on' : '')} onClick={() => setArea({ ...area, shape: k })}>{label}</button>)}
+        <select value={area.size} onChange={(e) => setArea({ ...area, size: Number(e.target.value) })} aria-label="Size in feet">
+          {[5, 10, 15, 20, 30, 40, 60, 90, 120].map((f) => <option key={f} value={f}>{f} ft{area.shape === 'sphere' ? ' radius' : ''}</option>)}
+        </select>
+        {AREA_COLORS.map((c) => <button key={c} className={'swatch' + (area.color === c ? ' on' : '')} style={{ background: c }} onClick={() => setArea({ ...area, color: c })} aria-label="Colour" />)}
+      </div>
+      {last && (
+        <div className="row gap wrap small">
+          <span>{inside.length ? `Inside: ${inside.map((t) => t.name).join(', ')}` : 'No one inside.'}</span>
+          {inside.length > 0 && (
+            <>
+              <input className="num" inputMode="numeric" value={amt} onChange={(e) => setAmt(e.target.value.replace(/\D/g, ''))} placeholder="dmg" aria-label="Damage" />
+              <button className="bad small" disabled={!n} onClick={() => { onDamage(inside.map((t) => t.id), n, false); setAmt(''); }}>Full to all</button>
+              <button className="small" disabled={!n} onClick={() => { onDamage(inside.map((t) => t.id), n, true); setAmt(''); }}>Half to all</button>
+              <button className="ghost small" onClick={() => onSelect(inside.map((t) => t.id))}>Select</button>
+            </>
+          )}
+          <button className="ghost small" onClick={() => onRemove(last.id)}>Remove area</button>
+        </div>
       )}
     </div>
   );
@@ -469,6 +704,7 @@ function TableTab({ s, gm, joinUrl, onQr, onKick, onEnd }: { s: GameState; gm: (
         </select>
       </label>
       <label className="inline"><input type="checkbox" checked={s.settings.lockMoves} onChange={(e) => gm({ t: 'gm:settings', patch: { lockMoves: e.target.checked } })} /> In combat, players can only move on their turn</label>
+      <SafetyEditor safety={s.settings.safety ?? DEFAULT_SAFETY} onSave={(safety) => gm({ t: 'gm:safety', safety })} />
       <h3>Handout</h3>
       <input value={hTitle} onChange={(e) => setHTitle(e.target.value)} placeholder="Title, like 'The innkeeper's letter'" />
       <textarea value={hText} onChange={(e) => setHText(e.target.value)} rows={3} placeholder="Text every player sees in a pop-up" />
@@ -482,6 +718,23 @@ function TableTab({ s, gm, joinUrl, onQr, onKick, onEnd }: { s: GameState; gm: (
         <button className="ghost" onClick={() => confirm('Clear the chat and roll log?') && gm({ t: 'gm:clearLog' })}>Clear log</button>
         <button className="bad" onClick={onEnd}>End session</button>
       </div>
+    </div>
+  );
+}
+
+/** Session zero: lines (never in the game) and veils (happens off screen), and whether the X-card is on. */
+function SafetyEditor({ safety, onSave }: { safety: Safety; onSave: (s: Safety) => void }) {
+  const [lines, setLines] = useState(safety.lines.join('\n'));
+  const [veils, setVeils] = useState(safety.veils.join('\n'));
+  const split = (t: string) => t.split('\n').map((x) => x.trim()).filter(Boolean);
+  return (
+    <div className="stack">
+      <h3>Safety</h3>
+      <p className="muted small">Agree these together before you play. Every player can read them on their phone.</p>
+      <label>Lines: never in our game (one per line)<textarea rows={2} value={lines} onChange={(e) => setLines(e.target.value)} placeholder="Harm to children&#10;Spiders described up close" /></label>
+      <label>Veils: can happen, but off screen<textarea rows={2} value={veils} onChange={(e) => setVeils(e.target.value)} placeholder="Torture&#10;Romance details" /></label>
+      <label className="inline"><input type="checkbox" checked={safety.xcard} onChange={(e) => onSave({ lines: split(lines), veils: split(veils), xcard: e.target.checked })} /> X-card: any player can tap it, without saying why, and you change the scene</label>
+      <button onClick={() => { onSave({ lines: split(lines), veils: split(veils), xcard: safety.xcard }); toast('Saved'); }}>Save lines and veils</button>
     </div>
   );
 }
@@ -591,6 +844,7 @@ function TokenCard({ t, gm, roll, onClose, onSheet, monsterHp }: { t: Token; gm:
       <div className="row gap wrap">
         {t.charId ? <button className="ghost small" onClick={onSheet}>Open sheet</button> : null}
         <label className="inline small"><input type="checkbox" checked={t.hidden} onChange={(e) => gm({ t: 'gm:tokenPatch', tokenId: t.id, patch: { hidden: e.target.checked } })} /> Hidden</label>
+        <label className="inline small"><input type="checkbox" checked={!!t.light} onChange={(e) => gm({ t: 'torch', tokenId: t.id, on: e.target.checked })} /> Carries a light</label>
         {t.kind !== 'pc' && <button className="ghost small" onClick={() => { const name = prompt('Rename', t.name); if (name?.trim()) gm({ t: 'gm:tokenPatch', tokenId: t.id, patch: { name: name.trim().slice(0, 30) } }); }}>Rename</button>}
         {t.kind !== 'pc' && <button className="bad small" onClick={() => { gm({ t: 'gm:removeToken', tokenId: t.id }); onClose(); }}>Remove</button>}
       </div>
@@ -649,7 +903,7 @@ function PartyTab({ s, gm, onSheet }: { s: GameState; gm: (i: Intent) => boolean
   );
 }
 
-function MapSettings({ map, onChange, onLoad }: { map: GameMap; onChange: (m: GameMap) => void; onLoad: (m: GameMap) => void }) {
+function MapSettings({ map, onChange, onLoad }: { map: GameMap; onChange: (m: GameMap) => void; onLoad: (m: GameMap, backdrop?: string) => void }) {
   const [lib, setLib] = useState(() => store.get<GameMap[]>('maps', []));
   const file = useRef<HTMLInputElement>(null);
   const resize = (cols: number, rows: number) => {
@@ -677,6 +931,22 @@ function MapSettings({ map, onChange, onLoad }: { map: GameMap; onChange: (m: Ga
             <option value="wood">Wooden floors</option>
           </select>
         </label>
+        <label className="inline">Walls
+          <select value={map.wallStyle ?? (map.theme === 'cave' ? 'cave' : map.theme === 'wood' ? 'wood' : 'stone')} onChange={(e) => onChange({ ...map, wallStyle: e.target.value })}>
+            <option value="stone">Stone</option>
+            <option value="brick">Brick</option>
+            <option value="wood">Wood</option>
+            <option value="cave">Cave rock</option>
+            <option value="hedge">Hedge</option>
+          </select>
+        </label>
+        <label className="inline">Light
+          <select value={map.ambient ?? 'bright'} onChange={(e) => onChange({ ...map, ambient: e.target.value as GameMap['ambient'] })}>
+            <option value="bright">Daylight</option>
+            <option value="dim">Dim</option>
+            <option value="dark">Dark: torches and darkvision only</option>
+          </select>
+        </label>
         <label className="inline">Size
           <select value={`${map.cols}x${map.rows}`} onChange={(e) => { const [c, r] = e.target.value.split('x').map(Number); resize(c, r); }}>
             {[[24, 18], [30, 22], [34, 24], [40, 30], [50, 36], [60, 44]].map(([c, r]) => <option key={c} value={`${c}x${r}`}>{c * 5} × {r * 5} ft</option>)}
@@ -685,8 +955,15 @@ function MapSettings({ map, onChange, onLoad }: { map: GameMap; onChange: (m: Ga
         </label>
       </div>
       <p className="muted small">Squares are 5 ft. {Object.keys(map.doors).length} doors · {map.props.length} things · {map.notes.length} notes · legend: {Object.values(TILE_NAMES).slice(2).join(', ')}.</p>
-      <h3>Start from</h3>
+      <h3>Starter maps</h3>
+      <StarterMaps onLoad={(id) => confirm('Replace this map with the starter map?') && fetchLibraryMap('maps', id).then((m) => onLoad({ ...m, id: pid() }), () => toast('Could not load that map.', 'error'))} />
+      <h3>Quick start</h3>
       <div className="stack">
+        <div className="row gap wrap">
+          {(['small', 'medium', 'large'] as const).map((sz) => (
+            <button key={sz} onClick={() => confirm('Replace this map with a furnished random dungeon?') && onLoad(quickDungeon(sz))}>Furnished dungeon, {sz}</button>
+          ))}
+        </div>
         {TEMPLATES.map((t) => (
           <button key={t.id} className="pick" onClick={() => confirm(`Replace this map with ${t.name}?`) && onLoad(t.make())}>
             <b>{t.name}</b>
@@ -694,9 +971,6 @@ function MapSettings({ map, onChange, onLoad }: { map: GameMap; onChange: (m: Ga
           </button>
         ))}
         <div className="row gap wrap">
-          {(['small', 'medium', 'large'] as const).map((sz) => (
-            <button key={sz} className="ghost" onClick={() => confirm('Replace this map with a random dungeon?') && onLoad(randomDungeon(sz))}>Random {sz}</button>
-          ))}
           <button className="ghost" onClick={() => confirm('Start from an empty map?') && onLoad(blankMap(30, 22, 'New map'))}>Blank</button>
         </div>
       </div>
@@ -704,15 +978,27 @@ function MapSettings({ map, onChange, onLoad }: { map: GameMap; onChange: (m: Ga
       <div className="row gap wrap">
         <button onClick={saveToLib}>Save this map</button>
         <button className="ghost" onClick={() => download(`${map.name.replace(/[^\w-]+/g, '-')}.lairmap.json`, JSON.stringify(map))}>Download</button>
-        <button className="ghost" onClick={() => file.current?.click()}>Open a file</button>
+        <button className="ghost" onClick={() => file.current?.click()}>Open a file (.json or Universal VTT)</button>
         <input
           ref={file}
           type="file"
-          accept=".json,application/json"
+          accept=".json,.uvtt,.dd2vtt,.df2vtt,application/json"
           hidden
           onChange={async (e) => {
             const f = e.target.files?.[0];
             if (!f) return;
+            if (/\.(uvtt|dd2vtt|df2vtt)$/i.test(f.name)) {
+              try {
+                const u = fromUvtt(JSON.parse(await f.text()) as UvttFile, f.name.replace(/\.[^.]+$/, '').slice(0, 50));
+                const bg = u.image ? await shrinkPicture(`data:${u.imageType};base64,${u.image}`, u.map.cols, u.map.rows) : undefined;
+                onLoad(u.map, bg);
+                toast(`Imported: ${u.map.walls.length} wall edges, ${Object.keys(u.map.doors).length} doors, ${u.map.lights?.length ?? 0} lights`);
+              } catch (err) {
+                toast((err as Error).message || "That file isn't a Universal VTT map.", 'error');
+              }
+              e.target.value = '';
+              return;
+            }
             try {
               const m = JSON.parse(await f.text()) as GameMap;
               if (!m.cells || !m.cols || !m.rows || m.cells.length !== m.cols * m.rows) throw new Error();
@@ -735,6 +1021,23 @@ function MapSettings({ map, onChange, onLoad }: { map: GameMap; onChange: (m: Ga
       ))}
     </div>
   );
+}
+
+/** Shrink an imported map picture so it travels to phones quickly: at most 64 px a square and 4096 px a side. */
+function shrinkPicture(src: string, cols: number, rows: number): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const im = new Image();
+    im.onload = () => {
+      const k = Math.min(1, (64 * cols) / im.width, 4096 / Math.max(im.width, im.height));
+      const c = document.createElement('canvas');
+      c.width = Math.round(im.width * k);
+      c.height = Math.round(im.height * k);
+      c.getContext('2d')!.drawImage(im, 0, 0, c.width, c.height);
+      resolve(c.toDataURL('image/jpeg', 0.8));
+    };
+    im.onerror = () => reject(new Error("Couldn't read the map picture."));
+    im.src = src;
+  });
 }
 
 function download(name: string, text: string) {

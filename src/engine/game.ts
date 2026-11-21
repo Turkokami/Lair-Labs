@@ -4,6 +4,9 @@ import { type GameMap, type DoorState, blankMap, cell, edgeCells, isFloor, moveC
 import { roll, critFormula, type RollResult } from './dice';
 import { type Character, type CharacterBuild, type CharacterState, computeSheet, freshState } from '../rules/character';
 import { monsterById, sizeSquares } from '../rules/monsters';
+import { speciesById } from '../rules/origins';
+import { partyVision, type VisionResult } from './vision';
+import { creatureForMonster } from '../library/creatures';
 import { mod } from '../rules/core';
 
 export type Visibility = 'public' | 'gm' | 'self' | 'blind';
@@ -26,7 +29,17 @@ export interface Token {
   initMod: number;
   speed: number;
   movedFeet: number;
+  /** Creature art id from src/library/creatures, and its variant. */
+  art?: string;
+  artV?: number;
+  /** A light the token carries (torch 20/20, lantern 30/30). */
+  light?: { bright: number; dim: number };
+  /** Darkvision in feet. */
+  darkvision?: number;
 }
+
+/** An area-of-effect shape on the map. Origin and target in grid units. Size in feet. */
+export interface AreaTemplate { id: string; shape: 'sphere' | 'cone' | 'line' | 'cube'; x: number; y: number; tx: number; ty: number; size: number; color: string; by: string; label?: string; }
 
 export interface Player { id: string; name: string; connected: boolean; charId?: string; joinedAt: number; }
 
@@ -47,7 +60,14 @@ export interface LogEntry {
 }
 
 export interface Combat { active: boolean; round: number; turn: number; order: { tokenId: string; init: number; dex: number }[]; }
-export interface Settings { monsterHp: 'hidden' | 'bloodied' | 'exact'; lockMoves: boolean; autoReveal: boolean; discord: string; locked: boolean; startLevel: number; }
+export interface Safety { lines: string[]; veils: string[]; xcard: boolean; }
+export interface Settings {
+  monsterHp: 'hidden' | 'bloodied' | 'exact'; lockMoves: boolean; autoReveal: boolean; discord: string; locked: boolean; startLevel: number;
+  /** auto = dynamic lighting and line of sight; rooms = reveal whole rooms as heroes walk in. Missing means auto. */
+  vision?: 'auto' | 'rooms';
+  safety?: Safety;
+}
+export const DEFAULT_SAFETY: Safety = { lines: [], veils: [], xcard: true };
 
 export interface GameState {
   code: string;
@@ -62,6 +82,9 @@ export interface GameState {
   handout?: { title: string; text: string; ts: number };
   curtain: boolean; // GM hides the map from players during scene changes
   version: number;
+  templates?: AreaTemplate[];
+  /** When someone last tapped the X-card (anonymous). */
+  xcardAt?: number;
 }
 
 export type Intent =
@@ -82,13 +105,17 @@ export type Intent =
   | { t: 'rest'; charId: string; kind: 'short' | 'long' }
   | { t: 'concSave'; charId: string }
   | { t: 'levelUp'; character: Character }
+  | { t: 'template'; template: Omit<AreaTemplate, 'id' | 'by'> & { id?: string } }
+  | { t: 'removeTemplate'; id: string }
+  | { t: 'xcard' }
+  | { t: 'torch'; tokenId: string; on: boolean }
   // GM-only intents
   | { t: 'gm:setMap'; map: GameMap }
   | { t: 'gm:editMap'; map: GameMap }
   | { t: 'gm:reveal'; cells: number[]; on: boolean }
   | { t: 'gm:revealRoom'; x: number; y: number }
   | { t: 'gm:revealAll'; on: boolean }
-  | { t: 'gm:addMonster'; monsterId: string; x: number; y: number; count?: number; hidden?: boolean }
+  | { t: 'gm:addMonster'; monsterId: string; x: number; y: number; count?: number; hidden?: boolean; art?: string; artV?: number }
   | { t: 'gm:addToken'; token: Partial<Token> & { name: string; x: number; y: number } }
   | { t: 'gm:removeToken'; tokenId: string }
   | { t: 'gm:tokenPatch'; tokenId: string; patch: Partial<Token> }
@@ -105,7 +132,10 @@ export type Intent =
   | { t: 'gm:curtain'; on: boolean }
   | { t: 'gm:grantLevel'; charId: string }
   | { t: 'gm:kick'; playerId: string }
-  | { t: 'gm:clearLog' };
+  | { t: 'gm:clearLog' }
+  | { t: 'gm:clearTemplates' }
+  | { t: 'gm:clearXcard' }
+  | { t: 'gm:safety'; safety: Safety }
 
 // ---------- player view ----------
 export interface PartyMember { charId: string; name: string; classLine: string; hp: number; maxHp: number; tempHp: number; ac: number; conditions: string[]; color: string; playerName?: string; dying: boolean; }
@@ -126,6 +156,13 @@ export interface PlayerView {
   handout?: GameState['handout'];
   curtain: boolean;
   version: number;
+  /** Players only, with dynamic lighting: squares the party sees right now. */
+  visible?: number[];
+  /** Players only: light level of each square ('0' dark, '1' dim, '2' bright), visible squares only matter. */
+  lit?: string;
+  templates: AreaTemplate[];
+  safety: Safety;
+  xcardAt?: number;
 }
 
 export const CODE_ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
@@ -144,8 +181,8 @@ export function newGame(code = makeCode(), map: GameMap = blankMap()): GameState
   return {
     code, map, tokens: [], players: {}, characters: {}, revealed: [], log: [],
     combat: { active: false, round: 0, turn: 0, order: [] },
-    settings: { monsterHp: 'bloodied', lockMoves: false, autoReveal: true, discord: '', locked: false, startLevel: 1 },
-    curtain: false, version: 0,
+    settings: { monsterHp: 'bloodied', lockMoves: false, autoReveal: true, discord: '', locked: false, startLevel: 1, vision: 'auto', safety: { ...DEFAULT_SAFETY } },
+    curtain: false, version: 0, templates: [],
   };
 }
 
@@ -162,7 +199,34 @@ export class HostCore {
     this.s = state;
   }
 
+  /** The party's sight, worked out after every change (dynamic lighting). */
+  vis?: VisionResult;
+  private dynamic() {
+    return (this.s.settings.vision ?? 'auto') === 'auto';
+  }
+  /** Old-style reveal of whole rooms, used when dynamic lighting is off. */
+  private roomReveal() {
+    return this.s.settings.autoReveal && !this.dynamic();
+  }
+  refreshVision() {
+    if (!this.dynamic()) {
+      this.vis = undefined;
+      return;
+    }
+    const viewers = this.s.tokens
+      .filter((t) => t.kind === 'pc' && !(t.charId && this.s.characters[t.charId]?.state.dead))
+      .map((t) => ({ x: t.x, y: t.y, size: t.size, darkvision: t.darkvision ?? 0, light: t.light }));
+    this.vis = partyVision(this.s.map, viewers);
+    if (this.s.settings.autoReveal) {
+      const set = new Set(this.s.revealed);
+      let grew = false;
+      for (const c of this.vis.visible) if (!set.has(c)) { set.add(c); grew = true; }
+      if (grew) this.s.revealed = [...set];
+    }
+  }
+
   private bump() {
+    this.refreshVision();
     this.s.version++;
     if (this.s.log.length > 250) this.s.log = this.s.log.slice(-200);
     this.onChange();
@@ -278,7 +342,7 @@ export class HostCore {
           if (!near) throw new GameError('Move next to the door first.');
         }
         this.s.map.doors[it.key] = d === 'open' ? 'closed' : 'open';
-        if (this.s.map.doors[it.key] === 'open' && this.s.settings.autoReveal) {
+        if (this.s.map.doors[it.key] === 'open' && this.roomReveal()) {
           const [[ax, ay], [bx, by]] = edgeCells(it.key);
           this.reveal([...revealAround(this.s.map, ax, ay), ...revealAround(this.s.map, bx, by)]);
         }
@@ -412,12 +476,62 @@ export class HostCore {
         this.syncToken(it.charId);
         break;
       }
+      case 'template': {
+        const tp = it.template;
+        const list = (this.s.templates ??= []);
+        if (!['sphere', 'cone', 'line', 'cube'].includes(tp.shape)) throw new GameError('Unknown shape.');
+        const size = Math.max(5, Math.min(300, Math.round(tp.size / 5) * 5));
+        const id = tp.id && list.some((x) => x.id === tp.id && (gm || x.by === from)) ? tp.id : lid();
+        const t: AreaTemplate = { id, shape: tp.shape, x: +tp.x, y: +tp.y, tx: +tp.tx, ty: +tp.ty, size, color: String(tp.color || '#f4a261').slice(0, 9), by: from, label: tp.label?.slice(0, 40) };
+        const i = list.findIndex((x) => x.id === id);
+        if (i >= 0) list[i] = t;
+        else {
+          list.push(t);
+          if (list.length > 20) list.shift();
+        }
+        break;
+      }
+      case 'removeTemplate': {
+        const list = this.s.templates ?? [];
+        const t = list.find((x) => x.id === it.id);
+        if (t && !gm && t.by !== from) throw new GameError('That template is not yours.');
+        this.s.templates = list.filter((x) => x.id !== it.id);
+        break;
+      }
+      case 'xcard': {
+        if (!(this.s.settings.safety ?? DEFAULT_SAFETY).xcard) throw new GameError('The X-card is off at this table.');
+        this.s.xcardAt = Date.now();
+        // Anonymous on purpose: the log never says who tapped it.
+        this.add({ kind: 'system', from: 'Table', fromId: 'gm', text: 'Someone tapped the X-card. The GM will change or skip what just happened, no questions asked.', visibility: 'public' });
+        break;
+      }
+      case 'torch': {
+        const t = this.s.tokens.find((x) => x.id === it.tokenId);
+        if (!t) throw new GameError('No such token.');
+        if (!gm && (!t.charId || this.s.players[from]?.charId !== t.charId)) throw new GameError('You can only light your own torch.');
+        t.light = it.on ? { bright: 20, dim: 20 } : undefined;
+        this.system(`${t.name} ${it.on ? 'lights a torch' : 'puts out their light'}.`);
+        break;
+      }
       // ---------- GM ----------
+      case 'gm:clearTemplates': this.s.templates = []; break;
+      case 'gm:clearXcard': this.s.xcardAt = undefined; break;
+      case 'gm:safety': {
+        const clean = (a: string[]) => a.map((x) => String(x).trim().slice(0, 120)).filter(Boolean).slice(0, 30);
+        this.s.settings.safety = { lines: clean(it.safety.lines), veils: clean(it.safety.veils), xcard: !!it.safety.xcard };
+        break;
+      }
       case 'gm:setMap': {
         this.s.map = it.map;
         this.s.revealed = [];
+        this.s.templates = [];
+        // a new scene: the heroes arrive at its start, everyone else stays where they fit
+        if (it.map.playerStart) {
+          const [sx, sy] = it.map.playerStart;
+          for (const t of this.s.tokens) if (t.kind === 'pc') { t.x = sx; t.y = sy; this.placeNear(t); }
+        }
         for (const t of this.s.tokens) if (!isFloor(it.map, t.x, t.y)) this.placeNear(t);
-        if (this.s.settings.autoReveal) for (const t of this.s.tokens.filter((x) => x.kind === 'pc')) this.reveal(revealAround(this.s.map, t.x, t.y));
+        if (this.roomReveal()) for (const t of this.s.tokens.filter((x) => x.kind === 'pc')) this.reveal(revealAround(this.s.map, t.x, t.y));
         this.system(`The scene changes: ${it.map.name}.`);
         break;
       }
@@ -442,6 +556,7 @@ export class HostCore {
             id: lid(), kind: 'monster', name: n + same > 1 ? `${mon.name} ${same + i + 1}` : mon.name, x: it.x, y: it.y, size: sizeSquares(mon.size),
             color: '#b23a3a', hidden: it.hidden ?? false, monsterId: mon.id, hp: mon.hp, maxHp: mon.hp, ac: mon.ac, conditions: [],
             initMod: mod(mon.abilities[1]), speed: parseInt(mon.speed, 10) || 30, movedFeet: 0,
+            art: it.art ?? creatureForMonster(mon.id)?.id, artV: it.artV, darkvision: parseInt(/darkvision (\d+)/i.exec(mon.senses)?.[1] ?? '0', 10),
           };
           this.placeNear(t);
           this.s.tokens.push(t);
@@ -463,7 +578,7 @@ export class HostCore {
         if (!t) throw new GameError('No such token.');
         const { id: _id, ...patch } = it.patch;
         Object.assign(t, patch);
-        if (t.charId && (patch.x !== undefined || patch.y !== undefined) && this.s.settings.autoReveal) this.reveal(revealAround(this.s.map, t.x, t.y));
+        if (t.charId && (patch.x !== undefined || patch.y !== undefined) && this.roomReveal()) this.reveal(revealAround(this.s.map, t.x, t.y));
         break;
       }
       case 'gm:damage': {
@@ -599,9 +714,14 @@ export class HostCore {
       id: lid(), kind: 'pc', name: c.build.name, x: start[0], y: start[1], size: 1, color: c.build.color, hidden: false, charId,
       hp: c.state.hp, maxHp: sh.maxHp, ac: sh.ac, conditions: c.state.conditions, initMod: sh.initiative, speed: sh.speed, movedFeet: 0,
     };
+    const dv = speciesById(c.build.speciesId)?.darkvision ?? 0;
+    t.darkvision = dv;
+    // Heroes without darkvision light a torch, so a dark dungeon isn't pitch black for them.
+    if (!dv) t.light = { bright: 20, dim: 20 };
+    t.art = `hero-${c.build.speciesId}-${c.build.classId}`;
     this.placeNear(t);
     this.s.tokens.push(t);
-    if (this.s.settings.autoReveal) this.reveal(revealAround(this.s.map, t.x, t.y));
+    if (this.roomReveal()) this.reveal(revealAround(this.s.map, t.x, t.y));
   }
 
   private syncToken(charId: string) {
@@ -610,11 +730,14 @@ export class HostCore {
     if (!t || !c) return;
     const sh = computeSheet(c.build);
     Object.assign(t, { name: c.build.name, hp: c.state.hp, maxHp: sh.maxHp, ac: sh.ac, conditions: c.state.conditions, initMod: sh.initiative, speed: sh.speed, color: c.build.color });
+    t.darkvision = speciesById(c.build.speciesId)?.darkvision ?? 0;
+    t.art = `hero-${c.build.speciesId}-${c.build.classId}`;
   }
 
   private startSquare(): [number, number] {
     const m = this.s.map;
-    const stairs = m.props.find((p) => p.kind === 'stairs');
+    if (m.playerStart) return [m.playerStart[0], m.playerStart[1]];
+    const stairs = m.props.find((p) => p.kind === 'stairs' || p.kind === 'stairs-down' || p.kind === 'stairs-up');
     if (stairs) return [stairs.x, stairs.y];
     const pc = this.s.tokens.find((t) => t.kind === 'pc');
     if (pc) return [pc.x, pc.y];
@@ -676,7 +799,7 @@ export class HostCore {
     }
     t.x = x;
     t.y = y;
-    if (t.kind === 'pc' && this.s.settings.autoReveal) this.reveal(revealAround(m, x, y));
+    if (t.kind === 'pc' && this.roomReveal()) this.reveal(revealAround(m, x, y));
     this.bump();
   }
 
@@ -738,7 +861,14 @@ export class HostCore {
     const me = s.players[id];
     const myChar = me?.charId ? s.characters[me.charId] : undefined;
     const rev = new Set(s.revealed);
+    const vis = !gm && this.dynamic() && this.vis ? this.vis : undefined;
     const visibleCell = (x: number, y: number) => gm || rev.has(y * s.map.cols + x);
+    // With dynamic lighting, players see creatures only on squares the party can see right now.
+    const seenNow = (t: Token) => {
+      if (!vis) return visibleCell(t.x, t.y);
+      for (let j = 0; j < t.size; j++) for (let i = 0; i < t.size; i++) if (vis.visible.has((t.y + j) * s.map.cols + t.x + i)) return true;
+      return false;
+    };
 
     let map = s.map;
     if (!gm) {
@@ -754,11 +884,14 @@ export class HostCore {
       map = {
         ...s.map, cells, doors, walls,
         props: s.curtain ? [] : s.map.props.filter((p) => !p.gmOnly && visibleCell(p.x, p.y)),
-        notes: [],
+        notes: s.map.notes.filter((n) => !n.gmOnly && visibleCell(n.x, n.y)),
+        rooms: s.map.rooms?.filter((r) => r.rects.some(([x, y, w, h]) => visibleCell(x + Math.floor(w / 2), y + Math.floor(h / 2)))).map(({ gmNotes: _g, ...r }) => r),
+        encounters: undefined,
+        lights: s.map.lights?.filter((l) => visibleCell(Math.floor(l.x), Math.floor(l.y))),
       };
     }
     const tokens = s.tokens
-      .filter((t) => gm || (!s.curtain && !t.hidden && (t.kind === 'pc' || visibleCell(t.x, t.y))))
+      .filter((t) => gm || (!s.curtain && !t.hidden && (t.kind === 'pc' || seenNow(t))))
       .map((t) => {
         if (gm || t.kind === 'pc') return { ...t };
         const mode = s.settings.monsterHp;
@@ -793,6 +926,11 @@ export class HostCore {
       players: Object.values(s.players).map((p) => ({ id: p.id, name: p.name, connected: p.connected, charId: p.charId })),
       party, myCharacter: myChar, myTokenId: myToken?.id, log, combat,
       settings: { discord: s.settings.discord, lockMoves: s.settings.lockMoves, startLevel: s.settings.startLevel ?? 1 }, handout: s.handout, curtain: s.curtain, version: s.version,
+      visible: vis && !s.curtain ? [...vis.visible] : undefined,
+      lit: vis && !s.curtain ? Array.from(vis.light, (v) => v).join('') : undefined,
+      templates: s.curtain && !gm ? [] : s.templates ?? [],
+      safety: s.settings.safety ?? DEFAULT_SAFETY,
+      xcardAt: gm ? s.xcardAt : undefined,
     };
   }
 }

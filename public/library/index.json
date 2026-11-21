@@ -1,0 +1,452 @@
+{
+ "license": "LairLabs-Original: original work made for Lair Labs. No third-party art.",
+ "maps": [
+  {
+   "id": "crypt-of-the-ashen-saint",
+   "name": "Crypt of the Ashen Saint",
+   "cols": 30,
+   "rows": 24,
+   "ambient": "dark",
+   "description": "A small crypt beneath a ruined chapel: an entry hall, a hall of burial niches, a collapsed guardroom and, behind a locked iron door and a secret passage, the saint's warded tomb.",
+   "setting": "dungeon",
+   "tags": [
+    "dungeon",
+    "crypt",
+    "undead",
+    "starter",
+    "one-shot"
+   ],
+   "rooms": 5,
+   "encounters": 3
+  },
+  {
+   "id": "flooded-chapel",
+   "name": "The Flooded Chapel",
+   "cols": 26,
+   "rows": 22,
+   "ambient": "dim",
+   "description": "A sunken chapel half full of black water. Pews break the surface, the altar stands dry on its dais, and stairs in the east chapel descend into a drowned crypt.",
+   "setting": "dungeon",
+   "tags": [
+    "dungeon",
+    "temple",
+    "water",
+    "undead",
+    "starter"
+   ],
+   "rooms": 4,
+   "encounters": 2
+  },
+  {
+   "id": "forest-road-ambush",
+   "name": "Forest Road Ambush",
+   "cols": 32,
+   "rows": 22,
+   "ambient": "bright",
+   "description": "A wagon lies overturned where the road narrows between oaks and pines. Bandits wait in the brush on both sides, and their camp sits in a ruined watch hut.",
+   "setting": "wilderness",
+   "tags": [
+    "wilderness",
+    "road",
+    "bandits",
+    "ambush",
+    "starter"
+   ],
+   "rooms": 2,
+   "encounters": 2
+  },
+  {
+   "id": "goblin-warren",
+   "name": "Goblin Warren",
+   "cols": 34,
+   "rows": 26,
+   "ambient": "dark",
+   "description": "A goblin lair in a hillside cave: a ravine approach, a watch post by a fire, a den cut by an underground stream, a wolf pen, a glowing mushroom grotto and the chief's hall.",
+   "setting": "cave",
+   "tags": [
+    "cave",
+    "goblin",
+    "lair",
+    "starter",
+    "one-shot"
+   ],
+   "rooms": 7,
+   "encounters": 5
+  },
+  {
+   "id": "rusty-flagon-ground",
+   "name": "The Rusty Flagon (ground floor)",
+   "cols": 26,
+   "rows": 20,
+   "ambient": "bright",
+   "description": "A busy roadside tavern: common room with bar and hearth, a private snug, a kitchen, a storeroom with a cellar trapdoor and a locked back door, all facing a cobbled street.",
+   "setting": "town",
+   "tags": [
+    "tavern",
+    "town",
+    "social",
+    "starter",
+    "two-floor"
+   ],
+   "rooms": 5,
+   "encounters": 0
+  },
+  {
+   "id": "rusty-flagon-upstairs",
+   "name": "The Rusty Flagon (upstairs)",
+   "cols": 26,
+   "rows": 20,
+   "ambient": "dim",
+   "description": "Upstairs at the Rusty Flagon: a landing hall, five rented rooms and the innkeeper's locked quarters.",
+   "setting": "town",
+   "tags": [
+    "tavern",
+    "town",
+    "inn",
+    "two-floor"
+   ],
+   "rooms": 8,
+   "encounters": 0
+  },
+  {
+   "id": "wizards-tower-floor",
+   "name": "Wizard's Tower (middle floor)",
+   "cols": 23,
+   "rows": 23,
+   "ambient": "dim",
+   "description": "One round floor of a mage's tower: an outer ring split into a library-study and an alchemy lab, wrapped around a warded sanctum with a summoning circle behind a portcullis.",
+   "setting": "dungeon",
+   "tags": [
+    "dungeon",
+    "wizard",
+    "tower",
+    "magic",
+    "starter"
+   ],
+   "rooms": 5,
+   "encounters": 2
+  }
+ ],
+ "rooms": [
+  {
+   "id": "room-cave-pool",
+   "name": "Cave pool",
+   "cols": 11,
+   "rows": 11,
+   "ambient": "dark",
+   "description": "A natural cave with a still pool and glowing mushrooms.",
+   "setting": "cave",
+   "tags": [
+    "cave",
+    "water",
+    "medium"
+   ],
+   "rooms": 1,
+   "encounters": 0
+  },
+  {
+   "id": "room-collapsed-hall",
+   "name": "Collapsed hall",
+   "cols": 11,
+   "rows": 10,
+   "ambient": "dark",
+   "description": "Half the ceiling is down: rubble, boulders and a narrow path.",
+   "setting": "dungeon",
+   "tags": [
+    "ruin",
+    "dungeon",
+    "medium"
+   ],
+   "rooms": 1,
+   "encounters": 0
+  },
+  {
+   "id": "room-crypt-niches",
+   "name": "Crypt niches",
+   "cols": 10,
+   "rows": 11,
+   "ambient": "dark",
+   "description": "Sarcophagi between pillars.",
+   "setting": "dungeon",
+   "tags": [
+    "crypt",
+    "undead",
+    "medium"
+   ],
+   "rooms": 1,
+   "encounters": 0
+  },
+  {
+   "id": "room-guard-post",
+   "name": "Guard post",
+   "cols": 9,
+   "rows": 10,
+   "ambient": "dark",
+   "description": "Bunks, a table and a weapon rack for 4 guards.",
+   "setting": "dungeon",
+   "tags": [
+    "barracks",
+    "dungeon",
+    "small"
+   ],
+   "rooms": 1,
+   "encounters": 0
+  },
+  {
+   "id": "room-library",
+   "name": "Library",
+   "cols": 10,
+   "rows": 10,
+   "ambient": "dark",
+   "description": "Shelves along the walls, a reading desk and a lectern.",
+   "setting": "dungeon",
+   "tags": [
+    "library",
+    "wizard",
+    "medium"
+   ],
+   "rooms": 1,
+   "encounters": 0
+  },
+  {
+   "id": "room-mess-hall",
+   "name": "Mess hall",
+   "cols": 12,
+   "rows": 11,
+   "ambient": "dark",
+   "description": "Long tables and a kitchen hearth.",
+   "setting": "dungeon",
+   "tags": [
+    "barracks",
+    "hall",
+    "medium"
+   ],
+   "rooms": 1,
+   "encounters": 0
+  },
+  {
+   "id": "room-prison-cells",
+   "name": "Prison cells",
+   "cols": 11,
+   "rows": 11,
+   "ambient": "dark",
+   "description": "Three barred cells off a guard walk.",
+   "setting": "dungeon",
+   "tags": [
+    "prison",
+    "dungeon",
+    "medium"
+   ],
+   "rooms": 4,
+   "encounters": 0
+  },
+  {
+   "id": "room-ritual-chamber",
+   "name": "Ritual chamber",
+   "cols": 11,
+   "rows": 13,
+   "ambient": "dark",
+   "description": "A rune circle ringed by braziers.",
+   "setting": "dungeon",
+   "tags": [
+    "ritual",
+    "temple",
+    "boss",
+    "medium"
+   ],
+   "rooms": 1,
+   "encounters": 0
+  },
+  {
+   "id": "room-shrine",
+   "name": "Small shrine",
+   "cols": 9,
+   "rows": 10,
+   "ambient": "dark",
+   "description": "A pillared shrine with an altar and candles. Two doorways, north and south.",
+   "setting": "dungeon",
+   "tags": [
+    "temple",
+    "dungeon",
+    "small"
+   ],
+   "rooms": 1,
+   "encounters": 0
+  },
+  {
+   "id": "room-smithy",
+   "name": "Smithy",
+   "cols": 9,
+   "rows": 10,
+   "ambient": "dark",
+   "description": "Forge, anvil and a rack of fresh blades.",
+   "setting": "town",
+   "tags": [
+    "smithy",
+    "town",
+    "small"
+   ],
+   "rooms": 1,
+   "encounters": 0
+  },
+  {
+   "id": "room-storeroom",
+   "name": "Storeroom",
+   "cols": 8,
+   "rows": 9,
+   "ambient": "dark",
+   "description": "Crates, barrels and sacks; good for hiding things.",
+   "setting": "dungeon",
+   "tags": [
+    "storage",
+    "dungeon",
+    "small"
+   ],
+   "rooms": 1,
+   "encounters": 0
+  },
+  {
+   "id": "room-throne-room",
+   "name": "Throne room",
+   "cols": 11,
+   "rows": 16,
+   "ambient": "dark",
+   "description": "A long hall of pillars leading to a dais and throne.",
+   "setting": "dungeon",
+   "tags": [
+    "throne-room",
+    "boss",
+    "large"
+   ],
+   "rooms": 1,
+   "encounters": 0
+  },
+  {
+   "id": "room-vault",
+   "name": "Treasure vault",
+   "cols": 7,
+   "rows": 9,
+   "ambient": "dark",
+   "description": "A locked vault with a chest, coins and a trap.",
+   "setting": "dungeon",
+   "tags": [
+    "treasure",
+    "vault",
+    "dungeon",
+    "small"
+   ],
+   "rooms": 1,
+   "encounters": 0
+  }
+ ],
+ "materials": [
+  {
+   "id": "stone-flagstone",
+   "name": "Grey flagstones",
+   "color": "#767777",
+   "squares": 4
+  },
+  {
+   "id": "stone-flagstone-warm",
+   "name": "Warm flagstones",
+   "color": "#67635c",
+   "squares": 4
+  },
+  {
+   "id": "dungeon-slab",
+   "name": "Dark dungeon slabs",
+   "color": "#48494e",
+   "squares": 4
+  },
+  {
+   "id": "stone-cobble",
+   "name": "Cobblestones",
+   "color": "#5b544d",
+   "squares": 4
+  },
+  {
+   "id": "brick-floor",
+   "name": "Brick floor",
+   "color": "#7c412f",
+   "squares": 4
+  },
+  {
+   "id": "marble",
+   "name": "Marble checker",
+   "color": "#b9b3a9",
+   "squares": 4
+  },
+  {
+   "id": "wood-planks",
+   "name": "Wood planks",
+   "color": "#744e30",
+   "squares": 4
+  },
+  {
+   "id": "wood-planks-dark",
+   "name": "Dark wood planks",
+   "color": "#4c3220",
+   "squares": 4
+  },
+  {
+   "id": "dirt",
+   "name": "Packed dirt",
+   "color": "#6c5539",
+   "squares": 4
+  },
+  {
+   "id": "grass",
+   "name": "Grass",
+   "color": "#54772f",
+   "squares": 4
+  },
+  {
+   "id": "sand",
+   "name": "Sand",
+   "color": "#c5aa78",
+   "squares": 4
+  },
+  {
+   "id": "cave-floor",
+   "name": "Cave floor",
+   "color": "#3c3832",
+   "squares": 4
+  },
+  {
+   "id": "water-shallow",
+   "name": "Shallow water",
+   "color": "#5fa5a4",
+   "squares": 4
+  },
+  {
+   "id": "water-deep",
+   "name": "Deep water",
+   "color": "#1f5674",
+   "squares": 4
+  },
+  {
+   "id": "mud",
+   "name": "Mud",
+   "color": "#453729",
+   "squares": 4
+  },
+  {
+   "id": "ice",
+   "name": "Ice",
+   "color": "#9bc4d8",
+   "squares": 4
+  },
+  {
+   "id": "lava",
+   "name": "Lava",
+   "color": "#934c20",
+   "squares": 4
+  },
+  {
+   "id": "pit",
+   "name": "Pit",
+   "color": "#100d0c",
+   "squares": 4
+  }
+ ]
+}

@@ -7,6 +7,9 @@ export class HostSession {
   private conns = new Map<Conn, string | null>(); // conn -> player id once they say hello
   private timer: ReturnType<typeof setTimeout> | null = null;
   private lastSent = new Map<Conn, string>();
+  private sentBackdrop = new Map<Conn, string>();
+  /** Background pictures by id (data URLs). Kept out of the game state so views stay small. */
+  backdrops = new Map<string, string>();
   onLocalChange: () => void = () => {};
 
   constructor(state: GameState, private transport: HostTransport, private debounceMs = 40) {
@@ -111,6 +114,11 @@ export class HostSession {
     const id = this.conns.get(c);
     if (!id || !this.core.s.players[id]) return;
     const view = this.core.view(id);
+    const bid = view.map.backdrop?.id;
+    if (bid && this.sentBackdrop.get(c) !== bid && this.backdrops.has(bid)) {
+      this.sentBackdrop.set(c, bid);
+      c.send({ t: 'backdrop', id: bid, data: this.backdrops.get(bid)! } satisfies ToClient);
+    }
     const json = JSON.stringify(view);
     if (this.lastSent.get(c) === json) return;
     this.lastSent.set(c, json);
@@ -123,6 +131,7 @@ export type ClientStatus = 'connecting' | 'connected' | 'reconnecting' | 'closed
 /** Runs on a phone. Keeps trying to reconnect if the link drops. */
 export class ClientSession {
   view?: PlayerView;
+  backdrops = new Map<string, string>();
   status: ClientStatus = 'connecting';
   error = '';
   private conn?: Conn;
@@ -221,6 +230,10 @@ export class ClientSession {
         m.ok ? p.resolve() : p.reject(new Error(m.error || 'Refused.'));
         break;
       }
+      case 'backdrop':
+        if (typeof m.data === 'string' && m.data.startsWith('data:image/')) this.backdrops.set(m.id, m.data);
+        this.onUpdate();
+        break;
       case 'notice':
         this.onNotice(m.text);
         break;
