@@ -1,0 +1,1 @@
+{ "name": "Lair Labs", "short_name": "Lair Labs", "start_url": "/", "display": "standalone", "background_color": "#16130f", "theme_color": "#16130f", "icons": [{ "src": "/icon.svg", "sizes": "any", "type": "image/svg+xml" }] }
