@@ -7,7 +7,7 @@ import type { GameMap } from '../engine/map';
 import { makeVisUniforms, type VisUniforms } from './shaders';
 import { kitMaterials, type Bin } from './kit';
 import { buildDungeon, poseDoor, WALL_H, type Built } from './dungeon';
-import { dungeonEnv } from './textures';
+import { dungeonEnv, glowTex } from './textures';
 import type { LightSpot } from './props3d';
 
 export type Quality = 'low' | 'medium' | 'high';
@@ -241,7 +241,7 @@ export class Engine3D {
       this.assignLights(dt, focus);
       const c = carried();
       if (c) {
-        this.carried.position.set(c.x, 1.5, c.z);
+        this.carried.position.set(c.x, 1.25, c.z);
         this.carried.distance = Math.max(5, c.range * 1.2);
         this.carried.intensity = 2.2 * (0.92 + 0.08 * Math.sin(this.clock.elapsedTime * 9));
       } else this.carried.intensity = 0;
@@ -258,10 +258,44 @@ export class Engine3D {
           if (m.normalMap) m.normalMap.offset.set(this.clock.elapsedTime * 0.02, this.clock.elapsedTime * 0.013);
         }
       }
+      this.driftDust(dt, focus);
       if (QUALITY[this.quality].shadows && this.frame % 4 === 0) this.renderer.shadowMap.needsUpdate = true;
       this.renderer.render(this.scene, this.camera);
     };
     loop();
+  }
+
+  /** Dust hanging in the torchlight around the camera's focus: cheap, and it makes the air feel thick. */
+  private dust?: THREE.Points;
+  private driftDust(dt: number, f: THREE.Vector3) {
+    if (this.quality === 'low' || this.outdoor) return;
+    const N = 180, B = 7;
+    if (!this.dust) {
+      const g = new THREE.BufferGeometry();
+      const p = new Float32Array(N * 3);
+      for (let i = 0; i < N; i++) {
+        p[i * 3] = (Math.random() - 0.5) * B;
+        p[i * 3 + 1] = Math.random() * 2.2 + 0.1;
+        p[i * 3 + 2] = (Math.random() - 0.5) * B;
+      }
+      g.setAttribute('position', new THREE.BufferAttribute(p, 3));
+      const m = new THREE.PointsMaterial({ size: 0.03, map: glowTex(), color: '#ffd9a0', transparent: true, opacity: 0.45, depthWrite: false, blending: THREE.AdditiveBlending });
+      this.dust = new THREE.Points(g, m);
+      this.dust.frustumCulled = false;
+      this.scene.add(this.dust);
+    }
+    const a = this.dust.geometry.attributes.position as THREE.BufferAttribute;
+    const t = this.clock.elapsedTime;
+    for (let i = 0; i < N; i++) {
+      let x = a.getX(i) + Math.sin(t * 0.3 + i) * dt * 0.05, y = a.getY(i) + Math.sin(t * 0.21 + i * 1.7) * dt * 0.04 - dt * 0.01, z = a.getZ(i) + Math.cos(t * 0.27 + i) * dt * 0.05;
+      // keep the cloud centred on the focus by wrapping
+      const dx = x - f.x, dz = z - f.z;
+      if (dx > B / 2) x -= B; else if (dx < -B / 2) x += B;
+      if (dz > B / 2) z -= B; else if (dz < -B / 2) z += B;
+      if (y < 0.05) y = 2.3;
+      a.setXYZ(i, x, y, z);
+    }
+    a.needsUpdate = true;
   }
 
   /** GM work light: the whole map lit evenly, like the overhead view. Far: thinner fog for the table camera. */

@@ -2,6 +2,7 @@
 // Each surface comes as a colour map (grey so vertex colour tints it) and a normal map made from the same height field,
 // the same way the build kit this was modelled on pairs its colour and normal pictures.
 import * as THREE from 'three';
+import { ashlar, caveRock } from './paint';
 
 type Painter = (x: number, y: number) => number; // height 0..1 at pixel x,y
 
@@ -85,27 +86,11 @@ function pair(key: string, S: number, height: Painter, tone: (h: number, x: numb
 export const gritTex = () =>
   pair('grit', 256, (x, y) => fbm(x, y, 256, 8, 5, 3) * 0.7 + hash2(x, y, 9) * 0.3, (h) => 0.72 + h * 0.36, 3.5);
 
-/** Dressed stone blocks in courses, for dungeon walls. One texture tile = 2 x 2 world units. */
-export const stoneBlockTex = () =>
-  pair(
-    'stoneblock',
-    512,
-    (x, y) => {
-      const row = Math.floor(y / 64), off = row % 2 ? 48 : 0, bx = Math.floor((x + off) / 96);
-      const lx = (x + off) % 96, ly = y % 64;
-      const edge = Math.min(lx, 96 - lx, ly, 64 - ly);
-      const mortar = edge < 3 ? 0 : Math.min(1, (edge - 3) / 5);
-      const face = 0.55 + 0.25 * hash2(bx, row, 4) + 0.2 * fbm(x, y, 512, 16, 4, bx + row * 7);
-      const chip = fbm(x, y, 512, 32, 3, 17) > 0.72 ? -0.25 : 0;
-      return mortar * (face + chip * mortar);
-    },
-    (h, x, y) => (h < 0.05 ? 0.38 : 0.6 + h * 0.42 + (fbm(x, y, 512, 8, 3, 77) - 0.5) * 0.25),
-    6,
-  );
+/** Dressed stone for dungeon walls: now the painted ashlar (one tile = 2 x 2 world units). */
+export const stoneBlockTex = () => ashlar();
 
 /** Rough cave rock. */
-export const caveRockTex = () =>
-  pair('caverock', 512, (x, y) => Math.pow(fbm(x, y, 512, 6, 6, 11), 1.3) * 0.8 + fbm(x, y, 512, 48, 2, 5) * 0.2, (h) => 0.45 + h * 0.75, 9);
+export const caveRockTex = () => caveRock();
 
 /** Wood grain running along V. */
 export const woodTex = () =>

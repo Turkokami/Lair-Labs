@@ -70,7 +70,7 @@ export default function View3D(p: View3DProps) {
   const [hint, setHint] = useState<string | null>(null);
   const [work, setWork] = useState(p.role === 'gm');
   useEffect(() => eng.current?.setLook(work, cam === 'table'), [work, cam, ready]);
-  const view = useRef({ yaw: Math.PI, pitch: -0.12, dist: p.myTokenId ? 3 : 10, tyaw: Math.PI, focus: startSpot(p.map) });
+  const view = useRef({ yaw: Math.PI, pitch: -0.25, dist: p.myTokenId ? 3.2 : 10, tyaw: Math.PI, focus: startSpot(p.map) });
   const props = useRef(p);
   props.current = p;
   const camRef = useRef(cam);
@@ -315,16 +315,17 @@ export default function View3D(p: View3DProps) {
     const fwd = new THREE.Vector3(-Math.sin(v.yaw), 0, -Math.cos(v.yaw));
     const right = new THREE.Vector3(Math.cos(v.yaw), 0, -Math.sin(v.yaw));
     if (mode === 'first') {
-      const eyeH = f ? Math.min(WALL_H - 0.25, EYE * Math.max(0.7, f.scale * 0.95)) : EYE;
+      const eyeH = f ? Math.max(0.7, f.height * 0.92) : EYE;
       c.position.set(v.focus.x, eyeH, v.focus.z).addScaledVector(fwd, 0.12);
       c.rotation.set(v.pitch, v.yaw, 0, 'YXZ');
-      c.fov = 72;
+      c.fov = 76;
     } else if (mode === 'shoulder') {
       const h = f ? f.height : 1.6;
-      const head = new THREE.Vector3(v.focus.x, Math.min(WALL_H - 0.3, h * 0.95), v.focus.z);
+      const head = new THREE.Vector3(v.focus.x, h * 0.95, v.focus.z);
       const back = new THREE.Vector3().copy(fwd).multiplyScalar(-Math.cos(v.pitch) * v.dist);
       const want = head.clone().add(back).addScaledVector(right, 0.42);
-      want.y = Math.min(WALL_H - 0.15, head.y + 0.35 - Math.sin(v.pitch) * v.dist * 0.6);
+      // no ceiling: the camera may rise above the wall tops, which opens the room up
+      want.y = Math.min(WALL_H + 1.2, head.y + 0.45 - Math.sin(v.pitch) * v.dist * 0.8);
       // don't let walls get between the camera and the hero
       const dir = want.clone().sub(head);
       const len = dir.length();
@@ -336,7 +337,7 @@ export default function View3D(p: View3DProps) {
       // pulled in tight by a wall: the hero would fill the screen, so look past them
       if (f) f.group.children[0].visible = dist > 0.95;
       c.lookAt(head.clone().addScaledVector(fwd, 2.5).setY(head.y - 0.15));
-      c.fov = 66;
+      c.fov = 70;
     } else {
       const d = v.dist;
       const pitch = Math.max(0.35, Math.min(1.45, -v.pitch));

@@ -28,6 +28,8 @@ export interface ShadeOpts {
   noVis?: boolean;
   /** Flicker the emissive colour (flames). */
   flicker?: boolean;
+  /** Walls: damp and darker near the floor, soot near the top, faint water streaks. */
+  grime?: boolean;
 }
 
 const TRI = /* glsl */ `
@@ -40,7 +42,7 @@ float llVN(vec3 p) { vec3 i = floor(p), f = fract(p); f = f * f * (3.0 - 2.0 * f
 
 /** Adds fog of war and optional triplanar painting to a built-in material. Call once per material. */
 export function shade<M extends THREE.Material>(m: M, vis: VisUniforms, o: ShadeOpts = {}): M {
-  const key = `ll|${o.tri ?? 0}|${o.rv ?? 0}|${o.noVis ? 1 : 0}|${o.flicker ? 1 : 0}`;
+  const key = `ll|${o.tri ?? 0}|${o.rv ?? 0}|${o.noVis ? 1 : 0}|${o.flicker ? 1 : 0}|${o.grime ? 1 : 0}`;
   m.onBeforeCompile = (sh) => {
     Object.assign(sh.uniforms, vis, { llS: { value: o.tri ?? 1 } });
     sh.vertexShader =
@@ -85,6 +87,18 @@ roughnessFactor = clamp(roughnessFactor * (1.0 - ${o.rv.toFixed(2)} + 2.0 * ${o.
 #endif`,
       );
     }
+    if (o.grime)
+      fs = fs.replace(
+        '#include <color_fragment>',
+        `#include <color_fragment>
+{ float side = 1.0 - abs(normalize(llN).y);
+  float base = smoothstep(0.0, 0.85, llP.y), top = 1.0 - smoothstep(1.7, 2.4, llP.y);
+  float streak = llVN(vec3((llP.x + llP.z) * 7.0, llP.y * 0.7, 3.0));
+  float damp = (1.0 - base) * llVN(llP * 2.7);
+  vec3 g = diffuseColor.rgb * mix(0.62, 1.0, base) * mix(0.8, 1.0, top) * (0.9 + 0.1 * streak);
+  g = mix(g, g * vec3(0.8, 0.88, 0.74), damp * 0.6);
+  diffuseColor.rgb = mix(diffuseColor.rgb, g, side); }`,
+      );
     if (o.flicker && !fs.includes('#include <emissivemap_fragment>'))
       fs = fs.replace(
         '#include <color_fragment>',

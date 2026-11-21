@@ -7,6 +7,7 @@ import { Kit, rng, type Bin } from './kit';
 import { shade, type VisUniforms } from './shaders';
 import { gritTex, plankTex, ironTex, stoneBlockTex, caveRockTex } from './textures';
 import { buildProps, type LightSpot } from './props3d';
+import { paintedFloor } from './paint';
 
 export const WALL_H = 2.4; // 12 ft
 export const EYE = 1.15;
@@ -61,7 +62,7 @@ function matFor(m: GameMap, i: number, v: number) {
   return mt || THEME_FLOOR[m.theme] || 'stone-flagstone';
 }
 
-export interface BuildOpts { quality: 'low' | 'medium' | 'high'; role: 'gm' | 'player'; onTexture?: () => void }
+export interface BuildOpts { quality: 'low' | 'medium' | 'high'; role: 'gm' | 'player'; onTexture?: () => void; /** Rooms are open to the dark above by default, so nothing overhead blocks the view. */ ceiling?: boolean }
 
 export function buildDungeon(m: GameMap, vis: VisUniforms, kitMats: Record<Bin, THREE.Material>, o: BuildOpts): Built {
   const root = new THREE.Group();
@@ -76,7 +77,7 @@ export function buildDungeon(m: GameMap, vis: VisUniforms, kitMats: Record<Bin, 
   const R = rng(m.cols * 9973 + m.rows * 31 + m.cells.length);
   const cave = m.theme === 'cave' || m.wallStyle === 'cave';
   const wallBin: Bin = cave ? 'cave' : m.wallStyle === 'wood' || m.theme === 'wood' ? 'wood' : 'stone';
-  const wallCol = cave ? '#8a7e70' : m.wallStyle === 'brick' ? '#b0705a' : wallBin === 'wood' ? '#9a6a40' : m.wallStyle === 'hedge' ? '#4f7a3a' : '#a8a196';
+  const wallCol = cave ? '#d8d0c4' : m.wallStyle === 'brick' ? '#d89a80' : wallBin === 'wood' ? '#9a6a40' : m.wallStyle === 'hedge' ? '#4f7a3a' : '#ece6dc';
 
   // ---------------- floors ----------------
   const byMat = new Map<string, number[]>();
@@ -121,17 +122,22 @@ export function buildDungeon(m: GameMap, vis: VisUniforms, kitMats: Record<Bin, 
     g.setAttribute('uv', new THREE.Float32BufferAttribute(U, 2));
     g.setAttribute('color', new THREE.Float32BufferAttribute(C, 3));
     geos.push(g);
-    const nrm = gr.normal.clone();
-    nrm.repeat.set(4, 4);
-    nrm.needsUpdate = true;
+    // our own painted stone, earth and wood up close; the overhead picture for anything not painted yet
+    const painted = id === 'pit' ? undefined : paintedFloor(id, o.quality === 'low' ? 256 : 512);
+    let nrm = painted?.normal;
+    if (!nrm) {
+      nrm = gr.normal.clone();
+      nrm.repeat.set(4, 4);
+      nrm.needsUpdate = true;
+    }
     const mat = shade(
       new THREE.MeshStandardMaterial({
-        map: id === 'pit' ? null : floorTex(id, () => o.onTexture?.()),
+        map: id === 'pit' ? null : painted?.map ?? floorTex(id, () => o.onTexture?.()),
         color: id === 'pit' ? FALLBACK.pit : '#ffffff',
         vertexColors: true,
         roughness: id === 'marble' || id === 'ice' ? 0.35 : 0.9,
         normalMap: nrm,
-        normalScale: new THREE.Vector2(0.6, 0.6),
+        normalScale: painted ? new THREE.Vector2(1, 1) : new THREE.Vector2(0.6, 0.6),
         emissive: id === 'lava' ? new THREE.Color('#ff5a1a') : new THREE.Color(0),
         emissiveIntensity: id === 'lava' ? 0.9 : 0,
       }),
@@ -269,7 +275,7 @@ export function buildDungeon(m: GameMap, vis: VisUniforms, kitMats: Record<Bin, 
   // ---------------- ceiling ----------------
   const ceilCells: number[] = [];
   for (let i = 0; i < m.cells.length; i++) if (m.cells[i] > 0 && !OUTDOOR.has(matFor(m, i, m.cells[i]))) ceilCells.push(i);
-  if (ceilCells.length) {
+  if (o.ceiling && ceilCells.length) {
     const P: number[] = [];
     for (const i of ceilCells) {
       const x = i % W, y = Math.floor(i / W);

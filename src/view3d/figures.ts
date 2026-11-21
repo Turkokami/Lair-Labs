@@ -4,6 +4,7 @@
 // cross-fades, the same way a rigged model would. When proper models arrive, a loaded GLB with clips of the same names
 // can replace the stand-in body without changing anything else.
 import * as THREE from 'three';
+import { glowTex } from './textures';
 import type { Token } from '../engine/game';
 import { creatureById } from '../library/creatures';
 import { tokenSprite } from '../library/art/sprites';
@@ -30,6 +31,9 @@ function pTrack(node: string, times: number[], pos: [number, number, number][]) 
 function sTrack(node: string, times: number[], s: [number, number, number][]) {
   return new THREE.VectorKeyframeTrack(`${node}.scale`, times, s.flat());
 }
+
+/** World size of the stand-in figures: 0.76 makes a medium humanoid about 6 ft against 5 ft squares. */
+export const FIG = 0.76;
 
 interface Rig { root: THREE.Group; body: THREE.Group; clips: Record<ClipName, THREE.AnimationClip>; height: number }
 
@@ -351,7 +355,8 @@ export class Figure {
     this.materials = Object.values(M);
     const plan = PLAN[fam];
     const rig = plan === 'biped' ? biped(M, fam, true) : plan === 'blob' ? blob(M, fam) : quad(M, fam, plan === 'flyer');
-    this.scale = sizeScale(token, def?.size) * (plan === 'quad' || plan === 'flyer' ? 1.1 : 1);
+    // FIG: a medium creature stands about 1.2 squares (6 ft) tall against 12 ft walls
+    this.scale = sizeScale(token, def?.size) * (plan === 'quad' || plan === 'flyer' ? 1.1 : 1) * FIG;
     rig.root.scale.setScalar(this.scale);
     this.group.add(rig.root);
     this.height = rig.height * this.scale;
@@ -371,7 +376,16 @@ export class Figure {
       if (name !== 'die') this.play(this.path.length ? 'walk' : 'idle', 0.2);
     });
     // base ring in the token's colour, so you can tell sides apart from far off
-    const rm = shade(new THREE.MeshBasicMaterial({ color: token.color || '#888', transparent: true, opacity: 0.8 }), vis);
+    // a soft contact shadow so figures sit on the floor even without real shadows (phones)
+    const sm = shade(new THREE.MeshBasicMaterial({ map: glowTex(), color: '#000000', transparent: true, opacity: 0.6, depthWrite: false }), vis);
+    this.materials.push(sm);
+    const sg = new THREE.PlaneGeometry(1.0 * Math.max(1, token.size), 1.0 * Math.max(1, token.size));
+    sg.rotateX(-Math.PI / 2);
+    const shadowBlob = new THREE.Mesh(sg, sm);
+    shadowBlob.position.y = 0.008;
+    shadowBlob.renderOrder = 1;
+    this.group.add(shadowBlob);
+    const rm = shade(new THREE.MeshBasicMaterial({ color: token.color || '#888', transparent: true, opacity: 0.6, depthWrite: false }), vis);
     this.materials.push(rm);
     const rg = new THREE.RingGeometry(0.36 * Math.max(1, token.size), 0.43 * Math.max(1, token.size), 32);
     rg.rotateX(-Math.PI / 2);
@@ -379,7 +393,7 @@ export class Figure {
     this.ring.position.y = 0.015;
     this.group.add(this.ring);
     this.plate = nameplate(token, def);
-    this.plate.sprite.position.y = this.height + 0.35;
+    this.plate.sprite.position.y = this.height + 0.28;
     this.group.add(this.plate.sprite);
     this.lastHp = token.hp;
     this.place(token);

@@ -83,8 +83,8 @@ export function kitMaterials(vis: VisUniforms, cave = false): Record<Bin, THREE.
   const std = (p: THREE.MeshStandardMaterialParameters) => new THREE.MeshStandardMaterial({ vertexColors: true, metalness: 0, ...p });
   const g = gritTex(), w = woodTex(), c = clothTex(), ir = ironTex(), sb = stoneBlockTex(), cr = caveRockTex();
   return {
-    stone: shade(std({ map: sb.map, normalMap: sb.normal, normalScale: new THREE.Vector2(1.1, 1.1), roughness: 0.88 }), vis, { tri: 0.5, rv: 0.25 }),
-    cave: shade(std({ map: cr.map, normalMap: cr.normal, normalScale: new THREE.Vector2(1.4, 1.4), roughness: 0.92 }), vis, { tri: 0.33, rv: 0.3 }),
+    stone: shade(std({ color: new THREE.Color(1.35, 1.35, 1.35), map: sb.map, normalMap: sb.normal, normalScale: new THREE.Vector2(1.1, 1.1), roughness: 0.88 }), vis, { tri: 0.5, rv: 0.25, grime: true }),
+    cave: shade(std({ color: new THREE.Color(1.3, 1.3, 1.3), map: cr.map, normalMap: cr.normal, normalScale: new THREE.Vector2(1.4, 1.4), roughness: 0.92 }), vis, { tri: 0.33, rv: 0.3, grime: true }),
     lit: shade(std({ map: g.map, normalMap: g.normal, normalScale: new THREE.Vector2(0.8, 0.8), roughness: 0.78 }), vis, { tri: 1.4, rv: 0.4 }),
     wood: shade(std({ map: w.map, normalMap: w.normal, normalScale: new THREE.Vector2(0.7, 0.7), roughness: 0.74, envMap: env, envMapIntensity: 0.3 }), vis, { tri: 1.1, rv: 0.25 }),
     metal: shade(std({ map: ir.map, normalMap: ir.normal, normalScale: new THREE.Vector2(0.5, 0.5), roughness: 0.42, metalness: 0.55, envMap: env, envMapIntensity: 1.1 }), vis, { tri: 1.6, rv: 0.3 }),
