@@ -5,7 +5,7 @@ export type Tile = 0 | 1 | 2 | 3 | 4 | 5; // 0 rock, 1 floor, 2 water, 3 difficu
 export const TILE_NAMES: Record<number, string> = { 0: 'Rock', 1: 'Floor', 2: 'Water', 3: 'Rubble (difficult)', 4: 'Pit', 5: 'Cliff (blocks movement)' };
 
 /** A placed object. `kind` is an object id from src/library/objects (old maps use short names that map to them). */
-export interface Prop { id: string; kind: string; x: number; y: number; rot: number; gmOnly?: boolean; /** variant index */ v?: number; /** light switched off */ off?: boolean; }
+export interface Prop { id: string; kind: string; x: number; y: number; rot: number; gmOnly?: boolean; /** variant index */ v?: number; /** light switched off */ off?: boolean; /** drawn bigger or smaller than its footprint, for natural variety (0.8 to 1.2) */ s?: number; }
 export interface Note { id: string; x: number; y: number; text: string; gmOnly?: boolean; }
 /** A light that isn't an object, in grid units (cell centre = x + 0.5). Radii in feet. */
 export interface MapLight { id: string; x: number; y: number; bright: number; dim: number; color: string; }

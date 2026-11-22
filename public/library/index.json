@@ -125,6 +125,157 @@
    ],
    "rooms": 5,
    "encounters": 2
+  },
+  {
+   "id": "outdoor-forest-small",
+   "name": "The Greenhollow",
+   "cols": 40,
+   "rows": 30,
+   "ambient": "bright",
+   "description": "A small wood with a stream, a track and a clearing: a quick ambush or a camp at dusk.",
+   "setting": "wilderness",
+   "tags": [
+    "outdoor",
+    "forest",
+    "small"
+   ],
+   "rooms": 0,
+   "encounters": 0,
+   "size": "small",
+   "generated": true
+  },
+  {
+   "id": "outdoor-village-medium",
+   "name": "Brindle Cross",
+   "cols": 80,
+   "rows": 60,
+   "ambient": "bright",
+   "description": "A village on a river: houses along the roads, an inn and chapel on the green, fields and a bridge.",
+   "setting": "town",
+   "tags": [
+    "outdoor",
+    "village",
+    "town",
+    "medium"
+   ],
+   "rooms": 0,
+   "encounters": 0,
+   "size": "medium",
+   "generated": true
+  },
+  {
+   "id": "outdoor-coast-medium",
+   "name": "Gullrock Shore",
+   "cols": 80,
+   "rows": 60,
+   "ambient": "bright",
+   "description": "Sea, surf and sand below the cliffs, with a fishing jetty and the land behind.",
+   "setting": "wilderness",
+   "tags": [
+    "outdoor",
+    "coast",
+    "sea",
+    "medium"
+   ],
+   "rooms": 0,
+   "encounters": 0,
+   "size": "medium",
+   "generated": true
+  },
+  {
+   "id": "outdoor-mountains-medium",
+   "name": "Ironridge",
+   "cols": 80,
+   "rows": 60,
+   "ambient": "bright",
+   "description": "A road through a mountain pass, cliffs and scree above, pines lower down.",
+   "setting": "wilderness",
+   "tags": [
+    "outdoor",
+    "mountains",
+    "pass",
+    "medium"
+   ],
+   "rooms": 0,
+   "encounters": 0,
+   "size": "medium",
+   "generated": true
+  },
+  {
+   "id": "outdoor-jungle-large",
+   "name": "The Drowned Canopy",
+   "cols": 140,
+   "rows": 100,
+   "ambient": "bright",
+   "description": "Deep rainforest cut by a brown river, with an overgrown step temple and an expedition camp.",
+   "setting": "wilderness",
+   "tags": [
+    "outdoor",
+    "jungle",
+    "temple",
+    "large"
+   ],
+   "rooms": 0,
+   "encounters": 0,
+   "size": "large",
+   "generated": true
+  },
+  {
+   "id": "outdoor-fungus-medium",
+   "name": "The Violet Hollow",
+   "cols": 80,
+   "rows": 60,
+   "ambient": "dim",
+   "description": "An alien grove of glowing mushroom towers, spore vents and crystal rings around violet pools. Dim light.",
+   "setting": "wilderness",
+   "tags": [
+    "outdoor",
+    "alien",
+    "fungus",
+    "medium"
+   ],
+   "rooms": 0,
+   "encounters": 0,
+   "size": "medium",
+   "generated": true
+  },
+  {
+   "id": "outdoor-desert-huge",
+   "name": "Red Mesa",
+   "cols": 200,
+   "rows": 150,
+   "ambient": "bright",
+   "description": "A thousand feet of dunes and cracked flats, mesas, an oasis and buried ruins.",
+   "setting": "wilderness",
+   "tags": [
+    "outdoor",
+    "desert",
+    "huge"
+   ],
+   "rooms": 0,
+   "encounters": 0,
+   "size": "huge",
+   "generated": true
+  },
+  {
+   "id": "outdoor-region-huge",
+   "name": "Duskvale",
+   "cols": 160,
+   "rows": 120,
+   "ambient": "bright",
+   "description": "A whole land, one square a mile: sea, mountains, forests, rivers, towns and the roads between them.",
+   "setting": "region",
+   "tags": [
+    "outdoor",
+    "region",
+    "world map",
+    "huge"
+   ],
+   "rooms": 0,
+   "encounters": 0,
+   "size": "huge",
+   "scale": 5280,
+   "generated": true
   }
  ],
  "rooms": [

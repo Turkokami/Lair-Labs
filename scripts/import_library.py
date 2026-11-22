@@ -171,6 +171,9 @@ def main(lib: Path):
     (OUT / "rooms").mkdir(parents=True, exist_ok=True)
     (OUT / "floors").mkdir(parents=True, exist_ok=True)
     index = {"license": "LairLabs-Original: original work made for Lair Labs. No third-party art.", "maps": [], "rooms": [], "materials": []}
+    # keep the outdoor samples made by scripts/make_outdoor_samples.mts
+    prev = OUT / "index.json"
+    kept = [m for m in json.loads(prev.read_text()).get("maps", []) if m.get("generated")] if prev.exists() else []
     for kind, folder in (("maps", "maps"), ("rooms", "rooms")):
         for f in sorted((lib / folder).glob("*.json")):
             src = json.loads(f.read_text())
@@ -195,6 +198,7 @@ def main(lib: Path):
             "id": mid, "name": (mat.get("name") if isinstance(mat, dict) else None) or mid.replace("-", " ").capitalize(),
             "color": "#%02x%02x%02x" % avg, "squares": sq,
         })
+    index["maps"] += kept
     (OUT / "index.json").write_text(json.dumps(index, indent=1))
     print(f"{len(index['maps'])} maps, {len(index['rooms'])} rooms, {len(index['materials'])} floors")
 

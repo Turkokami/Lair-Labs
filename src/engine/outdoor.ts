@@ -5,7 +5,7 @@ import { type GameMap, blankMap, pid } from './map';
 import { RULE_CELL, terrainById } from '../library/terrain';
 import { objectById } from '../library/objects';
 
-export type Biome = 'forest' | 'village' | 'coast' | 'desert' | 'swamp' | 'mountains' | 'winter' | 'region';
+export type Biome = 'forest' | 'village' | 'coast' | 'desert' | 'swamp' | 'mountains' | 'winter' | 'jungle' | 'fungus' | 'region';
 export type OutdoorSize = 'small' | 'medium' | 'large' | 'huge';
 
 export const BIOMES: { id: Biome; name: string; blurb: string }[] = [
@@ -16,6 +16,8 @@ export const BIOMES: { id: Biome; name: string; blurb: string }[] = [
   { id: 'swamp', name: 'Swamp', blurb: 'Black water, bog and mossy islands, drowned trees and a hut on stilts.' },
   { id: 'mountains', name: 'Mountains', blurb: 'Cliffs, scree and snow, a pass with a road through it, pines lower down.' },
   { id: 'winter', name: 'Winter', blurb: 'Snowfields, a frozen lake, snowy firs and a lonely camp.' },
+  { id: 'jungle', name: 'Jungle', blurb: 'Dense rainforest, a brown river, giant trees, vines and an overgrown step temple.' },
+  { id: 'fungus', name: 'Alien fungus', blurb: 'Violet fungal ground, glowing mushroom towers, spore vents and crystal spires, lit by its own glow.' },
   { id: 'region', name: 'Region (1 square = 1 mile)', blurb: 'A whole land: sea, mountains, forests, rivers, towns and the roads between them.' },
 ];
 
@@ -81,11 +83,15 @@ class Maker {
   cols: number;
   rows: number;
 
-  constructor(name: string, cols: number, rows: number, seed: number) {
-    this.m = blankMap(cols, rows, name);
-    this.m.mats = new Array(cols * rows).fill('');
-    this.m.ambient = 'bright';
-    this.m.walls = [];
+  constructor(name: string, cols: number, rows: number, seed: number, base?: GameMap) {
+    if (base) {
+      this.m = { ...base, cells: [...base.cells], mats: base.mats ? [...base.mats] : new Array(cols * rows).fill(''), props: [...base.props], notes: [...base.notes] };
+    } else {
+      this.m = blankMap(cols, rows, name);
+      this.m.mats = new Array(cols * rows).fill('');
+      this.m.ambient = 'bright';
+      this.m.walls = [];
+    }
     this.cols = cols;
     this.rows = rows;
     this.rnd = mulberry(seed * 9973 + 17);
@@ -177,24 +183,26 @@ class Maker {
   }
 
   /** Scatter objects over the map: density per square where `where` says yes. Trunks only take one square each. */
-  scatter(kinds: [string, number][], density: number, where: (x: number, y: number) => boolean, variants?: number[]) {
+  scatter(kinds: [string, number, number[]?][], density: number, where: (x: number, y: number) => boolean, variants?: number[]) {
     const total = kinds.reduce((s, [, w]) => s + w, 0);
     const pick = () => {
       let r = this.rnd() * total;
-      for (const [k, w] of kinds) if ((r -= w) <= 0) return k;
-      return kinds[0][0];
+      for (const k of kinds) if ((r -= k[1]) <= 0) return k;
+      return kinds[0];
     };
     for (let y = 0; y < this.rows; y++)
       for (let x = 0; x < this.cols; x++) {
         if (this.rnd() >= density || !where(x, y)) continue;
-        const kind = pick();
+        const [kind, , own] = pick();
         const d = objectById(kind);
         if (!d) continue;
         const rot = !kind.startsWith('region-') && (d.layer === 'overhead' || d.w !== d.h) ? (this.rnd() < 0.5 ? 0 : 90) : 0;
         const [w, h] = this.size(kind, rot);
         const ox = x - Math.floor(w / 2), oy = y - Math.floor(h / 2);
         if (!this.fits(ox, oy, w, h, where)) continue;
-        const v = variants ? variants[Math.floor(this.rnd() * variants.length)] : d.variants && this.rnd() < 0.3 ? Math.floor(this.rnd() * Math.min(2, d.variants.length)) : 0;
+        const vs = own ?? variants;
+        const v0 = vs ? vs[Math.floor(this.rnd() * vs.length)] : d.variants && this.rnd() < 0.3 ? Math.floor(this.rnd() * Math.min(2, d.variants.length)) : 0;
+        const v = d.variants?.length ? v0 % d.variants.length : 0;
         // a tree only claims its trunk, so canopies can touch like a real wood
         this.put(kind, ox, oy, rot, v, false);
         const cx = ox + Math.floor(w / 2), cy = oy + Math.floor(h / 2);
@@ -769,7 +777,7 @@ function region(mk: Maker) {
     return 1 + Math.max(0, E(x, y) - 0.5) * 12 + (m === 'forest-floor' ? 1 : 0) + (m === 'bog' ? 3 : 0);
   };
   const route = (a: { x: number; y: number }, b: { x: number; y: number }) => {
-    const N = cols * rows, dist = new Float32Array(N).fill(Infinity), prev = new Int32Array(N).fill(-1);
+    const N = cols * rows, dist = new Float64Array(N).fill(Infinity), prev = new Int32Array(N).fill(-1);
     const heap: [number, number][] = [];
     const push = (d: number, i: number) => { heap.push([d, i]); let k = heap.length - 1; while (k > 0) { const p = (k - 1) >> 1; if (heap[p][0] <= heap[k][0]) break; [heap[p], heap[k]] = [heap[k], heap[p]]; k = p; } };
     const pop = () => { const top = heap[0]; const last = heap.pop()!; if (heap.length) { heap[0] = last; let k = 0; for (;;) { const l = 2 * k + 1, r = l + 1; let s = k; if (l < heap.length && heap[l][0] < heap[s][0]) s = l; if (r < heap.length && heap[r][0] < heap[s][0]) s = r; if (s === k) break; [heap[s], heap[k]] = [heap[k], heap[s]]; k = s; } } return top; };
@@ -826,6 +834,102 @@ function region(mk: Maker) {
   mk.m.ambient = 'bright';
 }
 
+function jungle(mk: Maker, big: boolean) {
+  const { cols, rows } = mk;
+  const dense = (x: number, y: number) => mk.n(x, y, big ? 24 : 13, 3, 5);
+  mk.fill((x, y) => {
+    const d = dense(x, y), g = mk.n(x, y, 6, 2, 6);
+    if (d > 0.6) return 'jungle-undergrowth';
+    return 'jungle-floor';
+  });
+  // a wide brown river with muddy banks
+  const s0 = mk.edgePoint(0, 0.15 + mk.rnd() * 0.3), s1 = mk.edgePoint(2, 0.55 + mk.rnd() * 0.3);
+  mk.river([s0, [cols * (0.35 + mk.rnd() * 0.3), rows * 0.5], s1], big ? 6 : 4, 'mud', 'water-muddy', 'water-muddy');
+  // a trail cut through, side to side, with a plank bridge
+  const r0 = mk.edgePoint(3, 0.3 + mk.rnd() * 0.4), r1 = mk.edgePoint(1, 0.3 + mk.rnd() * 0.4);
+  const road = mk.road([r0, [cols * 0.5, rows * (0.35 + mk.rnd() * 0.3)], r1], 2, 'road-dirt');
+  mk.bridges(road, 'bridge-plank', 20);
+  const land = (x: number, y: number) => !mk.isWater(x, y) && mk.m.cells[mk.idx(x, y)] !== 5;
+  // the lost temple in a clearing, idols guarding its stair
+  const temples = Math.max(1, Math.round((cols * rows) / 9000));
+  for (let t = 0; t < temples; t++) {
+    const cx = Math.floor(cols * (0.15 + mk.rnd() * 0.7)), cy = Math.floor(rows * (0.15 + mk.rnd() * 0.7));
+    if (mk.isWater(cx, cy) || mk.keep[mk.idx(cx, cy)]) continue;
+    mk.blob(cx, cy, 7, (x, y) => (mk.isWater(x, y) || mk.keep[mk.idx(x, y)] ? null : 'jungle-floor'));
+    const at = mk.tryPut('jungle-temple', cx - 4, cy - 4, cx + 4, cy + 4, land, { v: Math.floor(mk.rnd() * 3) });
+    if (at) {
+      for (const dx of [0, 4]) mk.tryPut('stone-idol', at[0] + dx, at[1] + 5, at[0] + dx + 1, at[1] + 7, land, { tries: 4 });
+      mk.note(at[0] + 2, at[1] + 2, 'The lost temple: the stair climbs the south face to a dark shrine door.');
+    }
+    mk.disc(cx, cy, 6, (x, y) => { mk.keep[mk.idx(x, y)] = 1; });
+  }
+  // a camp for the expedition
+  const ex = Math.floor(cols * (0.2 + mk.rnd() * 0.6)), ey = Math.floor(rows * (0.6 + mk.rnd() * 0.25));
+  if (land(ex, ey)) {
+    mk.blob(ex, ey, 4, (x, y) => (land(x, y) && !mk.keep[mk.idx(x, y)] ? 'jungle-floor' : null));
+    mk.tryPut('campfire', ex - 1, ey - 1, ex + 1, ey + 1, land);
+    for (const k of ['tent', 'tent', 'bedroll']) mk.tryPut(k, ex - 4, ey - 4, ex + 4, ey + 4, land);
+    mk.note(ex, ey, 'A camp: an expedition, smugglers, or the last group that went looking for the temple.');
+    mk.disc(ex, ey, 3, (x, y) => { mk.keep[mk.idx(x, y)] = 1; });
+  }
+  const thick = (x: number, y: number) => land(x, y) && dense(x, y) > 0.42;
+  const thin = (x: number, y: number) => land(x, y) && dense(x, y) <= 0.42;
+  const bank = (x: number, y: number) => land(x, y) && [[2, 0], [-2, 0], [0, 2], [0, -2]].some(([a, b]) => mk.isWater(x + a, y + b));
+  if (big) mk.scatter([['tree-emergent', 1]], 0.002, thick);
+  else mk.scatter([['tree-emergent', 1]], 0.0008, thick);
+  mk.scatter([['tree-jungle', 6], ['tree-palm', 1], ['tree-cluster', 1]], 0.42, thick, [0, 0, 1, 2, 3]);
+  mk.scatter([['tree-palm', 3]], 0.12, bank, [0, 2]);
+  mk.scatter([['tree-jungle', 2], ['tree-palm', 2], ['plant-broadleaf', 3], ['bush', 1]], 0.06, thin);
+  mk.scatter([['plant-broadleaf', 4], ['ferns', 4], ['vines-hanging', 2], ['log-fallen', 2], ['boulder', 1], ['mushrooms', 1], ['stone-idol', 0.15]], 0.06, land);
+  mk.scatter([['reeds', 3], ['lily-pads', 2]], 0.22, (x, y) => mk.mat(x, y) === 'mud' || (mk.isWater(x, y) && [[1, 0], [-1, 0], [0, 1], [0, -1]].some(([a, b]) => !mk.isWater(x + a, y + b))));
+  mk.m.ambient = 'bright';
+  mk.m.viewRange = big ? 40 : 30;
+}
+
+function fungus(mk: Maker, big: boolean) {
+  const { cols, rows } = mk;
+  const grove = (x: number, y: number) => mk.n(x, y, big ? 22 : 12, 3, 5);
+  const wet = (x: number, y: number) => mk.n(x, y, big ? 20 : 12, 3, 3);
+  mk.fill((x, y) => {
+    const gr = grove(x, y), w = wet(x, y), d = mk.n(x, y, 5, 2, 6);
+    if (w > 0.7) return 'water-glow';
+    if (w > 0.65) return 'glow-moss';
+    if (gr > 0.6) return d > 0.6 ? 'glow-moss' : 'mycelium';
+    return gr < 0.33 && d > 0.55 ? 'mycelium' : 'fungal-ground';
+  });
+  // stony rises where the fungus thins out: rocks and crystals, no fungus
+  const stony = (x: number, y: number) => mk.n(x, y, big ? 30 : 16, 4, 8) > 0.72 && mk.mat(x, y) === 'fungal-ground';
+  // a pale mycelium path winding across
+  const r0 = mk.edgePoint(3, 0.3 + mk.rnd() * 0.4), r1 = mk.edgePoint(1, 0.3 + mk.rnd() * 0.4);
+  // a causeway of pale mycelium that grows right across the pools
+  mk.road([r0, [cols * 0.5, rows * (0.35 + mk.rnd() * 0.3)], r1], 2.4, 'mycelium', true);
+  const land = (x: number, y: number) => !mk.isWater(x, y) && ![3, 5].includes(mk.m.cells[mk.idx(x, y)]);
+  // a ring of crystal spires around something that hums
+  const spots = Math.max(1, Math.round((cols * rows) / 6000));
+  for (let s = 0; s < spots; s++) {
+    const cx = Math.floor(cols * (0.15 + mk.rnd() * 0.7)), cy = Math.floor(rows * (0.15 + mk.rnd() * 0.7));
+    if (!land(cx, cy) || mk.keep[mk.idx(cx, cy)]) continue;
+    mk.blob(cx, cy, 5, (x, y) => (land(x, y) && !mk.keep[mk.idx(x, y)] ? 'glow-moss' : null), 0.2);
+    for (let k = 0; k < 6; k++) {
+      const a = (k / 6) * Math.PI * 2;
+      mk.tryPut('crystal-spire', Math.round(cx + Math.cos(a) * 4) - 1, Math.round(cy + Math.sin(a) * 4) - 1, Math.round(cx + Math.cos(a) * 4) + 2, Math.round(cy + Math.sin(a) * 4) + 2, land, { tries: 6, v: s % 2 ? 1 : 0 });
+    }
+    mk.tryPut(s % 2 ? 'stone-idol' : 'spore-vent', cx - 1, cy - 1, cx + 1, cy + 1, land, { v: s % 2 ? 3 : 0 });
+    mk.note(cx, cy, s % 2 ? 'A ring of humming crystals around a carved head with glowing eyes.' : 'Crystal ring round a spore vent: breathe it and dream.');
+    mk.disc(cx, cy, 5, (x, y) => { mk.keep[mk.idx(x, y)] = 1; });
+  }
+  const thick = (x: number, y: number) => land(x, y) && grove(x, y) > 0.5;
+  const open = (x: number, y: number) => land(x, y) && grove(x, y) <= 0.5;
+  const shore = (x: number, y: number) => land(x, y) && [[1, 0], [-1, 0], [0, 1], [0, -1]].some(([a, b]) => mk.isWater(x + a, y + b));
+  mk.scatter([['fungus-tower', 3], ['mushroom-giant', 3, [2, 3]], ['tree-alien', 2]], 0.3, thick, [0, 1, 2, 3]);
+  mk.scatter([['tree-alien', 2], ['mushroom-giant', 2, [2, 3]], ['fungus-tower', 1]], 0.025, open, [0, 1, 3]);
+  mk.scatter([['glow-pods', 4], ['glowing-fungus', 3], ['tendrils', 2], ['spore-vent', 1], ['mushrooms', 2, [2]], ['crystal-spire', 0.6]], 0.035, land, [0, 1, 2, 3]);
+  mk.scatter([['glow-pods', 3], ['glowing-fungus', 2], ['tendrils', 1]], 0.12, shore, [0, 1, 3]);
+  mk.scatter([['boulder', 2, [2]], ['rock-outcrop', 0.5], ['crystal-spire', 1, [1, 2]]], 0.06, (x, y) => land(x, y) && stony(x, y));
+  mk.m.ambient = 'dim';
+  mk.m.viewRange = big ? 40 : 30;
+}
+
 // ---------------------------------------------------------------------------------------------------------
 
 const NAMES: Record<Biome, string[]> = {
@@ -836,6 +940,8 @@ const NAMES: Record<Biome, string[]> = {
   swamp: ['Blackmire', 'The Sunken Fen', 'Croaker\'s Bog', 'Mossmere', 'Weepwater'],
   mountains: ['Greyfang Pass', 'The High Teeth', 'Stormcrag', 'Ironridge', 'Cloudstep Pass'],
   winter: ['The White Reach', 'Frostmere', 'Hoarfell', 'Ice Hollow', 'Wolfwinter'],
+  jungle: ['The Green Deep', 'Vinewater', 'The Drowned Canopy', 'Temple of the Hollow Sun', 'Monkey River'],
+  fungus: ['The Sporelands', 'Glimmerfen', 'The Violet Hollow', 'Mycel Reach', 'The Humming Grove'],
   region: ['The Kingdom of Aldmere', 'The Westmarch', 'Isles of Varrow', 'The Riverlands', 'Duskvale'],
 };
 
@@ -851,10 +957,79 @@ export function outdoorMap(biome: Biome, size: OutdoorSize = 'medium', seed = Da
   else if (biome === 'desert') desert(mk, big);
   else if (biome === 'swamp') swamp(mk, big);
   else if (biome === 'mountains') mountains(mk, big);
+  else if (biome === 'jungle') jungle(mk, big);
+  else if (biome === 'fungus') fungus(mk, big);
   else if (biome === 'winter') { if (mk.rnd() < 0.5) winterland(mk, big); else mountains(mk, big, true); }
   else region(mk);
   const m = mk.done();
   m.wallStyle = 'stone';
   m.viewRange = m.viewRange ?? (big ? 60 : 40);
+  return m;
+}
+
+// ---------------------------------------------------------------------------------------------------------
+// the GM's road and river tool: carve a drawn path into an existing map
+
+export type PathKind = 'road' | 'paved' | 'trail' | 'stream' | 'river' | 'muddy' | 'lava' | 'glow';
+export const PATH_KINDS: { id: PathKind; name: string; width: number }[] = [
+  { id: 'road', name: 'Dirt road', width: 2 },
+  { id: 'paved', name: 'Cobbled road', width: 2 },
+  { id: 'trail', name: 'Narrow trail', width: 1 },
+  { id: 'stream', name: 'Stream', width: 2 },
+  { id: 'river', name: 'River', width: 5 },
+  { id: 'muddy', name: 'Muddy river', width: 4 },
+  { id: 'lava', name: 'Lava flow', width: 3 },
+  { id: 'glow', name: 'Glowing stream', width: 2 },
+];
+
+/** Thin a finger-drawn line to points at least `gap` squares apart, keeping both ends. */
+function thin(pts: number[][], gap: number) {
+  if (pts.length < 2) return pts;
+  const out = [pts[0]];
+  for (const p of pts.slice(1, -1)) {
+    const q = out[out.length - 1];
+    if (Math.hypot(p[0] - q[0], p[1] - q[1]) >= gap) out.push(p);
+  }
+  const last = pts[pts.length - 1], q = out[out.length - 1];
+  if (Math.hypot(last[0] - q[0], last[1] - q[1]) < gap * 0.5 && out.length > 1) out[out.length - 1] = last;
+  else out.push(last);
+  return out;
+}
+
+/**
+ * Carve a road or a river along a path the GM drew (grid units, square centres at .5). Roads lay a bridge
+ * where they cross water; rivers get banks; whatever stood in the way (trees, rocks) is cleared, except
+ * buildings, which a road goes round only if the GM draws it round.
+ */
+export function carvePath(map: GameMap, pts: number[][], kind: PathKind, width: number, seed = Date.now()): GameMap {
+  if (pts.length < 2) return map;
+  const mk = new Maker(map.name, map.cols, map.rows, seed, map);
+  const line = thin(pts, Math.max(2, width * 1.2));
+  const before = new Set(map.props.map((p) => p.id));
+  const touched = new Set<number>();
+  const mark = (x: number, y: number) => { touched.add(mk.idx(x, y)); };
+  if (kind === 'road' || kind === 'paved' || kind === 'trail') {
+    const id = kind === 'paved' ? 'stone-cobble' : kind === 'trail' ? 'trail' : 'road-dirt';
+    const centre = mk.trail(line, width, (x, y) => { if (!mk.isWater(x, y)) { mk.paint(x, y, id); mk.keep[mk.idx(x, y)] = 1; } mark(x, y); }, 0.12, 23);
+    mk.bridges(centre, width >= 3 ? 'bridge-stone' : 'bridge-plank', 24);
+  } else {
+    const [deep, shallow, bank] =
+      kind === 'muddy' ? ['water-muddy', 'water-muddy', 'mud'] :
+      kind === 'lava' ? ['lava', 'lava', 'ash'] :
+      kind === 'glow' ? ['water-glow', 'water-glow', 'glow-moss'] :
+      kind === 'stream' ? ['water-shallow', 'water-shallow', 'mud'] : ['water-deep', 'water-shallow', 'mud'];
+    mk.trail(line, width + 2, (x, y, d) => { if (d > width / 2 && !mk.isWater(x, y) && terrainById(mk.mat(x, y))?.group !== 'road') mk.paint(x, y, bank); }, 0.12, 11);
+    mk.trail(line, width, (x, y, d) => { mk.paint(x, y, width >= 4 && d < width / 4 ? deep : shallow); mark(x, y); }, 0.12, 11);
+  }
+  // clear what stood in the way, but keep buildings and the bridges just laid
+  const m = mk.m;
+  m.props = m.props.filter((p) => {
+    if (!before.has(p.id)) return true;
+    const d = objectById(p.kind);
+    if (d?.solid) return true;
+    const [w, h] = d ? (p.rot % 180 ? [d.h, d.w] : [d.w, d.h]) : [1, 1];
+    const cx = p.x + Math.floor(w / 2), cy = p.y + Math.floor(h / 2);
+    return !touched.has(cy * m.cols + cx);
+  });
   return m;
 }

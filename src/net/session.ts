@@ -1,5 +1,6 @@
 import { HostCore, GameError, type GameState, type Intent, type PlayerView } from '../engine/game';
 import type { Conn, HostTransport, ClientTransport, ToClient, ToHost } from './transport';
+import { packView, unpackView } from './pack';
 
 /** Runs on the GM's device: owns the game and serves each phone its own filtered view. */
 export class HostSession {
@@ -7,6 +8,7 @@ export class HostSession {
   private conns = new Map<Conn, string | null>(); // conn -> player id once they say hello
   private timer: ReturnType<typeof setTimeout> | null = null;
   private lastSent = new Map<Conn, string>();
+  private lastMap = new Map<Conn, string>();
   private sentBackdrop = new Map<Conn, string>();
   /** Background pictures by id (data URLs). Kept out of the game state so views stay small. */
   backdrops = new Map<string, string>();
@@ -52,6 +54,7 @@ export class HostSession {
       const id = this.conns.get(c);
       this.conns.delete(c);
       this.lastSent.delete(c);
+      this.lastMap.delete(c);
       if (id && ![...this.conns.values()].includes(id)) this.core.setConnected(id, false);
     });
   }
@@ -119,10 +122,12 @@ export class HostSession {
       this.sentBackdrop.set(c, bid);
       c.send({ t: 'backdrop', id: bid, data: this.backdrops.get(bid)! } satisfies ToClient);
     }
-    const json = JSON.stringify(view);
-    if (this.lastSent.get(c) === json) return;
-    this.lastSent.set(c, json);
-    c.send({ t: 'view', view } satisfies ToClient);
+    const { wire, mapText } = packView(view, this.lastMap.get(c));
+    const key = JSON.stringify({ ...wire, map: undefined });
+    if (!wire.map && this.lastSent.get(c) === key) return;
+    this.lastSent.set(c, key);
+    this.lastMap.set(c, mapText);
+    c.send({ t: 'view', view: wire } satisfies ToClient);
   }
 }
 
@@ -219,10 +224,12 @@ export class ClientSession {
   private onMessage(m: ToClient) {
     if (!m || typeof m !== 'object') return;
     switch (m.t) {
-      case 'view':
-        this.view = m.view;
-        this.onUpdate();
+      case 'view': {
+        const v = unpackView(m.view, this.view?.map);
+        if (!v) return;
+        this.view = v;
         break;
+      }
       case 'ack': {
         const p = this.pending.get(m.rid);
         if (!p) return;

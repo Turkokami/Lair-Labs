@@ -394,7 +394,7 @@ function drawProps(g: G, o: SceneOptions, layer: 'floor' | 'props' | 'overhead')
     } else {
       const seed = Math.floor(hash(pr.x * 7 + 1, pr.y * 13 + 5) * 4);
       const sp = objectSprite(d, pr.v ?? 0, need, ((pr.rot % 360) + 360) % 360, seed);
-      const k = CELL / sp.px;
+      const k = (CELL / sp.px) * (pr.s && pr.s > 0.5 && pr.s < 1.6 ? pr.s : 1);
       g.drawImage(sp.canvas, cx + sp.ox * k, cy + sp.oy * k, sp.canvas.width * k, sp.canvas.height * k);
     }
     if (pr.gmOnly && o.role === 'gm') {

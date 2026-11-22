@@ -9,9 +9,9 @@ export const RULE_WORDS: Record<TerrainRule, string> = {
   normal: 'Open ground', water: 'Water: double movement', difficult: 'Difficult: double movement', impassable: 'Blocks movement, not sight',
 };
 
-export type TerrainGroup = 'ground' | 'wild' | 'rock' | 'water' | 'road' | 'cold' | 'hot' | 'floor';
+export type TerrainGroup = 'ground' | 'wild' | 'jungle' | 'alien' | 'rock' | 'water' | 'road' | 'cold' | 'hot' | 'floor';
 export const TERRAIN_GROUPS: [TerrainGroup, string][] = [
-  ['ground', 'Grass & soil'], ['wild', 'Forest & swamp'], ['rock', 'Rock & cliffs'], ['water', 'Water'],
+  ['ground', 'Grass & soil'], ['wild', 'Forest & swamp'], ['jungle', 'Jungle'], ['alien', 'Alien & fungal'], ['rock', 'Rock & cliffs'], ['water', 'Water'],
   ['road', 'Roads & paving'], ['cold', 'Snow & ice'], ['hot', 'Desert & fire'], ['floor', 'Indoor floors'],
 ];
 
@@ -37,6 +37,8 @@ export const TERRAINS: Terrain[] = [
   { id: 'ocean', name: 'Open sea', group: 'water', color: '#17486d', rule: 'water', z: 1, shore: true },
   { id: 'water-deep', name: 'Deep water', group: 'water', color: '#1e5674', rule: 'water', z: 2, shore: true },
   { id: 'water-shallow', name: 'Shallow water', group: 'water', color: '#5ea4a3', rule: 'water', z: 3, shore: true },
+  { id: 'water-muddy', name: 'Muddy river', group: 'water', color: '#414d2e', rule: 'water', z: 3.3, shore: true },
+  { id: 'water-glow', name: 'Glowing pool', group: 'alien', color: '#1d1a44', rule: 'water', z: 3.6, shore: true },
   { id: 'swamp-water', name: 'Swamp water', group: 'water', color: '#394d2f', rule: 'water', z: 4 },
   { id: 'bog', name: 'Bog', group: 'wild', color: '#44472c', rule: 'difficult', z: 5 },
   { id: 'mud', name: 'Mud', group: 'wild', color: '#453628', rule: 'difficult', z: 6 },
@@ -64,6 +66,11 @@ export const TERRAINS: Terrain[] = [
   { id: 'moss', name: 'Moss', group: 'wild', color: '#4c7b2c', rule: 'normal', z: 26 },
   { id: 'thicket', name: 'Thicket', group: 'wild', color: '#30561d', rule: 'difficult', z: 27 },
   { id: 'snow', name: 'Snow', group: 'cold', color: '#dce5eb', rule: 'normal', z: 28 },
+  { id: 'jungle-floor', name: 'Jungle floor', group: 'jungle', color: '#33391a', rule: 'normal', z: 20.5 },
+  { id: 'jungle-undergrowth', name: 'Jungle undergrowth', group: 'jungle', color: '#2f4a1d', rule: 'difficult', z: 27.5 },
+  { id: 'mycelium', name: 'Mycelium', group: 'alien', color: '#2a2333', rule: 'normal', z: 13.5 },
+  { id: 'fungal-ground', name: 'Fungal ground', group: 'alien', color: '#33294a', rule: 'normal', z: 19.5 },
+  { id: 'glow-moss', name: 'Glow moss', group: 'alien', color: '#1d5552', rule: 'normal', z: 26.5 },
   { id: 'cliff', name: 'Cliff top', group: 'rock', color: '#656059', rule: 'impassable', cliff: true },
   // built floors and paving: crisp edges
   { id: 'road-paved', name: 'Paved road', group: 'road', color: '#817c72', rule: 'normal' },

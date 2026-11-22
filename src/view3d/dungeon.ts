@@ -8,11 +8,14 @@ import { shade, type VisUniforms } from './shaders';
 import { gritTex, plankTex, ironTex, stoneBlockTex, caveRockTex } from './textures';
 import { buildProps, type LightSpot } from './props3d';
 import { paintedFloor } from './paint';
+import { terrainById } from '../library/terrain';
 
 export const WALL_H = 4.8; // 24 ft: tall halls with a ceiling you can see
 export const EYE = 1.15;
 const THEME_FLOOR: Record<string, string> = { stone: 'stone-flagstone', cave: 'cave-floor', wood: 'wood-planks' };
-const OUTDOOR = new Set(['grass', 'dirt', 'sand', 'mud', 'ice']);
+const OUTDOOR_OLD = new Set(['grass', 'dirt', 'sand', 'mud', 'ice']);
+/** Open sky: natural grounds, roads and paving have no ceiling over them. */
+const OUTDOOR = { has: (id: string) => OUTDOOR_OLD.has(id) || terrainById(id)?.z !== undefined || terrainById(id)?.group === 'road' || terrainById(id)?.rule === 'water' };
 const FALLBACK: Record<string, string> = {
   'stone-flagstone': '#8f8a80', 'stone-flagstone-warm': '#9a8a74', 'dungeon-slab': '#77736c', 'stone-cobble': '#857f76', 'brick-floor': '#8c5a45',
   marble: '#d9d4cb', 'wood-planks': '#9a6b3e', 'wood-planks-dark': '#5f4029', dirt: '#7a5f43', grass: '#5d7a3a', sand: '#cdb27f', 'cave-floor': '#6e6458',
@@ -57,7 +60,7 @@ function floorTex(id: string, onLoad: () => void) {
 
 function matFor(m: GameMap, i: number, v: number) {
   const mt = m.mats?.[i];
-  if (v === 2) return mt && mt.startsWith('water') ? mt : 'water-shallow';
+  if (v === 2) return mt && (mt.startsWith('water') || terrainById(mt)?.rule === 'water') ? mt : 'water-shallow';
   if (v === 4) return 'pit';
   return mt || THEME_FLOOR[m.theme] || 'stone-flagstone';
 }

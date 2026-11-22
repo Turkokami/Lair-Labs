@@ -9,6 +9,7 @@ import { drawMapFx, mapFxAlive, mapFxFrom, type MapFx } from './mapfx';
 import { drawScene, CELL } from '../render/scene';
 import { browserFloors, onFloorsLoaded } from '../render/floors';
 import { gridFeet } from '../engine/areas';
+import { brushDisc } from '../engine/terrainTools';
 
 export { CELL };
 export type ViewToken = Token & { hpLabel?: string };
@@ -28,7 +29,13 @@ export interface MapCanvasProps {
   selectedTokenId?: string;
   myTokenId?: string;
   /** Rect-style build tool: drag a rectangle (or corridor) and get the cells on release. `line` drags a ruler or a template. */
-  dragTool?: 'rect' | 'corridor' | 'brush' | 'line' | null;
+  dragTool?: 'rect' | 'corridor' | 'brush' | 'line' | 'path' | null;
+  /** With dragTool 'brush': how many squares across the brush is (1 = one square). */
+  brushSize?: number;
+  /** With dragTool 'path': the width to preview, in squares, and the colour. */
+  pathPreview?: { width: number; color: string };
+  /** Called when a path drag ends, with the points drawn (grid units). */
+  onPath?: (pts: [number, number][]) => void;
   /** Dynamic lighting for players: squares seen now, and light levels. */
   visible?: number[];
   lit?: string;
@@ -101,8 +108,9 @@ export function MapCanvas(p: MapCanvasProps) {
     | { kind: 'pinch'; d0: number; s0: number; mx: number; my: number; cx: number; cy: number }
     | { kind: 'token'; id: string; gx: number; gy: number; cur: [number, number]; moved: boolean }
     | { kind: 'rect'; start: [number, number]; cur: [number, number] }
-    | { kind: 'brush'; cells: Map<number, [number, number]> }
+    | { kind: 'brush'; cells: Map<number, [number, number]>; last?: [number, number] }
     | { kind: 'line'; a: [number, number]; b: [number, number] }
+    | { kind: 'path'; pts: [number, number][]; last: [number, number] }
     | null
   >(null);
 
@@ -215,6 +223,20 @@ export function MapCanvas(p: MapCanvasProps) {
       g.textBaseline = 'middle';
       g.font = `bold ${14 / s}px system-ui`;
       g.fillText(`${(Math.abs(bx - ax) + 1) * 5} × ${(Math.abs(by - ay) + 1) * 5} ft`, (bx + 0.5) * CELL, (by + 1.4) * CELL);
+    } else if (ge?.kind === 'path') {
+      const pp = p.pathPreview ?? { width: 2, color: '#ffd25a' };
+      g.lineCap = 'round';
+      g.lineJoin = 'round';
+      g.strokeStyle = pp.color;
+      g.globalAlpha = 0.55;
+      g.lineWidth = Math.max(1, pp.width) * CELL;
+      g.beginPath();
+      ge.pts.forEach(([x, y], i) => (i ? g.lineTo(x * CELL, y * CELL) : g.moveTo(x * CELL, y * CELL)));
+      g.stroke();
+      g.globalAlpha = 1;
+      g.strokeStyle = '#ffd25a';
+      g.lineWidth = 2 / s;
+      g.stroke();
     } else if (ge?.kind === 'brush') {
       g.fillStyle = 'rgba(255,210,90,0.3)';
       for (const [x, y] of ge.cells.values()) g.fillRect(x * CELL, y * CELL, CELL, CELL);
@@ -293,6 +315,12 @@ export function MapCanvas(p: MapCanvasProps) {
     p.templateShape && (p.templateShape.shape === 'sphere' || p.templateShape.shape === 'cube') ? [Math.round(gx), Math.round(gy)] : [Math.floor(gx) + 0.5, Math.floor(gy) + 0.5];
   const clampCell = (gx: number, gy: number): [number, number] => [Math.max(0, Math.min(p.map.cols - 1, Math.floor(gx))), Math.max(0, Math.min(p.map.rows - 1, Math.floor(gy)))];
 
+  const stampBrush = (gx: number, gy: number) => {
+    const ge = gesture.current;
+    if (ge?.kind !== 'brush') return;
+    for (const c of brushDisc(gx, gy, p.brushSize ?? 1, p.map.cols, p.map.rows)) ge.cells.set(c[1] * p.map.cols + c[0], c);
+  };
+
   const onDown = (e: React.PointerEvent) => {
     (e.target as Element).setPointerCapture(e.pointerId);
     pointers.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
@@ -311,8 +339,10 @@ export function MapCanvas(p: MapCanvasProps) {
       const c = clampCell(gx, gy);
       gesture.current = { kind: 'rect', start: c, cur: c };
     } else if (p.dragTool === 'brush') {
-      const c = clampCell(gx, gy);
-      gesture.current = { kind: 'brush', cells: new Map([[c[1] * p.map.cols + c[0], c]]) };
+      gesture.current = { kind: 'brush', cells: new Map(), last: [gx, gy] };
+      stampBrush(gx, gy);
+    } else if (p.dragTool === 'path') {
+      gesture.current = { kind: 'path', pts: [[gx, gy]], last: [gx, gy] };
     } else if (p.dragTool === 'line') {
       const a = snapPoint(gx, gy);
       gesture.current = { kind: 'line', a, b: a };
@@ -350,8 +380,14 @@ export function MapCanvas(p: MapCanvasProps) {
       ge.cur = clampCell(gx, gy);
     } else if (ge.kind === 'brush') {
       const { gx, gy } = toGrid(e.clientX, e.clientY);
-      const c = clampCell(gx, gy);
-      ge.cells.set(c[1] * p.map.cols + c[0], c);
+      // fill in between pointer events so a fast stroke has no gaps
+      const [lx, ly] = ge.last ?? [gx, gy];
+      const steps = Math.max(1, Math.ceil(Math.hypot(gx - lx, gy - ly) / Math.max(0.5, (p.brushSize ?? 1) / 3)));
+      for (let k = 1; k <= steps; k++) stampBrush(lx + ((gx - lx) * k) / steps, ly + ((gy - ly) * k) / steps);
+      ge.last = [gx, gy];
+    } else if (ge.kind === 'path') {
+      const { gx, gy } = toGrid(e.clientX, e.clientY);
+      if (Math.hypot(gx - ge.last[0], gy - ge.last[1]) >= 0.5) { ge.pts.push([gx, gy]); ge.last = [gx, gy]; }
     } else if (ge.kind === 'line') {
       const { gx, gy } = toGrid(e.clientX, e.clientY);
       ge.b = p.templateShape?.shape === 'sphere' ? snapPoint(gx, gy) : [Math.floor(gx) + 0.5, Math.floor(gy) + 0.5];
@@ -394,6 +430,8 @@ export function MapCanvas(p: MapCanvasProps) {
       p.onDragCells?.(ge.start, ge.cur, cells);
     } else if (ge.kind === 'brush') {
       p.onBrush?.([...ge.cells.values()]);
+    } else if (ge.kind === 'path') {
+      if (ge.pts.length > 1) p.onPath?.(ge.pts);
     } else if (ge.kind === 'line') {
       p.onLine?.(ge.a, ge.b);
     }

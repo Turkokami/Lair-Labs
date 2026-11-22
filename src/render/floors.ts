@@ -8,7 +8,7 @@ export interface LibraryIndex {
   rooms: LibraryEntry[];
   materials: { id: string; name: string; color: string; squares: number }[];
 }
-export interface LibraryEntry { id: string; name: string; cols: number; rows: number; ambient: string; description: string; setting: string; tags: string[]; rooms: number; encounters: number; size?: string; }
+export interface LibraryEntry { id: string; name: string; cols: number; rows: number; ambient: string; description: string; setting: string; tags: string[]; rooms: number; encounters: number; size?: string; /** Feet per square when it isn't 5 (5280 = a mile, region maps). */ scale?: number; }
 
 let indexP: Promise<LibraryIndex> | null = null;
 export function libraryIndex(): Promise<LibraryIndex> {

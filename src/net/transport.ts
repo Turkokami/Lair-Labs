@@ -1,10 +1,11 @@
+import type { WireView } from './pack';
 // Network layer. The GM's device is the host; phones connect to it directly (peer to peer) using PeerJS.
 // A tiny in-memory transport lets tests run a host and several phones in one process.
 import type { Intent, PlayerView } from '../engine/game';
 
 export type ToHost = { t: 'intent'; rid?: number; intent: Intent } | { t: 'ping' };
 export type ToClient =
-  | { t: 'view'; view: PlayerView }
+  | { t: 'view'; view: PlayerView | WireView }
   | { t: 'ack'; rid: number; ok: boolean; error?: string }
   | { t: 'notice'; text: string }
   | { t: 'kicked'; reason: string }

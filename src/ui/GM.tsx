@@ -7,6 +7,9 @@ import { type GameMap, type DoorState, type Prop, TEMPLATES, blankMap, upscaleMa
 import { stampRoom, furnishRoom, findRooms, autoFurnish, quickDungeon, KIT_NAMES } from '../engine/stamp';
 import { fromUvtt, type UvttFile } from '../engine/uvtt';
 import { tokensInArea } from '../engine/areas';
+import { BIOMES, OUTDOOR_SIZES, PATH_KINDS, outdoorMap, carvePath, type Biome, type OutdoorSize, type PathKind } from '../engine/outdoor';
+import { SCATTER_SETS, SCATTER_DENSITY, GROUND_MIX, paintGround, scatterProps, clearProps, type ScatterDensity } from '../engine/terrainTools';
+import { TERRAINS, TERRAIN_GROUPS, RULE_WORDS, terrainById, type TerrainGroup } from '../library/terrain';
 import { objectById } from '../library/objects';
 import { creatureById, monsterIdCandidates, normMonsterId } from '../library/creatures';
 import type { CreatureDef } from '../library/art/types';
@@ -25,7 +28,7 @@ import { peerParams, safeDiscord } from './Player';
 
 type Tool =
   | 'select' | 'room' | 'corridor' | 'erase' | 'water' | 'rubble' | 'pit' | 'door' | 'wall' | 'prop' | 'note'
-  | 'stamp' | 'furnish'
+  | 'stamp' | 'furnish' | 'paint' | 'scatter' | 'path' | 'biome'
   | 'revealRoom' | 'revealBrush' | 'hideBrush' | 'place' | 'creature' | 'measure' | 'area';
 type PlayTab = 'combat' | 'monsters' | 'party' | 'fog' | 'log' | 'table';
 
@@ -119,6 +122,15 @@ function GMTable({ host, onEnd }: { host: HostSession; onEnd: () => void }) {
   const [lastArea, setLastArea] = useState<string | null>(null);
   const [monsterView, setMonsterView] = useState<'art' | 'stats'>('art');
   const [corridorW, setCorridorW] = useState(1);
+  const [ground, setGround] = useState('grass');
+  const [groundMix, setGroundMix] = useState(true);
+  const [brushSize, setBrushSize] = useState(3);
+  const [scatterSet, setScatterSet] = useState('woods');
+  const [density, setDensity] = useState<ScatterDensity>('some');
+  const [scatterClear, setScatterClear] = useState(false);
+  const [vary, setVary] = useState(true);
+  const [pathKind, setPathKind] = useState<PathKind>('road');
+  const [pathW, setPathW] = useState(2);
   const [placeMonster, setPlaceMonster] = useState('goblin');
   const [placeCount, setPlaceCount] = useState(1);
   const [placeHidden, setPlaceHidden] = useState(false);
@@ -180,7 +192,7 @@ function GMTable({ host, onEnd }: { host: HostSession; onEnd: () => void }) {
   // ---------- map interactions ----------
   const dragTool: MapCanvasProps['dragTool'] =
     mode === 'build'
-      ? (['room', 'erase', 'water', 'rubble', 'pit'].includes(tool) ? 'rect' : tool === 'corridor' ? 'corridor' : null)
+      ? (['room', 'erase', 'water', 'rubble', 'pit'].includes(tool) ? 'rect' : tool === 'corridor' ? 'corridor' : tool === 'paint' || tool === 'scatter' ? 'brush' : tool === 'path' ? 'path' : null)
       : tool === 'revealBrush' || tool === 'hideBrush' ? 'brush' : tool === 'measure' || tool === 'area' ? 'line' : null;
 
   /** The prop whose footprint covers a square, topmost first. */
@@ -234,6 +246,35 @@ function GMTable({ host, onEnd }: { host: HostSession; onEnd: () => void }) {
       next = { ...next, props: next.props.filter((p) => !gone.has(`${p.x},${p.y}`)), notes: next.notes.filter((n) => !gone.has(`${n.x},${n.y}`)) };
     }
     editMap(next);
+  };
+
+  const onBrush = (cells: [number, number][]) => {
+    if (mode !== 'build') return gm({ t: 'gm:reveal', cells: cells.map(([x, y]) => y * map.cols + x), on: tool === 'revealBrush' });
+    if (tool === 'paint') return editMap(paintGround(map, cells, ground, groundMix && !!GROUND_MIX[ground], (map.cols * 31 + map.rows) | 0));
+    if (tool === 'scatter') {
+      if (scatterClear) return editMap(clearProps(map, cells, (p) => !!objectById(p.kind)?.solid));
+      const kinds = scatterSet === 'one' ? [[obj.kind, 1, [obj.v]] as [string, number, number[]]] : SCATTER_SETS.find((k) => k.id === scatterSet)?.kinds ?? [];
+      const next = scatterProps(map, cells, kinds, SCATTER_DENSITY[density], Date.now() & 0x7fffffff, vary);
+      if (next === map) return toast('Nothing fits there: things need open, dry ground (reeds and lily pads need water).', 'info');
+      return editMap(next);
+    }
+  };
+  const onPath = (pts: [number, number][]) => {
+    if (tool !== 'path') return;
+    editMap(carvePath(map, pts, pathKind, pathW));
+  };
+  const loadMap = (m: GameMap, bg?: string) => {
+    undo.current = [];
+    if (m.backdrop && bg) {
+      host.backdrops.set(m.backdrop.id, bg);
+      try {
+        store.set('gm.backdrop', { id: m.backdrop.id, data: bg });
+      } catch {
+        toast('The picture is too big to keep after a refresh, but it works for this session.', 'info');
+      }
+    }
+    gm({ t: 'gm:setMap', map: m });
+    setSelected(undefined);
   };
 
   const onTap: MapCanvasProps['onTap'] = (info) => {
@@ -327,6 +368,7 @@ function GMTable({ host, onEnd }: { host: HostSession; onEnd: () => void }) {
     ['select', '✋', 'Move'], ['room', '⬛', 'Room'], ['corridor', '➖', 'Corridor'], ['erase', '🧽', 'Erase'],
     ['door', '🚪', 'Door'], ['wall', '🧱', 'Wall'], ['water', '💧', 'Water'], ['rubble', '🪨', 'Rubble'], ['pit', '🕳️', 'Pit'],
     ['prop', '📦', 'Things'], ['stamp', '🏠', 'Add a room'], ['furnish', '🪑', 'Furnish'], ['note', '📝', 'GM note'],
+    ['biome', '🗺️', 'Outdoor map'], ['paint', '🖌️', 'Paint ground'], ['scatter', '🌲', 'Scatter'], ['path', '🛤️', 'Road & river'],
   ];
   const help: Partial<Record<Tool, string>> = {
     select: 'Drag to look around. Pinch or scroll to zoom.',
@@ -345,6 +387,10 @@ function GMTable({ host, onEnd }: { host: HostSession; onEnd: () => void }) {
     measure: 'Drag from one square to another to measure. Every square is 5 ft.',
     area: 'Drag from the caster toward the target. A sphere lands where you lift your finger.',
     note: 'Tap a square to leave yourself a note. Players never see notes.',
+    biome: 'Pick a kind of land and a size. One tap makes the whole map: ground, trees, buildings and light.',
+    paint: 'Pick a ground, then brush over the map. Grounds blend into each other at the edges.',
+    scatter: 'Pick what to scatter, then brush over the map. Each thing gets its own turn, size and look.',
+    path: 'Draw a line with your finger. Roads get bridges over water; rivers get banks.',
     revealRoom: 'Tap a room to show it to players.',
     revealBrush: 'Drag to show squares to players.',
     hideBrush: 'Drag to hide squares again.',
@@ -412,7 +458,10 @@ function GMTable({ host, onEnd }: { host: HostSession; onEnd: () => void }) {
             dragTool={dragTool}
             onTap={onTap}
             onDragCells={onDragCells}
-            onBrush={(cells) => gm({ t: 'gm:reveal', cells: cells.map(([x, y]) => y * map.cols + x), on: tool === 'revealBrush' })}
+            onBrush={onBrush}
+            brushSize={mode === 'build' && (tool === 'paint' || tool === 'scatter') ? brushSize : 1}
+            onPath={onPath}
+            pathPreview={{ width: pathW, color: PATH_COLORS[pathKind] }}
             canDragToken={() => tool === 'select'}
             onTokenDrop={(id, x, y) => gm({ t: 'move', tokenId: id, x, y })}
             fitKey={map.id}
@@ -476,6 +525,50 @@ function GMTable({ host, onEnd }: { host: HostSession; onEnd: () => void }) {
                 </div>
               )}
               {tool === 'prop' && <ObjectBrowser value={obj} onChange={setObj} />}
+              {tool === 'biome' && <BiomePicker onMake={(m) => { loadMap(m); toast(`${m.name}: ${m.cols} × ${m.rows} squares`); }} />}
+              {tool === 'paint' && (
+                <div className="stack">
+                  <GroundPalette value={ground} onChange={setGround} />
+                  <BrushSize value={brushSize} onChange={setBrushSize} />
+                  <label className="row gap small"><input type="checkbox" checked={groundMix} disabled={!GROUND_MIX[ground]} onChange={(e) => setGroundMix(e.target.checked)} /> Natural mix{GROUND_MIX[ground] ? `: ${GROUND_MIX[ground].filter((g, i, a) => a.indexOf(g) === i).map((g) => terrainById(g)?.name.toLowerCase()).join(', ')}` : ' (not for this ground)'}</label>
+                </div>
+              )}
+              {tool === 'scatter' && (
+                <div className="stack">
+                  <div className="seg small">
+                    <button className={!scatterClear ? 'on' : ''} onClick={() => setScatterClear(false)}>Add</button>
+                    <button className={scatterClear ? 'on' : ''} onClick={() => setScatterClear(true)}>Clear away</button>
+                  </div>
+                  {!scatterClear && (
+                    <>
+                      <div className="chips">
+                        {SCATTER_SETS.map((k) => <button key={k.id} className={'chip-btn small' + (scatterSet === k.id ? ' on' : '')} onClick={() => setScatterSet(k.id)}>{k.name}</button>)}
+                        <button className={'chip-btn small' + (scatterSet === 'one' ? ' on' : '')} onClick={() => setScatterSet('one')}>One thing…</button>
+                      </div>
+                      {scatterSet === 'one' && <ObjectBrowser value={obj} onChange={setObj} />}
+                      <div className="seg small">
+                        {(Object.keys(SCATTER_DENSITY) as ScatterDensity[]).map((d) => <button key={d} className={density === d ? 'on' : ''} onClick={() => setDensity(d)}>{d[0].toUpperCase() + d.slice(1)}</button>)}
+                      </div>
+                      <label className="row gap small"><input type="checkbox" checked={vary} onChange={(e) => setVary(e.target.checked)} /> Random turn, size and look</label>
+                    </>
+                  )}
+                  {scatterClear && <span className="muted small">Brush to remove trees, rocks and other things. Buildings stay.</span>}
+                  <BrushSize value={brushSize} onChange={setBrushSize} />
+                </div>
+              )}
+              {tool === 'path' && (
+                <div className="stack">
+                  <div className="chips">
+                    {PATH_KINDS.map((k) => <button key={k.id} className={'chip-btn small' + (pathKind === k.id ? ' on' : '')} onClick={() => { setPathKind(k.id); setPathW(k.width); }}>{k.name}</button>)}
+                  </div>
+                  <div className="row gap wrap">
+                    <span className="small">Width</span>
+                    <div className="seg small">
+                      {[1, 2, 3, 4, 6, 8].map((w) => <button key={w} className={pathW === w ? 'on' : ''} onClick={() => setPathW(w)}>{w * 5} ft</button>)}
+                    </div>
+                  </div>
+                </div>
+              )}
               {tool === 'stamp' && (
                 <div className="stack">
                   <div className="row gap wrap">
@@ -498,19 +591,7 @@ function GMTable({ host, onEnd }: { host: HostSession; onEnd: () => void }) {
               <MapSettings
                 map={map}
                 onChange={editMap}
-                onLoad={(m, bg) => {
-                  undo.current = [];
-                  if (m.backdrop && bg) {
-                    host.backdrops.set(m.backdrop.id, bg);
-                    try {
-                      store.set('gm.backdrop', { id: m.backdrop.id, data: bg });
-                    } catch {
-                      toast('The picture is too big to keep after a refresh, but it works for this session.', 'info');
-                    }
-                  }
-                  gm({ t: 'gm:setMap', map: m });
-                  setSelected(undefined);
-                }}
+                onLoad={loadMap}
               />
               <button className="primary block" onClick={() => { setMode('play'); setTool('select'); setPlayTab(players.length ? 'combat' : 'table'); }}>Done building: start playing</button>
             </div>
@@ -999,11 +1080,16 @@ function MapSettings({ map, onChange, onLoad }: { map: GameMap; onChange: (m: Ga
   const [lib, setLib] = useState(() => store.get<GameMap[]>('maps', []));
   const file = useRef<HTMLInputElement>(null);
   const resize = (cols: number, rows: number) => {
-    cols = Math.max(10, Math.min(80, cols));
-    rows = Math.max(10, Math.min(80, rows));
+    cols = Math.max(10, Math.min(200, cols));
+    rows = Math.max(10, Math.min(200, rows));
     const cells = new Array(cols * rows).fill(0);
-    for (let y = 0; y < Math.min(rows, map.rows); y++) for (let x = 0; x < Math.min(cols, map.cols); x++) cells[y * cols + x] = map.cells[y * map.cols + x];
-    onChange({ ...map, cols, rows, cells, props: map.props.filter((p) => p.x < cols && p.y < rows), notes: map.notes.filter((n) => n.x < cols && n.y < rows) });
+    const mats = map.mats ? new Array(cols * rows).fill('') : undefined;
+    for (let y = 0; y < Math.min(rows, map.rows); y++)
+      for (let x = 0; x < Math.min(cols, map.cols); x++) {
+        cells[y * cols + x] = map.cells[y * map.cols + x];
+        if (mats) mats[y * cols + x] = map.mats![y * map.cols + x] ?? '';
+      }
+    onChange({ ...map, cols, rows, cells, mats, props: map.props.filter((p) => p.x < cols && p.y < rows), notes: map.notes.filter((n) => n.x < cols && n.y < rows) });
   };
   const saveToLib = () => {
     const next = [{ ...map }, ...lib.filter((m) => m.id !== map.id)].slice(0, 20);
@@ -1041,12 +1127,12 @@ function MapSettings({ map, onChange, onLoad }: { map: GameMap; onChange: (m: Ga
         </label>
         <label className="inline">Size
           <select value={`${map.cols}x${map.rows}`} onChange={(e) => { const [c, r] = e.target.value.split('x').map(Number); resize(c, r); }}>
-            {[[24, 18], [30, 22], [34, 24], [40, 30], [50, 36], [60, 44]].map(([c, r]) => <option key={c} value={`${c}x${r}`}>{c * 5} × {r * 5} ft</option>)}
-            {![[24, 18], [30, 22], [34, 24], [40, 30], [50, 36], [60, 44]].some(([c, r]) => c === map.cols && r === map.rows) && <option value={`${map.cols}x${map.rows}`}>{map.cols * 5} × {map.rows * 5} ft</option>}
+            {MAP_SIZES.map(([c, r]) => <option key={c} value={`${c}x${r}`}>{sizeLabel(map, c, r)}</option>)}
+            {!MAP_SIZES.some(([c, r]) => c === map.cols && r === map.rows) && <option value={`${map.cols}x${map.rows}`}>{sizeLabel(map, map.cols, map.rows)}</option>}
           </select>
         </label>
       </div>
-      <p className="muted small">Squares are 5 ft. {Object.keys(map.doors).length} doors · {map.props.length} things · {map.notes.length} notes · legend: {Object.values(TILE_NAMES).slice(2).join(', ')}.</p>
+      <p className="muted small">Squares are {map.scale === 5280 ? '1 mile' : '5 ft'}. {Object.keys(map.doors).length} doors · {map.props.length} things · {map.notes.length} notes · legend: {Object.values(TILE_NAMES).slice(2).join(', ')}.</p>
       <h3>Starter maps</h3>
       <StarterMaps onLoad={(id) => confirm('Replace this map with the starter map?') && fetchLibraryMap('maps', id).then((m) => onLoad({ ...m, id: pid() }), () => toast('Could not load that map.', 'error'))} />
       <h3>Quick start</h3>
@@ -1064,7 +1150,7 @@ function MapSettings({ map, onChange, onLoad }: { map: GameMap; onChange: (m: Ga
         ))}
         <div className="row gap wrap">
           <button className="ghost" onClick={() => confirm('Start from an empty map?') && onLoad(blankMap(48, 36, 'New map'))}>Blank</button>
-          <button className="ghost" onClick={() => (map.cols * map.rows * 4 > 160 * 160 ? toast('This map is already as big as it can get.', 'error') : confirm('Double the size of this map? Every square becomes four, so rooms, halls and doorways get twice as wide.') && onLoad({ ...upscaleMap(map, 2), id: pid() }))}>Make it twice as big</button>
+          <button className="ghost" onClick={() => (map.cols * map.rows * 4 > 200 * 200 ? toast('This map is already as big as it can get.', 'error') : confirm('Double the size of this map? Every square becomes four, so rooms, halls and doorways get twice as wide.') && onLoad({ ...upscaleMap(map, 2), id: pid() }))}>Make it twice as big</button>
         </div>
       </div>
       <h3>Saved maps</h3>
@@ -1139,4 +1225,77 @@ function download(name: string, text: string) {
   a.download = name;
   a.click();
   setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+}
+
+const MAP_SIZES = [[24, 18], [30, 22], [34, 24], [40, 30], [50, 36], [60, 44], [80, 60], [120, 90], [160, 120], [200, 150]];
+function sizeLabel(map: GameMap, c: number, r: number) {
+  if (map.scale === 5280) return `${c} × ${r} miles`;
+  const ft = (n: number) => (n * 5 >= 1000 ? `${(n * 5).toLocaleString()}` : `${n * 5}`);
+  return `${ft(c)} × ${ft(r)} ft`;
+}
+
+const PATH_COLORS: Record<PathKind, string> = {
+  road: '#8a6a44', paved: '#8a8378', trail: '#8a6a44', stream: '#5ea4a3', river: '#2a6a8a', muddy: '#5a6a3a', lava: '#ff6a2a', glow: '#5fe0d0',
+};
+
+function BrushSize({ value, onChange }: { value: number; onChange: (n: number) => void }) {
+  return (
+    <div className="row gap wrap">
+      <span className="small">Brush</span>
+      <div className="seg small">
+        {[1, 3, 5, 9, 15].map((n) => <button key={n} className={value === n ? 'on' : ''} onClick={() => onChange(n)}>{n * 5} ft</button>)}
+      </div>
+    </div>
+  );
+}
+
+function GroundPalette({ value, onChange }: { value: string; onChange: (id: string) => void }) {
+  const [group, setGroup] = useState<TerrainGroup>(() => terrainById(value)?.group ?? 'ground');
+  const t = terrainById(value);
+  return (
+    <div className="stack">
+      <div className="chip-scroll">
+        {TERRAIN_GROUPS.map(([g, name]) => <button key={g} className={'chip-btn small' + (group === g ? ' on' : '')} onClick={() => setGroup(g)}>{name}</button>)}
+      </div>
+      <div className="ground-grid">
+        {TERRAINS.filter((x) => x.group === group).map((x) => (
+          <button key={x.id} className={'ground-pick' + (value === x.id ? ' on' : '')} onClick={() => onChange(x.id)} title={x.name}>
+            <span className="ground-tex" style={{ backgroundColor: x.color, backgroundImage: `url(/library/floors/${x.id}.webp)` }} />
+            <span className="small">{x.name}</span>
+          </button>
+        ))}
+      </div>
+      {t && <span className="muted small">{t.name}: {RULE_WORDS[t.rule].toLowerCase()}.</span>}
+    </div>
+  );
+}
+
+function BiomePicker({ onMake }: { onMake: (m: GameMap) => void }) {
+  const [biome, setBiome] = useState<Biome>('forest');
+  const [size, setSize] = useState<OutdoorSize>('medium');
+  const reg = biome === 'region';
+  const make = () => {
+    if (!confirm('Replace this map with a new outdoor map?')) return;
+    onMake({ ...outdoorMap(biome, size, Date.now() & 0x7fffffff), id: pid() });
+  };
+  return (
+    <div className="stack">
+      <div className="biome-grid">
+        {BIOMES.map((b) => (
+          <button key={b.id} className={'pick' + (biome === b.id ? ' on' : '')} onClick={() => setBiome(b.id)}>
+            <b>{b.name}</b>
+            <span className="small muted">{b.blurb}</span>
+          </button>
+        ))}
+      </div>
+      <div className="seg small">
+        {(Object.keys(OUTDOOR_SIZES) as OutdoorSize[]).map((k) => <button key={k} className={size === k ? 'on' : ''} onClick={() => setSize(k)}>{OUTDOOR_SIZES[k].name}</button>)}
+      </div>
+      <span className="muted small">
+        {(() => { const [c, r] = OUTDOOR_SIZES[size][reg ? 'region' : 'battle']; return reg ? `${c} × ${r} miles, one square a mile.` : `${c} × ${r} squares: ${(c * 5).toLocaleString()} × ${(r * 5).toLocaleString()} ft.`; })()}
+      </span>
+      <button className="primary" onClick={make}>Make this map</button>
+      <span className="muted small">Every tap makes a different one. Undo is not kept for a new map, so save the one you like first.</span>
+    </div>
+  );
 }

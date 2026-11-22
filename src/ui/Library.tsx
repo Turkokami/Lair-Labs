@@ -1,6 +1,7 @@
 // The GM's quick-place browsers: map objects, creatures, starter maps and room templates.
 // Built for a phone: a search box, scrolling chips for themes and categories, and a grid of
 // thumbnails drawn by the same code that draws the map.
+import { unpackMap } from '../net/pack';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { OBJECTS, objectById } from '../library/objects';
 import { CREATURES } from '../library/creatures';
@@ -194,7 +195,7 @@ export function useLibraryIndex() {
 export async function fetchLibraryMap(kind: 'maps' | 'rooms', id: string): Promise<GameMap> {
   const r = await fetch(`/library/${kind}/${encodeURIComponent(id)}.json`);
   if (!r.ok) throw new Error('Could not load that map.');
-  return (await r.json()) as GameMap;
+  return unpackMap((await r.json()) as GameMap);
 }
 
 const AMBIENT_WORDS: Record<string, string> = { bright: 'Bright', dim: 'Dim', dark: 'Dark' };
@@ -207,7 +208,7 @@ export function StarterMaps({ onLoad }: { onLoad: (id: string) => void }) {
       {idx.maps.map((m) => (
         <button key={m.id} className="pick" onClick={() => onLoad(m.id)}>
           <b>{m.name}</b>
-          <span className="small muted">{m.cols * 5}×{m.rows * 5} ft · {AMBIENT_WORDS[m.ambient] ?? m.ambient} · {m.rooms} rooms{m.encounters ? ` · ${m.encounters} encounters` : ''}</span>
+          <span className="small muted">{m.scale === 5280 ? `${m.cols}×${m.rows} miles` : `${(m.cols * 5).toLocaleString()}×${(m.rows * 5).toLocaleString()} ft`} · {AMBIENT_WORDS[m.ambient] ?? m.ambient}{m.rooms ? ` · ${m.rooms} rooms` : ''}{m.encounters ? ` · ${m.encounters} encounters` : ''}</span>
           {m.description && <span className="small">{m.description}</span>}
         </button>
       ))}

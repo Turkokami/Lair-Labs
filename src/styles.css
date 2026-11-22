@@ -365,3 +365,10 @@ canvas.thumb { display: block; }
 .v3d-spells { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); width: 100%; max-width: 300px; }
 .v3d-spells button { text-align: left; }
 .v3d-canvas::after { content: ''; position: absolute; inset: 0; pointer-events: none; background: radial-gradient(ellipse at 50% 55%, transparent 58%, rgba(0, 0, 0, 0.42) 100%); }
+
+/* outdoor map tools */
+.ground-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(76px, 1fr)); gap: 6px; }
+.ground-pick { display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 4px; min-height: 0; border-radius: 10px; border: 2px solid transparent; background: transparent; text-align: center; line-height: 1.1; }
+.ground-pick.on { border-color: var(--gold); background: rgba(255, 210, 90, 0.08); }
+.ground-tex { width: 56px; height: 56px; border-radius: 8px; background-size: 112px 112px; box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.35); }
+.biome-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 6px; }

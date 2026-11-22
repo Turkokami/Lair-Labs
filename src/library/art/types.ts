@@ -40,12 +40,12 @@ export const CATEGORY_LABELS: Record<ObjCategory, string> = {
 };
 
 /** Theme sets the GM can filter by. An object can be in several. */
-export const SETS = ['dungeon', 'crypt', 'cave', 'forest', 'town', 'tavern', 'temple', 'castle', 'ship', 'camp', 'wizard', 'mine', 'swamp', 'desert', 'winter', 'sewer', 'farm', 'market'] as const;
+export const SETS = ['dungeon', 'crypt', 'cave', 'forest', 'town', 'tavern', 'temple', 'castle', 'ship', 'camp', 'wizard', 'mine', 'swamp', 'desert', 'winter', 'sewer', 'farm', 'market', 'jungle', 'alien'] as const;
 export type SetId = (typeof SETS)[number];
 export const SET_LABELS: Record<SetId, string> = {
   dungeon: 'Dungeon', crypt: 'Crypt', cave: 'Cave', forest: 'Forest', town: 'Town', tavern: 'Tavern', temple: 'Temple', castle: 'Castle',
   ship: 'Ship & dock', camp: 'Camp', wizard: 'Wizard', mine: 'Mine', swamp: 'Swamp', desert: 'Desert', winter: 'Winter', sewer: 'Sewer',
-  farm: 'Farm', market: 'Market',
+  farm: 'Farm', market: 'Market', jungle: 'Jungle', alien: 'Alien & fungal',
 };
 
 export interface LightDef { bright: number; dim: number; color: string; } // feet

@@ -443,6 +443,148 @@ def make_road_paved():
     return to_img(a)
 
 
+# ---------------------------------------------------------------- jungle and alien fungus
+
+
+def make_jungle_floor():
+    """Dark wet soil under broad fallen leaves and fern fronds."""
+    rng = rng_for("jungle-floor")
+    t = noise(rng, 50) * 0.5 + noise(rng, 9) * 0.35 + fine(rng) * 0.15
+    a = ramp(t, [(0, "#20200f"), (0.45, "#2f3318"), (0.75, "#3d4a1e"), (1, "#4f6324")])
+    a = shade_light(a, rng, 90, 0.16)
+    img = to_img(a)
+    leaf_cols = [(46, 92, 34), (62, 116, 40), (88, 120, 44), (112, 96, 40), (38, 76, 30)]
+
+    def leaf(d, x, y, r, s):
+        c = leaf_cols[int(r * len(leaf_cols)) % len(leaf_cols)]
+        L, W = 6 + s * 7, 2.6 + s * 2.4
+        ang = r * 6.28 + s * 2
+        ca, sa = np.cos(ang), np.sin(ang)
+        pts = [(x + ca * L, y + sa * L), (x - sa * W, y + ca * W), (x - ca * L * 0.8, y - sa * L * 0.8), (x + sa * W, y - ca * W)]
+        d.polygon(pts, fill=c + (225,))
+        d.line([(x - ca * L * 0.8, y - sa * L * 0.8), (x + ca * L, y + sa * L)], fill=(150, 170, 80, 120), width=1)
+
+    scatter(img, rng, 520, leaf)
+
+    def frond(d, x, y, r, s):
+        ang = r * 6.28
+        L = 12 + s * 12
+        ca, sa = np.cos(ang), np.sin(ang)
+        d.line([(x, y), (x + ca * L, y + sa * L)], fill=(40, 90, 30, 230), width=2)
+        for k in range(1, 7):
+            f = k / 7
+            px, py = x + ca * L * f, y + sa * L * f
+            w = (1 - f) * 6 + 2
+            for side in (-1, 1):
+                d.line([(px, py), (px - sa * w * side + ca * 2, py + ca * w * side + sa * 2)], fill=(70, 140, 46, 220), width=2)
+
+    scatter(img, rng, 34, frond)
+    return img
+
+
+def make_jungle_undergrowth():
+    """Thick ferns and broad leaves: hard going."""
+    rng = rng_for("jungle-undergrowth")
+    img = make_jungle_floor()
+
+    def plant(d, x, y, r, s):
+        n = 5 + int(s * 4)
+        for k in range(n):
+            ang = k / n * 6.28 + r
+            L = 10 + s * 8
+            ca, sa = np.cos(ang), np.sin(ang)
+            g = int(90 + r * 60)
+            d.ellipse([x + ca * L * 0.5 - 5, y + sa * L * 0.5 - 5, x + ca * L * 0.5 + 5, y + sa * L * 0.5 + 5], fill=(24, g - 30, 24, 120))
+            pts = [(x, y), (x + ca * L - sa * 4, y + sa * L + ca * 4), (x + ca * L * 1.2, y + sa * L * 1.2), (x + ca * L + sa * 4, y + sa * L - ca * 4)]
+            d.polygon(pts, fill=(34, g, 36, 235))
+
+    scatter(img, rng, 60, plant)
+    return img
+
+
+def make_fungal_ground():
+    """Alien spongy ground in violet and teal, pocked with spore pores."""
+    rng = rng_for("fungal-ground")
+    t = noise(rng, 55) * 0.55 + noise(rng, 11) * 0.3 + fine(rng) * 0.15
+    a = ramp(t, [(0, "#1f1630"), (0.4, "#33244a"), (0.7, "#3f3a5c"), (1, "#2f5a5c")])
+    a = shade_light(a, rng, 110, 0.18)
+    img = to_img(a)
+
+    def pore(d, x, y, r, s):
+        rr = 1.5 + s * 3.5
+        d.ellipse([x - rr, y - rr, x + rr, y + rr], fill=(14, 10, 24, 200))
+        d.ellipse([x - rr, y - rr - 0.8, x + rr, y + rr - 1.2], outline=(120, 96, 160, 120))
+
+    scatter(img, rng, 420, pore)
+
+    def spore(d, x, y, r, s):
+        c = (90, 230, 210) if r > 0.45 else (210, 140, 255)
+        rr = 0.8 + s * 1.2
+        d.ellipse([x - rr * 2.5, y - rr * 2.5, x + rr * 2.5, y + rr * 2.5], fill=c + (40,))
+        d.ellipse([x - rr, y - rr, x + rr, y + rr], fill=c + (230,))
+
+    scatter(img, rng, 110, spore)
+    return img
+
+
+def make_mycelium():
+    """Pale fungal threads spreading over dark soil."""
+    rng = rng_for("mycelium")
+    t = noise(rng, 45) * 0.6 + fine(rng) * 0.4
+    a = ramp(t, [(0, "#1a1424"), (0.6, "#2a2234"), (1, "#3a3046")])
+    # threads: thin bands of several noises
+    for k, w in enumerate((0.55, 0.4, 0.3)):
+        z = noise(rng, 26 + k * 10)
+        band = np.clip(1 - np.abs(z - 0.5) * (40 + k * 10), 0, 1)
+        a = mix(a, col("#c9c0d8" if k != 1 else "#9fe0d6"), band * w)
+    img = to_img(shade_light(a, rng, 100, 0.12))
+
+    def cap(d, x, y, r, s):
+        rr = 1.6 + s * 2.6
+        c = (200, 160, 240) if r > 0.5 else (120, 220, 200)
+        d.ellipse([x - rr + 1, y - rr + 1.5, x + rr + 1, y + rr + 1.5], fill=(0, 0, 0, 90))
+        d.ellipse([x - rr, y - rr, x + rr, y + rr], fill=c + (235,))
+        d.ellipse([x - rr * 0.4, y - rr * 0.6, x + rr * 0.1, y - rr * 0.1], fill=(255, 255, 255, 90))
+
+    scatter(img, rng, 90, cap)
+    return img
+
+
+def make_glow_moss():
+    """Soft teal moss that gives off its own light."""
+    rng = rng_for("glow-moss")
+    t = noise(rng, 30) * 0.5 + noise(rng, 6) * 0.35 + fine(rng) * 0.15
+    a = ramp(t, [(0, "#0e2a2e"), (0.5, "#17484a"), (0.8, "#22706a"), (1, "#49b8a2")])
+    img = to_img(shade_light(a, rng, 80, 0.2))
+
+    def glint(d, x, y, r, s):
+        rr = 0.6 + s * 1.1
+        d.ellipse([x - rr * 3, y - rr * 3, x + rr * 3, y + rr * 3], fill=(120, 255, 220, 30))
+        d.ellipse([x - rr, y - rr, x + rr, y + rr], fill=(190, 255, 235, 220))
+
+    scatter(img, rng, 160, glint)
+    return img
+
+
+
+def make_water_muddy():
+    return water_like("water-muddy", [(0, "#2e3a24"), (0.5, "#3e4a2c"), (1, "#56603a")], "#9aa070", 0.6, big=70)
+
+
+def make_water_glow():
+    """Dark violet alien water with bright teal ripples."""
+    img = water_like("water-glow", [(0, "#140f2a"), (0.5, "#1c1840"), (1, "#26245a")], "#5fe0d0", 0.55, big=60)
+    rng = rng_for("water-glow-dots")
+
+    def dot(d, x, y, r, s):
+        rr = 0.7 + s
+        d.ellipse([x - rr * 3, y - rr * 3, x + rr * 3, y + rr * 3], fill=(95, 224, 208, 28))
+        d.ellipse([x - rr, y - rr, x + rr, y + rr], fill=(170, 250, 235, 200))
+
+    scatter(img, rng, 60, dot)
+    return img
+
+
 TEXTURES = {
     "grass-lush": make_grass_lush,
     "grass-dry": make_grass_dry,
@@ -465,6 +607,13 @@ TEXTURES = {
     "bog": make_bog,
     "cliff": make_cliff,
     "road-paved": make_road_paved,
+    "jungle-floor": make_jungle_floor,
+    "jungle-undergrowth": make_jungle_undergrowth,
+    "fungal-ground": make_fungal_ground,
+    "mycelium": make_mycelium,
+    "glow-moss": make_glow_moss,
+    "water-muddy": make_water_muddy,
+    "water-glow": make_water_glow,
 }
 
 
