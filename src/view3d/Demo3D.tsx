@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { HostCore, newGame, type Intent } from '../engine/game';
 import { TEMPLATES, vKey } from '../engine/map';
+import { outdoorMap, type Biome } from '../engine/outdoor';
 import { premade, computeSheet, freshState } from '../rules/character';
 import View3D, { type Cam } from './View3D';
 import { toast } from '../ui/common';
@@ -12,10 +13,14 @@ import { TurnHud3D } from '../ui/TurnHud3D';
 const TOUR_START: Record<string, [number, number]> = { crypt: [8, 22], 'great-hall': [28, 40], tavern: [12, 14], warren: [6, 26] };
 
 function setup() {
-  const tour = new URLSearchParams(location.search).get('map') ?? '';
+  const q = new URLSearchParams(location.search);
+  // ?demo3d&outdoor=forest&seed=7 walks an outdoor map from the map maker
+  const outdoor = q.get('outdoor') as Biome | null;
+  const tour = outdoor ? 'outdoor' : q.get('map') ?? '';
   const tpl = TEMPLATES.find((t) => t.id === (TOUR_START[tour] ? tour : 'crypt'))!;
-  const map = tpl.make();
-  map.ambient = tour && tour !== 'crypt' ? 'dim' : 'dark';
+  const map = outdoor ? outdoorMap(outdoor, 'small', Number(q.get('seed') ?? 7)) : tpl.make();
+  if (!outdoor) map.ambient = tour && tour !== 'crypt' ? 'dim' : 'dark';
+  if (outdoor) TOUR_START.outdoor = [map.playerStart?.[0] ?? 20, map.playerStart?.[1] ?? 15];
   const core = new HostCore(newGame('DEMO3D', map));
   core.s.settings.lockMoves = true;
   core.s.settings.startLevel = 3;
@@ -30,7 +35,7 @@ function setup() {
   const [sx, sy] = TOUR_START[tour] ?? TOUR_START.crypt;
   const fighter = hero('p1', 'Sam', 'fighter', sx, sy);
   const cleric = hero('p2', 'Jo', 'cleric', sx - 2, sy + 2);
-  if (tour && tour !== 'crypt') return { core, fighter, cleric, mons: [] as string[], name: tpl.name };
+  if (tour && tour !== 'crypt') return { core, fighter, cleric, mons: [] as string[], name: outdoor ? map.name : tpl.name };
   core.handle('gm', { t: 'gm:addMonster', monsterId: 'skeleton', x: 31, y: 20 });
   core.handle('gm', { t: 'gm:addMonster', monsterId: 'skeleton', x: 33, y: 24 });
   core.handle('gm', { t: 'gm:addMonster', monsterId: 'zombie', x: 36, y: 22 });
