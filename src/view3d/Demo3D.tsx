@@ -95,11 +95,11 @@ export default function Demo3D() {
       await wait(1200);
       setCam('shoulder');
       setCaption('Through the side doors to the library');
-      await walk('p1', g.fighter, row(20, 28, 17), 380);
+      await walk('p1', g.fighter, row(20, 28, 15), 380);
       act('p1', { t: 'door', key: vKey(15, 20) });
       act('p1', { t: 'door', key: vKey(15, 21) });
       await wait(1200);
-      await walk('p1', g.fighter, row(20, 17, 9), 380);
+      await walk('p1', g.fighter, row(20, 15, 9), 380);
       await wait(800);
       setCam('first');
       await turn('right', 2);
