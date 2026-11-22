@@ -1,6 +1,8 @@
 // Shared pieces for 3D object models: the model signature, palette and small builders (barrels, crates, tables...).
 // Model files (props3d.ts, models-*.ts) all build from these so the whole library looks like one set.
 import { Kit, type Spot } from './kit';
+import * as THREE from 'three';
+import { foliageOn, leafCrown, needleCrown, bushCrown } from './foliage3d';
 import type { Prop } from '../engine/map';
 
 export type Model = (k: Kit, O: Spot, w: number, d: number, R: () => number, c: (key: string, fb: string) => string, p: Prop) => number | void; // returns flame height for lit things
@@ -41,7 +43,22 @@ export const pillarRound = (k: Kit, O: Spot, h = 2.4, r = 0.3) => {
   k.C('lit', O, 0, h - 0.3, 0, r * 1.15, 0.12, STONE, 'cyl16');
   k.B('lit', O, 0, h - 0.18, 0, r * 2.6, 0.18, r * 2.6, STONE);
 };
-export const tree = (k: Kit, O: Spot, R: () => number, leaf: string, trunk = '#5a3d24', h = 2.6, r = 1.1, pine = false) => {
+export const tree = (k: Kit, O: Spot, R: () => number, leaf: string, trunk = '#5a3d24', h = 2.6, r = 1.1, pine = false, style: 'round' | 'airy' | 'weeping' | 'swamp' = 'round') => {
+  if (foliageOn()) {
+    // a real-looking tree: tapered trunk with a root flare, limbs, and a crown of leaf clumps (or needle tiers)
+    const S: Spot = { x: O.x, z: O.z, y: O.y ?? 0, ry: 0 };
+    const H = h * 1.3, rr = r * 1.25, tr = pine ? 0.11 : 0.13 + r * 0.04;
+    k.P('wood', S, 'cone', 0, 0.12, 0, tr * 4.2, 0.3, tr * 4.2, trunk);
+    k.Beam('wood', S, [0, 0, 0], [(R() - 0.5) * 0.08, H * 0.45, (R() - 0.5) * 0.08], tr, trunk, 'cyl');
+    k.Beam('wood', S, [0, H * 0.44, 0], [(R() - 0.5) * 0.1, pine ? H : H * 0.78, (R() - 0.5) * 0.1], tr * 0.7, trunk, 'cyl');
+    const o = { x: O.x, y: O.y ?? 0, z: O.z };
+    if (pine) needleCrown(o, R, leaf, H, rr, new THREE.Color(leaf).getHSL({ h: 0, s: 0, l: 0 }).l > 0.6);
+    else {
+      const limbs = leafCrown(o, R, leaf, H, rr, style);
+      for (const L of limbs.slice(0, -1)) k.Beam('wood', S, [0, H * (0.4 + R() * 0.15), 0], [L[0] * 0.85, L[1] * 0.95, L[2] * 0.85], tr * 0.42, trunk, 'cyl6');
+    }
+    return;
+  }
   k.C('wood', O, 0, 0, 0, 0.16, h * 0.7, trunk, 'cyl6');
   if (pine) for (let i = 0; i < 4; i++) k.P('fabric', O, 'cone', 0, h * 0.35 + i * 0.45, 0, r * (1.7 - i * 0.35), 0.9, r * (1.7 - i * 0.35), leaf);
   else

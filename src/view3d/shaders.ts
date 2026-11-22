@@ -30,6 +30,16 @@ export interface ShadeOpts {
   flicker?: boolean;
   /** Walls: damp and darker near the floor, soot near the top, faint water streaks. */
   grime?: boolean;
+  /** Outdoor ground: broad colour drift so big fields don't look stamped, and bare rock on steep slopes. */
+  ground?: boolean;
+  /** Water: two layers of ripples drifting different ways, and more mirror-like at a low angle. */
+  water?: boolean;
+  /** Leaves and grass: sway in the wind by this many units, times the vertex's aSway weight. */
+  sway?: number;
+  /** Glowing plants: the emissive glow takes the vertex colour. */
+  emissiveVertex?: boolean;
+  /** Thin out and vanish between these camera distances (grass: near the camera only). */
+  fade?: [number, number];
 }
 
 const TRI = /* glsl */ `
@@ -42,12 +52,22 @@ float llVN(vec3 p) { vec3 i = floor(p), f = fract(p); f = f * f * (3.0 - 2.0 * f
 
 /** Adds fog of war and optional triplanar painting to a built-in material. Call once per material. */
 export function shade<M extends THREE.Material>(m: M, vis: VisUniforms, o: ShadeOpts = {}): M {
-  const key = `ll|${o.tri ?? 0}|${o.rv ?? 0}|${o.noVis ? 1 : 0}|${o.flicker ? 1 : 0}|${o.grime ? 1 : 0}`;
+  const key = `ll|${o.tri ?? 0}|${o.rv ?? 0}|${o.noVis ? 1 : 0}|${o.flicker ? 1 : 0}|${o.grime ? 1 : 0}|${o.ground ? 1 : 0}|${o.water ? 1 : 0}|${o.sway ?? 0}|${o.emissiveVertex ? 1 : 0}|${o.fade ? o.fade.join(',') : ''}`;
   m.onBeforeCompile = (sh) => {
     Object.assign(sh.uniforms, vis, { llS: { value: o.tri ?? 1 } });
+    let vs = sh.vertexShader;
+    if (o.sway)
+      vs = 'attribute float aSway; uniform float uTime;\n' + vs.replace(
+        '#include <begin_vertex>',
+        `#include <begin_vertex>
+{ vec3 sw = (modelMatrix * vec4(transformed, 1.0)).xyz; float ph = uTime * 1.7 + sw.x * 0.37 + sw.z * 0.29;
+  float gust = 0.55 + 0.45 * sin(uTime * 0.43 + sw.x * 0.05 + sw.z * 0.03);
+  transformed.x += sin(ph) * ${o.sway.toFixed(3)} * aSway * gust;
+  transformed.z += cos(ph * 0.83) * ${(o.sway * 0.6).toFixed(3)} * aSway * gust; }`,
+      );
     sh.vertexShader =
       'varying vec3 llP; varying vec3 llN;\n' +
-      sh.vertexShader.replace(
+      vs.replace(
         '#include <project_vertex>',
         `#include <project_vertex>
 { vec4 lwp = vec4(transformed, 1.0); vec3 lwn = normal;
@@ -87,6 +107,50 @@ roughnessFactor = clamp(roughnessFactor * (1.0 - ${o.rv.toFixed(2)} + 2.0 * ${o.
 #endif`,
       );
     }
+    if (o.ground)
+      fs = fs.replace(
+        '#include <map_fragment>',
+        `#include <map_fragment>
+{ float mv = llVN(vec3(llP.x * 0.09, 0.5, llP.z * 0.09)) * 0.6 + llVN(vec3(llP.x * 0.37, 2.5, llP.z * 0.37)) * 0.4;
+  diffuseColor.rgb *= 0.84 + 0.3 * mv;
+  float slope = 1.0 - normalize(llN).y;
+  float rn = llVN(llP * vec3(2.3, 4.1, 2.3)) * 0.65 + llVN(llP * 7.7) * 0.35;
+  vec3 rock = mix(vec3(0.075, 0.07, 0.062), vec3(0.2, 0.185, 0.165), rn) * (0.8 + 0.3 * smoothstep(-0.5, 2.5, llP.y));
+  rock = mix(rock, diffuseColor.rgb * 0.55, 0.25);
+  float k = smoothstep(0.22, 0.5, slope + (rn - 0.5) * 0.15);
+  diffuseColor.rgb = mix(diffuseColor.rgb, rock, k);
+  diffuseColor.rgb *= mix(1.0, 0.72, smoothstep(-0.05, -0.6, llP.y)); }`,
+      );
+    if (o.water)
+      fs = fs.replace(
+        '#include <normal_fragment_maps>',
+        `#ifdef USE_NORMALMAP_TANGENTSPACE
+{ vec2 wu = llP.xz;
+  vec3 n1 = texture2D(normalMap, wu * 0.19 + vec2(uTime * 0.021, uTime * 0.013)).xyz * 2.0 - 1.0;
+  vec3 n2 = texture2D(normalMap, wu * 0.071 + vec2(-uTime * 0.009, uTime * 0.017)).xyz * 2.0 - 1.0;
+  vec3 n3 = texture2D(normalMap, wu * 0.53 + vec2(uTime * 0.04, -uTime * 0.03)).xyz * 2.0 - 1.0;
+  vec3 mapN = normalize(vec3((n1.xy * 0.5 + n2.xy * 0.35 + n3.xy * 0.25) * normalScale, 1.0));
+  normal = normalize(tbn * mapN); }
+#else
+#include <normal_fragment_maps>
+#endif
+{ float fr = pow(1.0 - clamp(dot(normalize(vViewPosition), -normal) * -1.0, 0.0, 1.0), 4.0);
+  diffuseColor.a = mix(diffuseColor.a, 1.0, clamp(fr, 0.0, 0.85)); }`,
+      );
+    if (o.sway)
+      // leaf and grass cards are lit the same from both sides (no black backs)
+      fs = fs.replace('#include <normal_fragment_begin>', `#include <normal_fragment_begin>
+#ifdef DOUBLE_SIDED
+normal *= faceDirection;
+#endif`);
+    if (o.fade)
+      fs = fs.replace('#include <alphatest_fragment>', `#include <alphatest_fragment>
+{ float fd = length(vViewPosition) + max(0.0, cameraPosition.y - llP.y - 3.5) * 2.6; if (llH(floor(llP * 9.0)) < smoothstep(${o.fade[0].toFixed(1)}, ${o.fade[1].toFixed(1)}, fd)) discard; }`);
+    if (o.emissiveVertex)
+      fs = fs.replace('#include <emissivemap_fragment>', `#include <emissivemap_fragment>
+#ifdef USE_COLOR
+totalEmissiveRadiance *= vColor.rgb;
+#endif`);
     if (o.grime)
       fs = fs.replace(
         '#include <color_fragment>',
@@ -114,7 +178,7 @@ totalEmissiveRadiance *= 0.82 + 0.18 * sin(uTime * 9.0 + llP.x * 3.1 + llP.z * 2
     if (!o.noVis)
       fs = fs.replace(
         '#include <fog_fragment>',
-        `{ if (uVisOn > 0.5) { vec2 c = (llP.xz + llN.xz * 0.3) / uVisSize; float v = (c.x < 0.0 || c.y < 0.0 || c.x > 1.0 || c.y > 1.0) ? 0.0 : texture2D(uVis, c).r;
+        `{ if (uVisOn > 0.5) { vec2 c = (llP.xz + llN.xz * 0.3) / uVisSize; float v = texture2D(uVis, clamp(c, 0.0, 1.0)).r;
    gl_FragColor.rgb *= v; } }
 #include <fog_fragment>`,
       );

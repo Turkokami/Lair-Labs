@@ -2,6 +2,8 @@
 // world x = map column, world z = map row. Floors use the same floor pictures as the overhead map; walls, doors,
 // windows and bars come straight from the map's wall edges; caves get lumpy rock instead of dressed stone.
 import * as THREE from 'three';
+import { buildTerrain, isOutdoorMap, mirroredProps, MARGIN, type Terrain } from './terrain3d';
+import { collectFoliage, buildFoliage, buildGrass } from './foliage3d';
 import { type GameMap, allWallEdges, parseEdge, cell, isFloor, SEE_THROUGH_DOORS } from '../engine/map';
 import { Kit, rng, type Bin } from './kit';
 import { shade, type VisUniforms } from './shaders';
@@ -42,6 +44,12 @@ export interface Built {
   floorMeshes: THREE.Mesh[];
   water: THREE.Mesh[];
   materials: THREE.Material[];
+  /** Open country: rolling ground, sky and sun instead of rooms. */
+  outdoor: boolean;
+  /** Ground height at a world point (0 indoors). */
+  heightAt: (x: number, z: number) => number;
+  /** Per-frame upkeep around the focus (grass near the camera). */
+  update: (focus: THREE.Vector3) => void;
   dispose: () => void;
 }
 
@@ -102,6 +110,17 @@ export function buildDungeon(m: GameMap, vis: VisUniforms, kitMats: Record<Bin, 
   const floorMeshes: THREE.Mesh[] = [];
   const water: THREE.Mesh[] = [];
   const gr = gritTex();
+  // open country: one rolling landscape (soft blends, river beds, cliffs, land past the edge) instead of tiles
+  const outdoor = isOutdoorMap(m);
+  let terrain: Terrain | undefined;
+  if (outdoor) {
+    terrain = buildTerrain(m, vis, o.quality, shadows, o.onTexture);
+    root.add(terrain.group);
+    floorMeshes.push(...terrain.meshes);
+    water.push(...terrain.water);
+    byMat.clear();
+  }
+  const heightAt = terrain?.heightAt ?? (() => 0);
   for (const [id, cells] of byMat) {
     const isWater = id.startsWith('water');
     const isPit = id === 'pit';
@@ -193,12 +212,15 @@ export function buildDungeon(m: GameMap, vis: VisUniforms, kitMats: Record<Bin, 
     const n = 5 + Math.floor(R() * 4);
     for (let k = 0; k < n; k++) {
       const r = 0.06 + R() * 0.13;
-      kit.S('lit', { x: x + 0.12 + R() * 0.76, z: y + 0.12 + R() * 0.76, y: 0 }, 0, r * 0.6, 0, r, k % 2 ? '#8a8073' : '#a39887', 'ico');
+      const sx = x + 0.12 + R() * 0.76, sz = y + 0.12 + R() * 0.76;
+      kit.S('lit', { x: sx, z: sz, y: heightAt(sx, sz) }, 0, r * 0.6, 0, r, k % 2 ? '#8a8073' : '#a39887', 'ico');
     }
   }
 
   // ---------------- walls ----------------
-  const edges = allWallEdges(m);
+  // outdoors the edge of the map is not a wall: only doors and walls someone drew stand
+  const inside = (k: string) => { const { t, x, y } = parseEdge(k); return t === 'h' ? y > 0 && y < m.rows : x > 0 && x < m.cols; };
+  const edges = outdoor ? allWallEdges(m).filter((k) => inside(k) || !!m.doors[k]) : allWallEdges(m);
   const doors = new Map<string, DoorObj>();
   const corners = new Set<string>();
   const wallTex = cave ? caveRockTex() : stoneBlockTex();
@@ -290,7 +312,12 @@ export function buildDungeon(m: GameMap, vis: VisUniforms, kitMats: Record<Bin, 
 
   // ---------------- ceiling ----------------
   const ceilCells: number[] = [];
-  for (let i = 0; i < m.cells.length; i++) if (m.cells[i] > 0 && !OUTDOOR.has(matFor(m, i, m.cells[i]))) ceilCells.push(i);
+  for (let i = 0; i < m.cells.length; i++) {
+    if (m.cells[i] <= 0) continue;
+    const id = matFor(m, i, m.cells[i]);
+    // outdoors only a built floor (planks, flagstones: the inside of a house drawn as squares) gets a roof
+    if (outdoor ? terrainById(id)?.group === 'floor' && id !== 'pit' : !OUTDOOR.has(id)) ceilCells.push(i);
+  }
   if (o.ceiling !== false && ceilCells.length) {
     const P: number[] = [];
     for (const i of ceilCells) {
@@ -373,7 +400,19 @@ export function buildDungeon(m: GameMap, vis: VisUniforms, kitMats: Record<Bin, 
   }
 
   // ---------------- objects ----------------
-  const lights = buildProps(m, kit, root, mats, vis, o.role, shadows);
+  // tree crowns are gathered while the objects are built, then drawn as two batches of leaf cards
+  collectFoliage(true);
+  const lights = outdoor
+    ? buildProps({ ...m, props: [...m.props, ...mirroredProps(m)] }, kit, root, mats, vis, o.role, shadows, heightAt, o.quality)
+    : buildProps(m, kit, root, mats, vis, o.role, shadows);
+
+  const fol = buildFoliage(vis, shadows);
+  for (const me of fol.meshes) root.add(me);
+  mats.push(...fol.materials);
+  geos.push(...fol.geometries);
+  // grass near the focus (built a chunk at a time as you move)
+  const grass = terrain ? buildGrass(m, terrain.matAt, heightAt, MARGIN, o.quality, vis) : undefined;
+  if (grass) root.add(grass.group);
 
   kit.flush(root, kitMats, shadows);
 
@@ -385,7 +424,12 @@ export function buildDungeon(m: GameMap, vis: VisUniforms, kitMats: Record<Bin, 
     floorMeshes,
     water,
     materials: mats,
+    outdoor,
+    heightAt,
+    update: (f: THREE.Vector3) => grass?.update(f),
     dispose: () => {
+      terrain?.dispose();
+      grass?.dispose();
       root.traverse((ob) => {
         const me = ob as THREE.Mesh;
         if (me.isMesh) me.geometry.dispose();

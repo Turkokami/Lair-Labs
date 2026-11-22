@@ -14,10 +14,12 @@ import { glowTex } from './textures';
 
 export interface LightSpot { x: number; y: number; z: number; color: string; range: number; intensity: number; flame: boolean }
 
+import { foliageOn, bushCrown } from './foliage3d';
 import { type Model, WOOD, DARKWOOD, IRON, STONE, GOLD, CLOTH, barrel, crate, legsTable, chair, flameCup, pillarRound, tree } from './modelkit';
 import { MORE_MODELS } from './models-more';
 import { EXTRA_MODELS } from './models-extra';
 import { MORE_MODELS2 } from './models-more2';
+import { OUTDOOR_MODELS } from './models-outdoor';
 
 const MODELS: Record<string, Model> = {
   barrel: (k, O) => barrel(k, O),
@@ -404,9 +406,9 @@ const MODELS: Record<string, Model> = {
     }
   },
   'tree-oak': (k, O, w, d, R) => tree(k, O, R, '#4a7a35', '#5a3d24', 2.8, w * 0.42),
-  'tree-birch': (k, O, w, d, R) => tree(k, O, R, '#7aa04a', '#d8d2c4', 2.8, w * 0.35),
-  'tree-willow': (k, O, w, d, R) => tree(k, O, R, '#6a8a3a', '#5a3d24', 2.6, w * 0.45),
-  'tree-swamp': (k, O, w, d, R) => tree(k, O, R, '#4a5a2a', '#3a2c1c', 2.6, w * 0.4),
+  'tree-birch': (k, O, w, d, R) => tree(k, O, R, '#7aa04a', '#d8d2c4', 2.8, w * 0.35, false, 'airy'),
+  'tree-willow': (k, O, w, d, R) => tree(k, O, R, '#6a8a3a', '#5a3d24', 2.6, w * 0.45, false, 'weeping'),
+  'tree-swamp': (k, O, w, d, R) => tree(k, O, R, '#4a5a2a', '#3a2c1c', 2.6, w * 0.4, false, 'swamp'),
   'tree-pine': (k, O, w, d, R) => tree(k, O, R, '#2f5a32', '#4a3020', 3.2, w * 0.35, true),
   'tree-fir-snow': (k, O, w, d, R) => tree(k, O, R, '#dfe8ee', '#4a3020', 3.2, w * 0.35, true),
   'tree-dead': (k, O, w, d, R) => {
@@ -417,6 +419,7 @@ const MODELS: Record<string, Model> = {
     }
   },
   bush: (k, O, w, d, R) => {
+    if (foliageOn()) return bushCrown({ x: O.x, y: O.y ?? 0, z: O.z }, R, '#3f6a32', Math.max(0.45, Math.min(w, d) * 0.5));
     for (let i = 0; i < 4; i++) k.S('fabric', O, (R() - 0.5) * 0.4, 0.3 + R() * 0.15, (R() - 0.5) * 0.4, 0.3, '#3f6a32', 'ico');
   },
   'thorn-bush': (k, O, w, d, R, c, p) => MODELS.bush(k, O, w, d, R, c, p),
@@ -441,7 +444,7 @@ const MODELS: Record<string, Model> = {
   rug: () => {},
 };
 // more models live in their own files; an id already modelled above wins
-for (const [k, v] of Object.entries({ ...MORE_MODELS, ...MORE_MODELS2, ...EXTRA_MODELS })) if (!MODELS[k]) MODELS[k] = v;
+for (const [k, v] of Object.entries({ ...MORE_MODELS, ...MORE_MODELS2, ...EXTRA_MODELS, ...OUTDOOR_MODELS })) if (!MODELS[k]) MODELS[k] = v;
 
 /** A sprite card laid flat: the object's own overhead art, on the floor or on top of a stand-in body. */
 const spriteTexCache = new Map<string, THREE.Texture>();
@@ -487,7 +490,7 @@ const HANG_TOP = new Set(['stalactites', 'cobweb-corner', 'herbs-drying']);
 
 const WALL_HUNG = new Set(['torch-sconce', 'sconce-witchfire', 'sconce-magefire', 'wall-chains', 'tomb-niche', 'tool-wall', 'notice-board', 'dartboard', 'tavern-sign', 'mirror', 'magic-mirror']);
 
-export function buildProps(m: GameMap, kit: Kit, root: THREE.Group, mats: THREE.Material[], vis: VisUniforms, role: 'gm' | 'player', shadows: boolean): LightSpot[] {
+export function buildProps(m: GameMap, kit: Kit, root: THREE.Group, mats: THREE.Material[], vis: VisUniforms, role: 'gm' | 'player', shadows: boolean, heightAt?: (x: number, z: number) => number, quality: 'low' | 'medium' | 'high' = 'high'): LightSpot[] {
   const lights: LightSpot[] = [];
   const glows = new THREE.Group();
   glows.name = 'glows';
@@ -515,20 +518,22 @@ export function buildProps(m: GameMap, kit: Kit, root: THREE.Group, mats: THREE.
     const R = rng((p.x * 73856093) ^ (p.y * 19349663) ^ p.kind.length);
     const vc = def.variants?.[p.v ?? 0]?.c ?? {};
     const c = (key: string, fb: string) => vc[key] ?? def.c[key] ?? fb;
-    let O = { x: cx, z: cz, ry, y: 0 };
+    // outdoors things stand on the rolling ground (and float at the waterline, not on the river bed)
+    const gy = heightAt ? Math.max(-0.1, heightAt(cx, cz)) : 0;
+    let O = { x: cx, z: cz, ry, y: gy };
     let flameY: number | void = undefined;
     if (WALL_HUNG.has(def.id)) {
       const side = wallSide(m, p.x, p.y);
       if (side !== null) {
         ry = side;
         // push to the wall: local -z points at the wall after turning by ry
-        O = { x: cx - Math.sin(ry) * 0.42, z: cz - Math.cos(ry) * 0.42, ry, y: 0 };
+        O = { x: cx - Math.sin(ry) * 0.42, z: cz - Math.cos(ry) * 0.42, ry, y: gy };
       }
     }
     const model = MODELS[def.id];
     const lift = HANG_TOP.has(def.id) ? WALL_H - OLD_TOP : HANG_LAMP.has(def.id) ? Math.max(0, WALL_H - OLD_TOP - 1.4) : 0;
     if (lift) {
-      O = { ...O, y: lift };
+      O = { ...O, y: gy + lift };
       if (HANG_LAMP.has(def.id)) kit.Beam('metal', O, [0, OLD_TOP - 0.02, 0], [0, WALL_H - lift, 0], 0.016, '#2e2c2a', 'cyl6');
     }
     if (model) {
@@ -553,7 +558,7 @@ export function buildProps(m: GameMap, kit: Kit, root: THREE.Group, mats: THREE.
       const g = new THREE.PlaneGeometry(sp.canvas.width / 128, sp.canvas.height / 128);
       g.rotateX(-Math.PI / 2);
       const me = new THREE.Mesh(g, mat);
-      me.position.set(cx, (h > 0 ? h : 0) + 0.012, cz);
+      me.position.set(cx, gy + (h > 0 ? h : 0) + 0.012, cz);
       me.rotation.y = (-rot * Math.PI) / 180;
       me.receiveShadow = shadows;
       me.userData.prop = p.id;
@@ -564,8 +569,8 @@ export function buildProps(m: GameMap, kit: Kit, root: THREE.Group, mats: THREE.
       const fy = typeof flameY === 'number' ? flameY : 1.2;
       const range = (def.light.bright + def.light.dim) / 5;
       const fx = O.x + (WALL_HUNG.has(def.id) ? Math.sin(ry) * 0.15 : 0), fz = O.z + (WALL_HUNG.has(def.id) ? Math.cos(ry) * 0.15 : 0);
-      lights.push({ x: fx, y: fy, z: fz, color: def.light.color, range, intensity: 1.6, flame: true });
-      addGlow(fx, fy, fz, def.light.color, def.id.includes('brazier') || def.id.includes('campfire') ? 1.4 : 0.7);
+      lights.push({ x: fx, y: fy + gy, z: fz, color: def.light.color, range, intensity: 1.6, flame: true });
+      addGlow(fx, fy + gy, fz, def.light.color, def.id.includes('brazier') || def.id.includes('campfire') ? 1.4 : 0.7);
     }
   }
   for (const l of m.lights ?? []) lights.push({ x: l.x, y: 1.9, z: l.y, color: l.color, range: (l.bright + l.dim) / 5, intensity: 1.4, flame: false });

@@ -9,6 +9,8 @@ import { kitMaterials, type Bin } from './kit';
 import { buildDungeon, poseDoor, WALL_H, type Built } from './dungeon';
 import { dungeonEnv, glowTex, setTextureDetail } from './textures';
 import type { LightSpot } from './props3d';
+import { terrainById } from '../library/terrain';
+import { SKIES, skyTexture, type SkyLook } from './terrain3d';
 
 export type Quality = 'low' | 'medium' | 'high';
 export const QUALITY: Record<Quality, { pixelRatio: number; lights: number; shadows: boolean; antialias: boolean; fogFar: number }> = {
@@ -62,6 +64,9 @@ export class Engine3D {
   private base = { amb: 0.5, fog: 0.07, sky: '#888', ground: '#222' };
   private work = false;
   private far = false;
+  private indoorEnv: THREE.Texture;
+  private skies = new Map<string, THREE.Texture>();
+  private sunDir = new THREE.Vector3(0, 1, 0);
 
   constructor(public host: HTMLElement, quality: Quality) {
     this.quality = quality;
@@ -81,7 +86,8 @@ export class Engine3D {
     host.appendChild(this.renderer.domElement);
     setTextureDetail(quality);
     this.kitMats = kitMaterials(this.vis);
-    this.scene.environment = dungeonEnv();
+    this.indoorEnv = dungeonEnv();
+    this.scene.environment = this.indoorEnv;
     this.scene.add(this.hemi, this.sun, this.sun.target, this.carried, this.fxLight);
     for (let i = 0; i < Q.lights; i++) {
       const l = new THREE.PointLight('#ffffff', 0, 8, 1.6);
@@ -106,23 +112,64 @@ export class Engine3D {
     this.built = buildDungeon(m, this.vis, this.kitMats, { quality: this.quality, role, onTexture: () => (this.renderer.shadowMap.needsUpdate = true) });
     this.scene.add(this.built.root);
     const a = AMBIENT[m.ambient ?? 'dim'] ?? AMBIENT.dim;
-    // outdoor maps (mostly grass, dirt, sand) get daylight instead of a ceiling glow
-    let outside = 0, floors = 0;
-    for (let i = 0; i < m.cells.length; i++) {
-      if (m.cells[i] <= 0) continue;
-      floors++;
-      if (['grass', 'dirt', 'sand', 'mud', 'ice'].includes(m.mats?.[i] ?? '')) outside++;
+    this.outdoor = this.built.outdoor;
+    this.sun.castShadow = false;
+    if (this.outdoor) {
+      // open country: a painted sky all round (also what water and metal reflect), sunlight with soft shadows,
+      // and haze the colour of the horizon so far land melts into the sky
+      let alien = 0;
+      for (let i = 0; i < m.cells.length; i += 5) if (terrainById(m.mats?.[i] ?? '')?.group === 'alien') alien++;
+      const strange = alien / Math.ceil(m.cells.length / 5) > 0.3;
+      const kind: keyof typeof SKIES = m.ambient === 'dark' ? 'night' : strange ? 'alien' : m.ambient === 'dim' ? 'dusk' : 'day';
+      const sky = SKIES[kind];
+      const tex = this.skyTex(kind, sky);
+      this.scene.background = tex;
+      this.scene.environment = tex;
+      this.scene.backgroundIntensity = 1;
+      this.scene.environmentIntensity = kind === 'day' ? 0.9 : 0.6;
+      this.setKitEnv(tex);
+      const L = { day: ['#cfe2f4', '#6e7650', 1.25, 2.6], dusk: ['#c9a8a0', '#4a3a32', 0.8, 1.7], night: ['#5a5aa0', '#1a1a2a', 0.55, 0.7], alien: ['#8a7ad0', '#2a3a3a', 0.95, 1.5] }[kind] as [string, string, number, number];
+      this.hemi.color.set(L[0]);
+      this.hemi.groundColor.set(L[1]);
+      this.hemi.intensity = L[2];
+      this.sun.color.set(sky.sun);
+      this.sun.intensity = L[3];
+      this.sunDir.copy(sky.sunDir);
+      const Q = QUALITY[this.quality];
+      if (Q.shadows) {
+        this.sun.castShadow = true;
+        this.sun.shadow.mapSize.set(2048, 2048);
+        const sc = this.sun.shadow.camera;
+        sc.left = sc.bottom = -22;
+        sc.right = sc.top = 22;
+        sc.near = 1;
+        sc.far = 90;
+        sc.updateProjectionMatrix();
+        this.sun.shadow.bias = -0.0006;
+        this.sun.shadow.normalBias = 0.03;
+      }
+      this.scene.fog = new THREE.FogExp2(sky.horizon, kind === 'day' ? 0.011 : kind === 'alien' ? 0.02 : 0.016);
+      this.camera.far = 320;
+      this.renderer.toneMappingExposure = 1.0;
+    } else {
+      this.scene.environment = this.indoorEnv;
+      this.scene.environmentIntensity = 1;
+      this.scene.backgroundIntensity = 1;
+      this.setKitEnv(this.indoorEnv);
+      this.hemi.color.set(a.sky);
+      this.hemi.groundColor.set(a.ground);
+      this.hemi.intensity = a.amb;
+      this.sun.color.set('#fff4e0');
+      this.sun.intensity = m.ambient === 'bright' ? 0.5 : 0;
+      this.sun.position.set(m.cols * 0.3, 14, m.rows * 0.2);
+      this.sun.target.position.set(m.cols / 2, 0, m.rows / 2);
+      this.scene.background = new THREE.Color(a.fog);
+      this.scene.fog = new THREE.FogExp2(a.fog, QUALITY[this.quality].fogFar);
+      this.camera.far = 80;
+      this.renderer.toneMappingExposure = 1.25;
     }
-    this.outdoor = floors > 0 && outside / floors > 0.5;
-    this.hemi.color.set(a.sky);
-    this.hemi.groundColor.set(a.ground);
-    this.hemi.intensity = a.amb;
-    this.sun.intensity = this.outdoor && m.ambient !== 'dark' ? 1.6 : m.ambient === 'bright' ? 0.5 : 0;
-    this.sun.position.set(m.cols * 0.3, 14, m.rows * 0.2);
-    this.sun.target.position.set(m.cols / 2, 0, m.rows / 2);
-    this.scene.background = new THREE.Color(this.outdoor ? '#8fb3d0' : a.fog);
-    this.scene.fog = new THREE.FogExp2(this.outdoor ? '#a9c0d0' : a.fog, this.outdoor ? 0.02 : QUALITY[this.quality].fogFar);
-    this.base = { amb: a.amb, fog: (this.scene.fog as THREE.FogExp2).density, sky: a.sky, ground: a.ground };
+    this.camera.updateProjectionMatrix();
+    this.base = { amb: this.hemi.intensity, fog: (this.scene.fog as THREE.FogExp2).density, sky: '#' + this.hemi.color.getHexString(), ground: '#' + this.hemi.groundColor.getHexString() };
     this.applyLook();
     this.vis.uVisSize.value.set(m.cols, m.rows);
     this.assigned = [];
@@ -191,6 +238,21 @@ export class Engine3D {
     this.camera.updateProjectionMatrix();
   }
 
+  private skyTex(kind: string, look: SkyLook) {
+    let t = this.skies.get(kind);
+    if (!t) this.skies.set(kind, (t = skyTexture(look)));
+    return t;
+  }
+  private setKitEnv(env: THREE.Texture) {
+    for (const mt of Object.values(this.kitMats)) {
+      const sm = mt as THREE.MeshStandardMaterial;
+      if (sm.envMap !== undefined && sm.envMap !== null) {
+        sm.envMap = env;
+        sm.needsUpdate = true;
+      }
+    }
+  }
+
   /** Hand the light pool to the light spots nearest the camera (re-sorted a few times a second). */
   private assignLights(dt: number, focus: THREE.Vector3) {
     const spots = this.built?.lights ?? [];
@@ -242,6 +304,13 @@ export class Engine3D {
       this.onFrame?.(dt);
       const focus = getFocus();
       this.assignLights(dt, focus);
+      this.built?.update(focus);
+      if (this.outdoor) {
+        // the sun's shadow box follows what you're looking at, snapped so shadows don't shimmer as it moves
+        const fx = Math.round(focus.x), fz = Math.round(focus.z);
+        this.sun.target.position.set(fx, 0, fz);
+        this.sun.position.set(fx + this.sunDir.x * 50, this.sunDir.y * 50, fz + this.sunDir.z * 50);
+      }
       const c = carried();
       if (c) {
         this.carried.position.set(c.x, 1.25, c.z);
@@ -313,7 +382,7 @@ export class Engine3D {
     this.hemi.color.set(lit ? '#e8e0d0' : this.base.sky);
     this.hemi.groundColor.set(lit ? '#6a6058' : this.base.ground);
     const f = this.scene.fog as THREE.FogExp2 | null;
-    if (f) f.density = this.base.fog * (this.far ? 0.25 : 1) * (this.work ? 0.6 : 1);
+    if (f) f.density = this.base.fog * (this.far ? (this.outdoor ? 0.7 : 0.25) : 1) * (this.work && !this.outdoor ? 0.6 : 1);
   }
 
   showCeiling(on: boolean) {
@@ -324,6 +393,7 @@ export class Engine3D {
     cancelAnimationFrame(this.raf);
     this.built?.dispose();
     for (const m of Object.values(this.kitMats)) m.dispose();
+    for (const t of this.skies.values()) t.dispose();
     this.vis.uVis.value.dispose();
     this.renderer.dispose();
     this.renderer.domElement.remove();
