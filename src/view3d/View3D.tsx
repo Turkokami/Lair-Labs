@@ -94,7 +94,7 @@ export default function View3D(p: View3DProps) {
   const seenLog = useRef<string | null>(null);
   const spellFx = useRef<SpellFx | null>(null);
   const holdUntil = useRef(new Map<string, number>());
-  const quietHeal = useRef(new Map<string, number>());
+  const quietHp = useRef(new Map<string, number>());
   // numbers that float up over a figure: damage, healing, dice totals
   const floatLayer = useRef<HTMLDivElement>(null);
   const floats = useRef<{ el: HTMLDivElement; tokenId: string; born: number; up: number }[]>([]);
@@ -368,20 +368,32 @@ export default function View3D(p: View3DProps) {
     const now = performance.now();
     if (kind === 'shield') {
       // the hit it turned aside is refunded; show that as Blocked!, not as healing
-      if (caster && fx.blocked) quietHeal.current.set(caster.token.id, now + 2500);
+      if (caster && fx.blocked) quietHp.current.set(caster.token.id, now + 2500);
       if (caster && fx.blocked) setTimeout(() => popFloat(caster.token.id, 'Blocked!', 'hitmark'), lands[0] ?? 150);
       else if (caster) setTimeout(() => popFloat(caster.token.id, 'Shield +5 AC', 'roll'), lands[0] ?? 150);
       return;
     }
     tf.forEach(({ h, f }, i) => {
       // several targets in one burst: stagger their words a little so they don't print on top of each other
-      const ms = (lands[i] ?? 300) + (kind === 'burst' ? i * 160 : 0);
+      const many = tf.length > 1;
+      const ms = (lands[i] ?? 300) + (many ? i * 260 : 0);
       // hold this figure's HP change (and its −N pop) until the effect reaches it
       holdUntil.current.set(h.id, now + ms);
       f.holdHp(now + ms);
+      // several targets at once: one short line each, so the words don't pile up on top of each other
+      if (many) quietHp.current.set(h.id, now + ms + 800);
       setTimeout(() => {
         const tok = props.current.tokens.find((t) => t.id === h.id);
         const hpShown = !!tok && tok.hp >= 0 && tok.maxHp > 0;
+        if (many) {
+          const down = !!tok && (tok.hp === 0 || tok.hpLabel === 'Down');
+          const word = h.saved !== undefined ? (h.saved ? 'Saved' : 'Failed') : h.hit === false ? 'Miss' : h.heal ? '' : 'Hit';
+          const amt = h.amount ? (h.heal ? `+${h.amount}` : `−${h.amount}`) : '';
+          const text = [word, amt, down ? 'Down' : ''].filter(Boolean).join(' · ');
+          if (text) popFloat(h.id, text, h.heal ? 'heal' : down ? 'down' : h.saved || h.hit === false ? 'miss' : 'hitmark');
+          if (h.amount && !h.heal) f.play('hurt', 0.08);
+          return;
+        }
         if (h.saved !== undefined) popFloat(h.id, h.saved ? 'Saved' : 'Failed', h.saved ? 'miss' : 'hitmark');
         else if (h.hit !== undefined && kind !== 'darts') popFloat(h.id, h.hit ? (h.crit ? 'Critical hit!' : 'Hit!') : 'Miss', h.hit ? (h.crit ? 'crit' : 'hitmark') : 'miss');
         else if (kind === 'darts' && h.hit === false) popFloat(h.id, 'Shield!', 'miss');
@@ -457,9 +469,11 @@ export default function View3D(p: View3DProps) {
     hpPopsNow(a, b);
   }
   function hpPopsNow(a: VTok, b: VTok) {
+    // a spell already said what happened to this one in its own word
+    if ((quietHp.current.get(b.id) ?? 0) > performance.now()) return;
     if (a.hp >= 0 && b.hp >= 0 && a.maxHp > 0) {
       if (b.hp < a.hp) popFloat(b.id, `−${a.hp - b.hp}`, 'dmg');
-      else if (b.hp > a.hp && !((quietHeal.current.get(b.id) ?? 0) > performance.now())) popFloat(b.id, `+${b.hp - a.hp}`, 'heal');
+      else if (b.hp > a.hp) popFloat(b.id, `+${b.hp - a.hp}`, 'heal');
       if (b.hp === 0 && a.hp > 0) popFloat(b.id, 'Down', 'down');
       return;
     }

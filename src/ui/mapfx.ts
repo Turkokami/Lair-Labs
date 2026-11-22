@@ -61,7 +61,11 @@ export function drawMapFx(g: CanvasRenderingContext2D, list: MapFx[], now: numbe
         g.globalAlpha = a;
         label(g, `${f.name} · ${fx.radius} ft`, px * cell, py * cell - R - 6 / s, s, '#fff', f.c2);
       }
-      for (const { h, p } of hits) if (t >= boom + 0.08) verdict(g, h, p, t - boom - 0.08, cell, s, f);
+      // one after another, alternating above and below, so neighbours' words don't overlap
+      hits.forEach(({ h, p }, i) => {
+        const k = t - boom - 0.08 - i * 0.26;
+        if (k >= 0) verdict(g, h, p, k, cell, s, f, i % 2 === 1);
+      });
     } else if (f.kind === 'shield') {
       const p = from ?? hits[0]?.p;
       if (p) {
@@ -103,7 +107,7 @@ export function drawMapFx(g: CanvasRenderingContext2D, list: MapFx[], now: numbe
   }
 }
 
-function verdict(g: CanvasRenderingContext2D, h: NonNullable<LogEntry['fx']>['hits'][number], p: [number, number], k: number, cell: number, s: number, f: MapFx) {
+function verdict(g: CanvasRenderingContext2D, h: NonNullable<LogEntry['fx']>['hits'][number], p: [number, number], k: number, cell: number, s: number, f: MapFx, below = false) {
   if (k > 1.9) return;
   const x = p[0] * cell, y = p[1] * cell;
   if (k < 0.5) glow(g, x, y, cell * (0.45 + k), h.heal ? f.c2 : f.c1, 0.8 * (1 - k / 0.5));
@@ -115,7 +119,7 @@ function verdict(g: CanvasRenderingContext2D, h: NonNullable<LogEntry['fx']>['hi
   const word = h.saved !== undefined ? (h.saved ? 'Saved' : 'Failed') : h.hit === undefined || f.kind === 'darts' ? (h.hit === false ? 'Shield!' : '') : h.hit ? (h.crit ? 'Crit!' : 'Hit!') : 'Miss';
   const amt = h.amount ? (h.heal ? `+${h.amount}` : `−${h.amount}`) : '';
   const txt = [word, amt].filter(Boolean).join(' ');
-  if (txt) label(g, txt, x, y - cell * 0.62 - rise, s, h.heal ? '#d9ffe2' : h.hit === false || h.saved ? '#e6e6e6' : '#ffe1d0', h.heal ? '#1f7a3e' : h.hit === false || h.saved ? '#444' : '#8a1f12');
+  if (txt) label(g, txt, x, below ? y + cell * 0.95 + rise : y - cell * 0.62 - rise, s, h.heal ? '#d9ffe2' : h.hit === false || h.saved ? '#e6e6e6' : '#ffe1d0', h.heal ? '#1f7a3e' : h.hit === false || h.saved ? '#444' : '#8a1f12');
   g.restore();
 }
 

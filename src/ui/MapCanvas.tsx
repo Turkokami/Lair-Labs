@@ -1,4 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
+
+/** Where each map was last panned and zoomed, so switching tabs and coming back doesn't reset it. */
+const camMemo = new Map<string, { x: number; y: number; s: number }>();
 import { type GameMap, nearestEdge, moveCost } from '../engine/map';
 import type { Token, AreaTemplate, LogEntry } from '../engine/game';
 import { SHIELD_MARK } from '../engine/game';
@@ -150,9 +153,18 @@ export function MapCanvas(p: MapCanvasProps) {
     const key = `${p.fitKey ?? p.map.id}`;
     if (size.w > 10 && fitted.current !== key) {
       fitted.current = key;
-      fit();
+      // back from another tab: keep the pan and zoom you left the map at
+      const kept = camMemo.get(`${p.role}:${key}`);
+      if (kept) {
+        cam.current = { ...kept };
+        redraw();
+      } else fit();
     }
   });
+  useEffect(() => () => {
+    if (fitted.current) camMemo.set(`${p.role}:${fitted.current}`, { ...cam.current });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // draw
   useEffect(() => {
