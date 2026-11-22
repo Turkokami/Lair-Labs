@@ -64,6 +64,8 @@ export interface ObjDef {
   layer?: 'floor' | 'props' | 'overhead';
   blocksMovement?: boolean;
   blocksSight?: boolean;
+  /** Buildings: the whole footprint blocks sight, not just the middle square of a big object. */
+  solid?: boolean;
   /** Difficult terrain where it stands. */
   difficult?: boolean;
   light?: LightDef;

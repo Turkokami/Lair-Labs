@@ -1,6 +1,6 @@
 // The live game. The GM's device runs HostCore as the single source of truth: it checks every
 // intent, rolls every die, and sends each phone only what that player is allowed to see.
-import { type GameMap, type DoorState, blankMap, cell, edgeCells, isFloor, moveCost, revealAround, floodRoom, blocks, edgeBetween } from './map';
+import { type GameMap, type DoorState, blankMap, cell, edgeCells, isFloor, isWalkable, moveCost, revealAround, floodRoom, blocks, edgeBetween } from './map';
 import { roll, critFormula, d20Formula, type RollResult } from './dice';
 import { spellById, spellDamage, spellHeal } from '../rules/spells';
 import { tokensInArea } from './areas';
@@ -989,7 +989,7 @@ export class HostCore {
     if (stairs) return [stairs.x, stairs.y];
     const pc = this.s.tokens.find((t) => t.kind === 'pc');
     if (pc) return [pc.x, pc.y];
-    const i = m.cells.findIndex((v) => v > 0);
+    const i = m.cells.findIndex((v) => v > 0 && v !== 5);
     return i >= 0 ? [i % m.cols, Math.floor(i / m.cols)] : [Math.floor(m.cols / 2), Math.floor(m.rows / 2)];
   }
 
@@ -1005,7 +1005,7 @@ export class HostCore {
           if (Math.max(Math.abs(dx), Math.abs(dy)) !== r) continue;
           const x = t.x + dx, y = t.y + dy;
           const fits = (() => {
-            for (let j = 0; j < t.size; j++) for (let i = 0; i < t.size; i++) if (!isFloor(m, x + i, y + j) || this.occupied(x + i, y + j, t.id)) return false;
+            for (let j = 0; j < t.size; j++) for (let i = 0; i < t.size; i++) if (!isWalkable(m, x + i, y + j) || this.occupied(x + i, y + j, t.id)) return false;
             return true;
           })();
           if (fits) {

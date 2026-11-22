@@ -19,7 +19,7 @@ export function reach(m: GameMap, fx: number, fy: number, maxFeet: number): Reac
       for (let dx = -1; dx <= 1; dx++) {
         if (!dx && !dy) continue;
         const nx = x + dx, ny = y + dy;
-        if (!isFloor(m, nx, ny) || cell(m, nx, ny) === 4) continue;
+        if (!isFloor(m, nx, ny) || cell(m, nx, ny) === 4 || cell(m, nx, ny) === 5) continue;
         if (dx && dy) {
           const a = edgeBetween(x, y, nx, y)!, b = edgeBetween(nx, y, nx, ny)!;
           const c = edgeBetween(x, y, x, ny)!, e = edgeBetween(x, ny, nx, ny)!;

@@ -9,6 +9,8 @@ import { objectSprite, tokenSprite, pxBucket } from '../library/art/sprites';
 import { FAMILY_RING } from '../library/art/types';
 import { mapLights } from '../engine/vision';
 import { areaCells, templateOutline } from '../engine/areas';
+import { drawGround, setGroundCanvasFactory, groundMat } from './ground';
+import { terrainById } from '../library/terrain';
 
 export const CELL = 48;
 type G = CanvasRenderingContext2D;
@@ -54,12 +56,6 @@ export interface SceneOptions {
   roomLabels?: boolean;
 }
 
-const THEME_FLOOR: Record<string, string> = { stone: 'stone-flagstone', cave: 'cave-floor', wood: 'wood-planks' };
-const FALLBACK_COLOR: Record<string, string> = {
-  'stone-flagstone': '#8f8a80', 'stone-flagstone-warm': '#9a8a74', 'dungeon-slab': '#77736c', 'stone-cobble': '#857f76', 'brick-floor': '#8c5a45',
-  marble: '#d9d4cb', 'wood-planks': '#9a6b3e', 'wood-planks-dark': '#5f4029', dirt: '#7a5f43', grass: '#5d7a3a', sand: '#cdb27f', 'cave-floor': '#6e6458',
-  'water-shallow': '#4f86a6', 'water-deep': '#24506e', mud: '#5a4632', ice: '#bcd8e6', lava: '#c2410c', pit: '#141210',
-};
 export const WALL_STYLES: Record<string, { body: string; edge: string; hi: string; w: number }> = {
   stone: { body: '#4c4844', edge: '#151210', hi: '#8a8278', w: 0.24 },
   brick: { body: '#6e3426', edge: '#1f0f0a', hi: '#b06a52', w: 0.24 },
@@ -75,13 +71,6 @@ const hash = (x: number, y: number) => {
 };
 const initials = (name: string) => name.split(/\s+/).filter(Boolean).slice(0, 2).map((w) => w[0]).join('').toUpperCase();
 
-function matFor(m: GameMap, i: number, v: number) {
-  const mt = m.mats?.[i];
-  if (v === 2) return mt && mt.startsWith('water') ? mt : 'water-shallow';
-  if (v === 4) return 'pit';
-  return mt || THEME_FLOOR[m.theme] || 'stone-flagstone';
-}
-
 /** Size of a placed object after rotation, in squares. */
 export function propSize(kind: string, rot: number): [number, number] {
   const d = objectById(kind);
@@ -89,89 +78,46 @@ export function propSize(kind: string, rot: number): [number, number] {
   return ((rot % 360) + 360) % 180 ? [h, w] : [w, h];
 }
 
-function drawFloor(g: G, o: SceneOptions) {
-  const { map: m, view } = o;
-  for (let y = view.y0; y < view.y1; y++)
-    for (let x = view.x0; x < view.x1; x++) {
-      const i = y * m.cols + x;
-      const v = m.cells[i];
-      if (v === -1) continue;
-      const px = x * CELL, py = y * CELL;
-      if (v === 0) {
-        g.fillStyle = m.wallStyle === 'cave' || m.theme === 'cave' ? '#1a1714' : '#181614';
-        g.fillRect(px, py, CELL + 0.5, CELL + 0.5);
-        const h = hash(x, y);
-        if (h > 0.55) {
-          g.fillStyle = 'rgba(255,255,255,0.035)';
-          g.fillRect(px + hash(y, x) * 30, py + hash(x + 3, y) * 30, 8 + h * 8, 5);
-        }
-        continue;
-      }
-      const mat = matFor(m, i, v);
-      const img = o.floors?.image(mat);
-      if (img) {
-        const sq = o.floors!.squares(mat);
-        const tw = img.width / sq;
-        g.drawImage(img, (x % sq) * tw, (y % sq) * tw, tw, tw, px, py, CELL + 0.6, CELL + 0.6);
-      } else {
-        g.fillStyle = FALLBACK_COLOR[mat] ?? '#8f8a80';
-        g.fillRect(px, py, CELL + 0.5, CELL + 0.5);
-        g.fillStyle = `rgba(0,0,0,${0.04 + hash(x, y) * 0.08})`;
-        g.fillRect(px + 2, py + 2, CELL - 4, CELL - 4);
-      }
-      if (v === 3) {
-        // rubble: loose stones on top of the floor
-        for (let k = 0; k < 7; k++) {
-          const rx = px + 5 + hash(x * 3 + k, y) * 38, ry = py + 5 + hash(x, y * 3 + k) * 38, rr = 2.5 + hash(k, x + y) * 4.5;
-          g.fillStyle = 'rgba(0,0,0,0.35)';
-          g.beginPath();
-          g.ellipse(rx + 1.2, ry + 1.6, rr, rr * 0.8, 0, 0, Math.PI * 2);
-          g.fill();
-          g.fillStyle = k % 2 ? '#7d7266' : '#958a7c';
-          g.beginPath();
-          g.ellipse(rx, ry, rr, rr * 0.8, hash(k, y) * 3, 0, Math.PI * 2);
-          g.fill();
-        }
-      } else if (v === 4) {
-        const grd = g.createRadialGradient(px + CELL / 2, py + CELL / 2, 2, px + CELL / 2, py + CELL / 2, CELL * 0.6);
-        grd.addColorStop(0, 'rgba(0,0,0,0.95)');
-        grd.addColorStop(1, 'rgba(0,0,0,0.3)');
-        g.fillStyle = grd;
-        g.fillRect(px, py, CELL, CELL);
-      }
-    }
-  // soft shade along the foot of every wall, so rooms read as sunk into rock
-  g.save();
-  for (let y = view.y0; y < view.y1; y++)
-    for (let x = view.x0; x < view.x1; x++) {
-      const v = m.cells[y * m.cols + x];
-      if (v <= 0) continue;
-      const px = x * CELL, py = y * CELL;
-      const sides: [number, number, number, number, number, number][] = [
-        [0, -1, px, py, CELL, 9], [-1, 0, px, py, 9, CELL], [1, 0, px + CELL - 6, py, 6, CELL], [0, 1, px, py + CELL - 5, CELL, 5],
-      ];
-      for (const [dx, dy, rx, ry, rw, rh] of sides) {
-        if (cell(m, x + dx, y + dy) !== 0) continue;
-        const grd = dx === 0
-          ? g.createLinearGradient(0, dy < 0 ? ry : ry + rh, 0, dy < 0 ? ry + rh : ry)
-          : g.createLinearGradient(dx < 0 ? rx : rx + rw, 0, dx < 0 ? rx + rw : rx, 0);
-        grd.addColorStop(0, 'rgba(0,0,0,0.42)');
-        grd.addColorStop(1, 'rgba(0,0,0,0)');
-        g.fillStyle = grd;
-        g.fillRect(rx, ry, rw, rh);
-      }
-    }
-  g.restore();
-}
-
 function drawGrid(g: G, o: SceneOptions) {
   const { map: m, view } = o;
+  if (CELL * o.scale < 8) return; // too small to read; it would only grey the map
   g.strokeStyle = m.ambient === 'bright' && m.theme !== 'cave' ? 'rgba(20,14,8,0.22)' : 'rgba(0,0,0,0.28)';
   g.lineWidth = Math.max(0.6, 1.1 / Math.max(o.scale, 0.4));
+  const on = (x: number, y: number) => x >= 0 && y >= 0 && x < m.cols && y < m.rows && m.cells[y * m.cols + x] > 0;
   g.beginPath();
-  for (let y = view.y0; y < view.y1; y++)
-    for (let x = view.x0; x < view.x1; x++) if (m.cells[y * m.cols + x] > 0) g.rect(x * CELL, y * CELL, CELL, CELL);
+  // one line per run of open squares, not one box per square
+  for (let y = view.y0; y <= view.y1; y++) {
+    let start = -1;
+    for (let x = view.x0; x <= view.x1; x++) {
+      const e = x < view.x1 && (on(x, y) || on(x, y - 1));
+      if (e && start < 0) start = x;
+      else if (!e && start >= 0) { g.moveTo(start * CELL, y * CELL); g.lineTo(x * CELL, y * CELL); start = -1; }
+    }
+  }
+  for (let x = view.x0; x <= view.x1; x++) {
+    let start = -1;
+    for (let y = view.y0; y <= view.y1; y++) {
+      const e = y < view.y1 && (on(x, y) || on(x - 1, y));
+      if (e && start < 0) start = y;
+      else if (!e && start >= 0) { g.moveTo(x * CELL, start * CELL); g.lineTo(x * CELL, y * CELL); start = -1; }
+    }
+  }
   g.stroke();
+}
+
+/** Clip to the open squares in view, one rectangle per run. */
+function clipOpen(g: G, o: SceneOptions) {
+  const { map: m, view } = o;
+  g.beginPath();
+  for (let y = view.y0; y < view.y1; y++) {
+    let start = -1;
+    for (let x = view.x0; x <= view.x1; x++) {
+      const e = x < view.x1 && m.cells[y * m.cols + x] > 0;
+      if (e && start < 0) start = x;
+      else if (!e && start >= 0) { g.rect(start * CELL - 0.5, y * CELL - 0.5, (x - start) * CELL + 1, CELL + 1); start = -1; }
+    }
+  }
+  g.clip();
 }
 
 function edgeLine(k: string): [number, number, number, number] {
@@ -179,9 +125,28 @@ function edgeLine(k: string): [number, number, number, number] {
   return t === 'h' ? [x * CELL, y * CELL, (x + 1) * CELL, y * CELL] : [x * CELL, y * CELL, x * CELL, (y + 1) * CELL];
 }
 
+const wallMemo = new WeakMap<number[], { walls: string[]; doors: object; kinds: object | undefined; mats: string[] | undefined; list: string[] }>();
+/** Wall edges to draw, worked out once per map change. The map's own border isn't walled on open ground. */
+function wallList(m: GameMap) {
+  const hit = wallMemo.get(m.cells);
+  if (hit && hit.walls === m.walls && hit.doors === m.doors && hit.kinds === m.wallKinds && hit.mats === m.mats) return hit.list;
+  const natural = (x: number, y: number) => {
+    const v = cell(m, x, y);
+    return v > 0 && !!terrainById(groundMat(m, y * m.cols + x, v))?.z;
+  };
+  const list = allWallEdges(m).filter((k) => {
+    const { t, x, y } = parseEdge(k);
+    if (t === 'h' && (y === 0 || y === m.rows)) return !natural(x, y === 0 ? 0 : m.rows - 1);
+    if (t === 'v' && (x === 0 || x === m.cols)) return !natural(x === 0 ? 0 : m.cols - 1, y);
+    return true;
+  });
+  wallMemo.set(m.cells, { walls: m.walls, doors: m.doors, kinds: m.wallKinds, mats: m.mats, list });
+  return list;
+}
+
 function drawWalls(g: G, o: SceneOptions) {
   const m = o.map;
-  let walls = allWallEdges(m);
+  let walls = wallList(m);
   if (o.role === 'player')
     walls = walls.filter((k) => {
       const { t, x, y } = parseEdge(k);
@@ -459,10 +424,7 @@ function drawGlows(g: G, o: SceneOptions) {
   const strength = m.ambient === 'bright' ? 0.1 : m.ambient === 'dim' ? 0.2 : 0.28;
   g.save();
   // light lands on floors only, never on the rock around them
-  g.beginPath();
-  for (let y = o.view.y0; y < o.view.y1; y++)
-    for (let x = o.view.x0; x < o.view.x1; x++) if (m.cells[y * m.cols + x] > 0) g.rect(x * CELL - 0.5, y * CELL - 0.5, CELL + 1, CELL + 1);
-  g.clip();
+  clipOpen(g, o);
   g.globalCompositeOperation = 'lighter';
   for (const L of lights) {
     const r = ((L.bright + L.dim) / 5) * CELL;
@@ -494,42 +456,56 @@ let makeCanvas: (w: number, h: number) => HTMLCanvasElement = (w, h) => {
 export function setSceneCanvasFactory(f: (w: number, h: number) => unknown) {
   makeCanvas = f as (w: number, h: number) => HTMLCanvasElement;
   shadeCanvas = null;
+  setGroundCanvasFactory(f);
 }
 
 /**
  * Darkness: squares out of sight are dark, explored squares are dimmed, dim light is shaded.
  * Drawn on a small canvas (4 px per square) and scaled up smoothly so the edges are soft.
  */
+let shadeKey: unknown[] = [];
 function drawDarkness(g: G, o: SceneOptions) {
   const m = o.map;
-  const R = 4;
-  const w = m.cols * R, h = m.rows * R;
-  if (!shadeCanvas || shadeCanvas.w !== w || shadeCanvas.h !== h) shadeCanvas = { c: makeCanvas(w, h), w, h };
-  const sg = shadeCanvas.c.getContext('2d')!;
-  sg.clearRect(0, 0, w, h);
   const player = o.role === 'player';
-  for (let y = 0; y < m.rows; y++)
-    for (let x = 0; x < m.cols; x++) {
-      const i = y * m.cols + x;
-      const v = m.cells[i];
-      let a = 0;
-      if (player) {
-        if (v === -1) a = 1; // never seen
-        if (o.visible && !o.visible.has(i)) a = 0.62;
-        else if (o.lit) a = o.lit[i] === '2' ? 0 : o.lit[i] === '1' ? 0.3 : 0.48;
-      } else {
-        if (!o.showFog) continue;
-        if (v <= 0) continue;
-        if (o.revealed && !o.revealed.has(i)) a = 0.5;
-        else if (o.visible && !o.visible.has(i)) a = 0.22;
+  if (!player && !o.showFog) return;
+  // big maps use 2 px per square so the picture stays small
+  const R = m.cols * m.rows > 40000 ? 2 : 4;
+  const w = m.cols * R, h = m.rows * R;
+  const key = [m.cells, o.visible, o.revealed, o.lit, o.role, o.showFog, R];
+  const same = shadeCanvas && shadeCanvas.w === w && shadeCanvas.h === h && key.every((k, i) => k === shadeKey[i]);
+  if (!same) {
+    if (!shadeCanvas || shadeCanvas.w !== w || shadeCanvas.h !== h) shadeCanvas = { c: makeCanvas(w, h), w, h };
+    shadeKey = key;
+    const sg = shadeCanvas.c.getContext('2d')!;
+    const im = sg.createImageData(w, h);
+    const d = im.data;
+    const [cr, cg, cb] = player ? [6, 6, 14] : [14, 14, 40];
+    for (let y = 0; y < m.rows; y++)
+      for (let x = 0; x < m.cols; x++) {
+        const i = y * m.cols + x;
+        const v = m.cells[i];
+        let a = 0;
+        if (player) {
+          if (v === -1) a = 1; // never seen
+          if (o.visible && !o.visible.has(i)) a = 0.62;
+          else if (o.lit) a = o.lit[i] === '2' ? 0 : o.lit[i] === '1' ? 0.3 : 0.48;
+        } else {
+          if (v <= 0) continue;
+          if (o.revealed && !o.revealed.has(i)) a = 0.5;
+          else if (o.visible && !o.visible.has(i)) a = 0.22;
+        }
+        if (!a) continue;
+        const av = Math.round(a * 255);
+        for (let yy = 0; yy < R; yy++) {
+          let j = ((y * R + yy) * w + x * R) * 4;
+          for (let xx = 0; xx < R; xx++, j += 4) { d[j] = cr; d[j + 1] = cg; d[j + 2] = cb; d[j + 3] = av; }
+        }
       }
-      if (!a) continue;
-      sg.fillStyle = player ? `rgba(6,6,14,${a})` : `rgba(14,14,40,${a})`;
-      sg.fillRect(x * R, y * R, R, R);
-    }
+    sg.putImageData(im, 0, 0);
+  }
   g.save();
   g.imageSmoothingEnabled = true;
-  g.drawImage(shadeCanvas.c, 0, 0, w, h, 0, 0, m.cols * CELL, m.rows * CELL);
+  g.drawImage(shadeCanvas!.c, 0, 0, w, h, 0, 0, m.cols * CELL, m.rows * CELL);
   g.restore();
 }
 
@@ -720,13 +696,14 @@ function drawWallLines(g: G, o: SceneOptions) {
 }
 
 /** Draw the whole scene. The caller sets the transform so 1 unit = 1 world pixel (CELL per square). */
-export function drawScene(g: G, o: SceneOptions) {
+/** Draws the scene. Returns true when parts of the ground are still being prepared: draw again next frame. */
+export function drawScene(g: G, o: SceneOptions): boolean {
   const m = o.map;
   o.view = {
     x0: Math.max(0, Math.floor(o.view.x0)), y0: Math.max(0, Math.floor(o.view.y0)),
     x1: Math.min(m.cols, Math.ceil(o.view.x1)), y1: Math.min(m.rows, Math.ceil(o.view.y1)),
   };
-  drawFloor(g, o);
+  const pending = drawGround(g, m, o.floors, o.scale, o.view, CELL);
   if (o.backdrop && m.backdrop) g.drawImage(o.backdrop, 0, 0, m.cols * CELL, m.rows * CELL);
   drawProps(g, o, 'floor');
   drawGrid(g, o);
@@ -744,6 +721,7 @@ export function drawScene(g: G, o: SceneOptions) {
   drawTemplates(g, o);
   drawTokens(g, o);
   drawLabels(g, o);
+  return pending;
 }
 
 export { SEE_THROUGH_DOORS };

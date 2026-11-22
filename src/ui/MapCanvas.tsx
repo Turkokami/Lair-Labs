@@ -63,6 +63,8 @@ export function MapCanvas(p: MapCanvasProps) {
   const [size, setSize] = useState({ w: 0, h: 0 });
   const [, force] = useState(0);
   const redraw = () => force((n) => n + 1);
+  const bakeRaf = useRef(0);
+  useEffect(() => () => cancelAnimationFrame(bakeRaf.current), []);
   // ----- spell effects: new casts in the log animate on the map until they finish -----
   const fx = useRef<MapFx[]>([]);
   const seenLog = useRef<string | null>(null);
@@ -124,6 +126,8 @@ export function MapCanvas(p: MapCanvasProps) {
     return () => ro.disconnect();
   }, []);
 
+  /** How far out you can zoom: down to seeing the whole map, however big it is. */
+  const minZoom = () => Math.min(0.2, 0.8 * Math.min(size.w / (p.map.cols * CELL), size.h / (p.map.rows * CELL)));
   // fit
   const fit = () => {
     const m = p.map;
@@ -181,7 +185,7 @@ export function MapCanvas(p: MapCanvasProps) {
     g.fillRect(0, 0, size.w, size.h);
     g.setTransform(dpr * s, 0, 0, dpr * s, dpr * ox, dpr * oy);
     const ge = gesture.current;
-    drawScene(g, {
+    const pending = drawScene(g, {
       map: m, role: p.role, tokens: p.tokens, scale: s * dpr, floors: browserFloors,
       view: { x0: -ox / s / CELL - 1, y0: -oy / s / CELL - 1, x1: (size.w - ox) / s / CELL + 1, y1: (size.h - oy) / s / CELL + 1 },
       revealed: revealedSet, visible: visibleSet, lit: p.lit, showFog: p.showFog,
@@ -190,6 +194,8 @@ export function MapCanvas(p: MapCanvasProps) {
       templates: ge?.kind === 'line' && p.templateShape ? [...(p.templates ?? []), { id: 'draft', by: '', ...p.templateShape, ...lineToTemplate(p.templateShape.shape, ge.a, ge.b) }] : p.templates,
       highlight: p.highlight, selectedPropId: p.selectedPropId, roomLabels: p.roomLabels, backdrop: bgImg,
     });
+    // big maps bake their ground a piece at a time: come back next frame for the rest
+    if (pending && !bakeRaf.current) bakeRaf.current = requestAnimationFrame(() => { bakeRaf.current = 0; redraw(); });
 
     // drag previews
     if (ge?.kind === 'rect') {
@@ -324,7 +330,7 @@ export function MapCanvas(p: MapCanvasProps) {
       const [a, b] = [...pointers.current.values()];
       const r = canvas.current!.getBoundingClientRect();
       const d = Math.hypot(a.x - b.x, a.y - b.y);
-      const s = Math.max(0.2, Math.min(3, (ge.s0 * d) / Math.max(1, ge.d0)));
+      const s = Math.max(minZoom(), Math.min(3, (ge.s0 * d) / Math.max(1, ge.d0)));
       const mx = (a.x + b.x) / 2 - r.left, my = (a.y + b.y) / 2 - r.top;
       // keep the world point under the original midpoint under the new midpoint
       const wx = (ge.mx - ge.cx) / ge.s0, wy = (ge.my - ge.cy) / ge.s0;
@@ -397,13 +403,13 @@ export function MapCanvas(p: MapCanvasProps) {
     const r = canvas.current!.getBoundingClientRect();
     const mx = e.clientX - r.left, my = e.clientY - r.top;
     const { x, y, s } = cam.current;
-    const ns = Math.max(0.2, Math.min(3, s * Math.exp(-e.deltaY * 0.0015)));
+    const ns = Math.max(minZoom(), Math.min(3, s * Math.exp(-e.deltaY * 0.0015)));
     cam.current = { s: ns, x: mx - ((mx - x) / s) * ns, y: my - ((my - y) / s) * ns };
     redraw();
   };
   const zoom = (f: number) => {
     const { x, y, s } = cam.current;
-    const ns = Math.max(0.2, Math.min(3, s * f));
+    const ns = Math.max(minZoom(), Math.min(3, s * f));
     const mx = size.w / 2, my = size.h / 2;
     cam.current = { s: ns, x: mx - ((mx - x) / s) * ns, y: my - ((my - y) / s) * ns };
     redraw();

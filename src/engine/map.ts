@@ -1,8 +1,8 @@
 // Grid map model. Walls are derived: every edge between floor and rock is a wall, so rooms that
 // touch merge and the shared wall disappears. Doors sit on wall edges.
 export type DoorState = 'closed' | 'open' | 'locked' | 'secret';
-export type Tile = 0 | 1 | 2 | 3 | 4; // 0 rock, 1 floor, 2 water, 3 difficult, 4 pit
-export const TILE_NAMES: Record<number, string> = { 0: 'Rock', 1: 'Floor', 2: 'Water', 3: 'Rubble (difficult)', 4: 'Pit' };
+export type Tile = 0 | 1 | 2 | 3 | 4 | 5; // 0 rock, 1 floor, 2 water, 3 difficult, 4 pit, 5 impassable open ground (cliff, sheer rock)
+export const TILE_NAMES: Record<number, string> = { 0: 'Rock', 1: 'Floor', 2: 'Water', 3: 'Rubble (difficult)', 4: 'Pit', 5: 'Cliff (blocks movement)' };
 
 /** A placed object. `kind` is an object id from src/library/objects (old maps use short names that map to them). */
 export interface Prop { id: string; kind: string; x: number; y: number; rot: number; gmOnly?: boolean; /** variant index */ v?: number; /** light switched off */ off?: boolean; }
@@ -41,6 +41,10 @@ export interface GameMap {
   encounters?: EncounterInfo[];
   playerStart?: number[];
   backdrop?: MapBackdrop;
+  /** How far heroes can see, in squares (open country). Default 80. */
+  viewRange?: number;
+  /** Feet per square: 5 for battle maps; region maps use more (5280 = a mile). */
+  scale?: number;
 }
 
 export const PROP_KINDS = ['chest', 'barrel', 'crate', 'table', 'bed', 'bookshelf', 'altar', 'statue', 'pillar', 'rubble', 'campfire', 'torch', 'stairs', 'well', 'trap'];
@@ -59,6 +63,8 @@ export function blankMap(cols = 48, rows = 36, name = 'New map'): GameMap {
 export const inBounds = (m: GameMap, x: number, y: number) => x >= 0 && y >= 0 && x < m.cols && y < m.rows;
 export const cell = (m: GameMap, x: number, y: number) => (inBounds(m, x, y) ? m.cells[y * m.cols + x] : 0);
 export const isFloor = (m: GameMap, x: number, y: number) => cell(m, x, y) > 0;
+/** Open ground a creature can stand on: floor that isn't a cliff (5). Cliffs are open to sight but not to feet. */
+export const isWalkable = (m: GameMap, x: number, y: number) => { const v = cell(m, x, y); return v > 0 && v !== 5; };
 
 /** "h:x,y" = top edge of cell (x,y); "v:x,y" = left edge of cell (x,y). */
 export const hKey = (x: number, y: number) => `h:${x},${y}`;
@@ -217,7 +223,7 @@ const stepCost = (m: GameMap, x: number, y: number) => (cell(m, x, y) === 3 || c
 /** Movement cost in feet (5 ft per square, diagonals 5 ft, difficult terrain doubles). */
 export function moveCost(m: GameMap, fx: number, fy: number, tx: number, ty: number, maxFeet = 1000): number {
   if (fx === tx && fy === ty) return 0;
-  if (!isFloor(m, tx, ty)) return Infinity;
+  if (!isWalkable(m, tx, ty)) return Infinity;
   const W = m.cols;
   const dist = new Map<number, number>([[fy * W + fx, 0]]);
   const open: [number, number, number][] = [[0, fx, fy]];
@@ -231,7 +237,7 @@ export function moveCost(m: GameMap, fx: number, fy: number, tx: number, ty: num
       for (let dx = -1; dx <= 1; dx++) {
         if (!dx && !dy) continue;
         const nx = x + dx, ny = y + dy;
-        if (!isFloor(m, nx, ny)) continue;
+        if (!isWalkable(m, nx, ny)) continue;
         if (dx && dy) {
           // no squeezing diagonally past a wall corner
           const a = edgeBetween(x, y, nx, y)!, b = edgeBetween(nx, y, nx, ny)!;

@@ -1,5 +1,6 @@
-// Loads the floor pictures from /library/floors once, for the scene renderer.
+// Loads the floor and terrain pictures from /library/floors on first use, for the scene renderer.
 import type { FloorArt } from './scene';
+import { terrainById, TERRAIN_SQUARES } from '../library/terrain';
 
 export interface LibraryIndex {
   license: string;
@@ -7,7 +8,7 @@ export interface LibraryIndex {
   rooms: LibraryEntry[];
   materials: { id: string; name: string; color: string; squares: number }[];
 }
-export interface LibraryEntry { id: string; name: string; cols: number; rows: number; ambient: string; description: string; setting: string; tags: string[]; rooms: number; encounters: number; }
+export interface LibraryEntry { id: string; name: string; cols: number; rows: number; ambient: string; description: string; setting: string; tags: string[]; rooms: number; encounters: number; size?: string; }
 
 let indexP: Promise<LibraryIndex> | null = null;
 export function libraryIndex(): Promise<LibraryIndex> {
@@ -16,7 +17,7 @@ export function libraryIndex(): Promise<LibraryIndex> {
 }
 
 const imgs = new Map<string, HTMLImageElement>();
-const squares = new Map<string, number>();
+const asked = new Set<string>();
 const listeners = new Set<() => void>();
 
 export function onFloorsLoaded(f: () => void) {
@@ -24,32 +25,26 @@ export function onFloorsLoaded(f: () => void) {
   return () => listeners.delete(f);
 }
 
-let started = false;
-function start() {
-  if (started || typeof Image === 'undefined') return;
-  started = true;
-  libraryIndex()
-    .then((idx) => {
-      for (const m of idx.materials) {
-        squares.set(m.id, m.squares || 4);
-        const im = new Image();
-        im.decoding = 'async';
-        im.onload = () => {
-          imgs.set(m.id, im);
-          for (const f of listeners) f();
-        };
-        im.src = `/library/floors/${m.id}.webp`;
-      }
-    })
-    .catch(() => {});
+/** Starts loading one ground picture; only grounds a map actually uses are fetched. */
+function load(id: string) {
+  if (asked.has(id) || typeof Image === 'undefined' || !terrainById(id)) return;
+  asked.add(id);
+  const im = new Image();
+  im.decoding = 'async';
+  im.onload = () => {
+    imgs.set(id, im);
+    for (const f of listeners) f();
+  };
+  im.src = `/library/floors/${id}.webp`;
 }
 
 export const browserFloors: FloorArt = {
   image(id) {
-    start();
-    return imgs.get(id);
+    const im = imgs.get(id);
+    if (!im) load(id);
+    return im;
   },
-  squares(id) {
-    return squares.get(id) ?? 4;
+  squares() {
+    return TERRAIN_SQUARES;
   },
 };
