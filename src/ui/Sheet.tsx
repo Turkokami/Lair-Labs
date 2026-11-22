@@ -1,3 +1,4 @@
+import { weaponReach } from './targets';
 import { useState } from 'react';
 import type { Character, CharacterState } from '../rules/character';
 import { computeSheet, masteryText } from '../rules/character';
@@ -166,7 +167,7 @@ function spellDamage(sp: Spell, charLevel: number, slot: number) {
   return `${sp.damage}+${extra}`;
 }
 
-export function ActionsPanel({ ch, roll, send, canEdit, combat }: SheetProps & { combat?: { active: boolean; myTurn: boolean; inOrder: boolean; movedLeft?: number } }) {
+export function ActionsPanel({ ch, roll, send, canEdit, combat }: SheetProps & { combat?: { active: boolean; myTurn: boolean; inOrder: boolean; movedLeft?: number; aim?: (reachFt: number) => { id: string; name: string } | undefined } }) {
   const sh = computeSheet(ch.build);
   const st = ch.state;
   const [adv, setAdv] = useState<Adv>('none');
@@ -234,7 +235,16 @@ export function ActionsPanel({ ch, roll, send, canEdit, combat }: SheetProps & {
               {a.mastery && <div className="small mastery" title={masteryText(a.mastery)}>Mastery: {a.mastery}. {masteryText(a.mastery)}</div>}
             </div>
             <div className="row gap">
-              <button className="primary" onClick={() => roll(d20Formula(a.toHit, adv), `${a.name} attack`, { attackDamage: a.dmg, critRange: ch.build.classId === 'fighter' && ch.build.level >= 3 ? 19 : 20 })}>{fmtMod(a.toHit)}</button>
+              <button
+                className="primary"
+                onClick={() => {
+                  // in a fight, swing at the nearest foe this weapon can reach
+                  const aim = combat?.active ? combat.aim?.(weaponReach(ch, a.name).far) : undefined;
+                  roll(d20Formula(a.toHit, adv), `${a.name} attack${aim ? ` vs ${aim.name}` : ''}`, { attackDamage: a.dmg, critRange: ch.build.classId === 'fighter' && ch.build.level >= 3 ? 19 : 20, targetId: aim?.id });
+                }}
+              >
+                {fmtMod(a.toHit)}
+              </button>
               <button className="ghost" onClick={() => roll(a.dmg, `${a.name} damage`)}>Dmg</button>
             </div>
           </div>

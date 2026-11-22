@@ -206,7 +206,7 @@ export default function Demo3D() {
         log={view.log}
         cam={cam}
         targetId={target}
-        hud={view.myCharacter ? <TurnHud3D v={view} ch={view.myCharacter} target={target} setTarget={setTarget} roll={(formula, label, opts) => Promise.resolve(act('p1', { t: 'roll', formula, label, ...opts } as Intent))} endTurn={() => act('p1', { t: 'endTurn' })} /> : undefined}
+        hud={view.myCharacter ? <TurnHud3D v={view} ch={view.myCharacter} target={target} setTarget={setTarget} roll={(formula, label, opts) => Promise.resolve(act('p1', { t: 'roll', formula, label, ...opts } as Intent))} endTurn={() => act('p1', { t: 'endTurn' })} rollInit={() => act('p1', { t: 'initiative' })} /> : undefined}
         canMove={(t) => t.id === view.myTokenId && (!view.combat.active || myTurn)}
         onMove={(id, x, y) => act('p1', { t: 'move', tokenId: id, x, y })}
         onTap={(info) => {

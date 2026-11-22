@@ -93,7 +93,9 @@ export function ObjectBrowser({ value, onChange, theme }: { value: ObjChoice; on
     () => OBJECTS.filter((o) => (!set || o.sets.includes(set)) && (!cat || o.cat === cat) && (!q || matches(`${o.name} ${o.id} ${o.cat} ${o.sets.join(' ')} ${(o.tags ?? []).join(' ')}`.toLowerCase(), q))),
     [q, set, cat],
   );
-  useEffect(() => setLimit(48), [q, set, cat]);
+  useEffect(() => {
+    setLimit(48);
+  }, [q, set, cat]);
   const def = objectById(value.kind);
   return (
     <div className="stack lib-browser">
@@ -142,7 +144,9 @@ export function CreatureBrowser({ value, onChange, statBlock }: { value: Creatur
     () => CREATURES.filter((c) => (fam ? c.family === fam : c.family !== 'hero') && (!q || matches(`${c.name} ${c.id} ${c.family} ${(c.tags ?? []).join(' ')}`.toLowerCase(), q))),
     [q, fam],
   );
-  useEffect(() => setLimit(48), [q, fam]);
+  useEffect(() => {
+    setLimit(48);
+  }, [q, fam]);
   const def = value ? CREATURES.find((c) => c.id === value.id) : undefined;
   return (
     <div className="stack lib-browser">

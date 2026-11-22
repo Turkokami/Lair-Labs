@@ -57,15 +57,27 @@ export interface LogEntry {
   fumble?: boolean;
   damageFormula?: string; // offered follow-up damage roll after an attack
   damageLabel?: string;
+  /** An attack aimed at someone: who, and whether it beat their AC (the AC itself stays with the GM). */
+  targetId?: string;
+  target?: string;
+  hit?: boolean;
+  /** A damage roll the table rolled for you after a hit, already taken off the target. */
+  appliedTo?: string;
 }
 
-export interface Combat { active: boolean; round: number; turn: number; order: { tokenId: string; init: number; dex: number }[]; }
+export interface Combat {
+  active: boolean; round: number; turn: number; order: { tokenId: string; init: number; dex: number }[];
+  /** set once the first turn has ended; until then the turn stays with whoever is highest in the order */
+  begun?: boolean;
+}
 export interface Safety { lines: string[]; veils: string[]; xcard: boolean; }
 export interface Settings {
   monsterHp: 'hidden' | 'bloodied' | 'exact'; lockMoves: boolean; autoReveal: boolean; discord: string; locked: boolean; startLevel: number;
   /** auto = dynamic lighting and line of sight; rooms = reveal whole rooms as heroes walk in. Missing means auto. */
   vision?: 'auto' | 'rooms';
   safety?: Safety;
+  /** Aimed attacks are checked against the target's AC and a hit rolls and applies damage. Missing means on. */
+  autoAttacks?: boolean;
 }
 export const DEFAULT_SAFETY: Safety = { lines: [], veils: [], xcard: true };
 
@@ -92,7 +104,7 @@ export type Intent =
   | { t: 'saveChar'; character: Character }
   | { t: 'pickChar'; charId: string }
   | { t: 'move'; tokenId: string; x: number; y: number }
-  | { t: 'roll'; formula: string; label?: string; visibility?: Visibility; attackDamage?: string; critRange?: number }
+  | { t: 'roll'; formula: string; label?: string; visibility?: Visibility; attackDamage?: string; critRange?: number; targetId?: string }
   | { t: 'chat'; text: string; to?: string }
   | { t: 'door'; key: string }
   | { t: 'hp'; charId: string; delta?: number; temp?: number }
@@ -231,6 +243,32 @@ export class HostCore {
     if (this.s.log.length > 250) this.s.log = this.s.log.slice(-200);
     this.onChange();
   }
+  private damageTokens(ids: string[], amount: number, crit?: boolean) {
+    const names: string[] = [];
+    for (const id of ids) {
+      const t = this.s.tokens.find((x) => x.id === id);
+      if (!t) continue;
+      names.push(t.name);
+      if (t.charId) {
+        const c = this.s.characters[t.charId];
+        if (amount > 0 && c.state.hp === 0 && !c.state.dead) {
+          c.state.deathSaves.f += crit ? 2 : 1;
+          c.state.stable = false;
+          if (c.state.deathSaves.f >= 3) {
+            c.state.dead = true;
+            this.system(`${c.build.name} has died.`);
+          }
+        }
+        this.applyHp(c, -amount);
+        this.syncToken(t.charId);
+      } else {
+        t.hp = Math.max(0, Math.min(t.maxHp, t.hp - amount));
+        if (t.hp === 0 && !t.conditions.includes('unconscious') && t.kind === 'monster') this.system(`${t.name} falls!`, 'public');
+      }
+    }
+    if (names.length) this.system(`${names.join(', ')} ${amount >= 0 ? `take${names.length > 1 ? '' : 's'} ${amount} damage` : `regain${names.length > 1 ? '' : 's'} ${-amount} HP`}.`, 'gm');
+  }
+
   private add(e: Omit<LogEntry, 'id' | 'ts'>) {
     const entry = { ...e, id: lid(), ts: Date.now() };
     this.s.log.push(entry);
@@ -318,7 +356,23 @@ export class HostCore {
         const r = roll(it.formula + (label ? ` # ${label}` : ''));
         const crit = r.natural !== undefined && r.natural >= (it.critRange ?? 20);
         const fumble = r.natural === 1;
-        this.add({ kind: 'roll', from: this.playerName(from), fromId: from, roll: r, visibility: it.visibility ?? 'public', crit, fumble, damageFormula: it.attackDamage ? (crit ? critFormula(it.attackDamage) : it.attackDamage) : undefined, damageLabel: it.attackDamage ? `${label.replace(/ attack$/, '')} damage${crit ? ' (critical!)' : ''}` : undefined });
+        const tgt = it.attackDamage && it.targetId ? this.s.tokens.find((t) => t.id === it.targetId && (gm || !t.hidden)) : undefined;
+        const dmgFormula = it.attackDamage ? (crit ? critFormula(it.attackDamage) : it.attackDamage) : undefined;
+        const weapon = label.replace(/ attack.*$/, '');
+        const dmgLabel = `${weapon} damage${crit ? ' (critical!)' : ''}`;
+        if (tgt && this.s.settings.autoAttacks !== false && r.isD20) {
+          // the table checks the roll against the target's AC; a hit rolls the damage and takes it off at once
+          const hit = crit || (!fumble && r.total >= tgt.ac);
+          const vis = it.visibility ?? 'public';
+          this.add({ kind: 'roll', from: this.playerName(from), fromId: from, roll: r, visibility: vis, crit, fumble, targetId: tgt.id, target: tgt.name, hit });
+          if (hit && dmgFormula) {
+            const d = roll(dmgFormula + ` # ${dmgLabel}`);
+            this.add({ kind: 'roll', from: this.playerName(from), fromId: from, roll: d, visibility: vis, crit, targetId: tgt.id, target: tgt.name, appliedTo: tgt.name });
+            this.damageTokens([tgt.id], Math.max(0, d.total), crit);
+          }
+          break;
+        }
+        this.add({ kind: 'roll', from: this.playerName(from), fromId: from, roll: r, visibility: it.visibility ?? 'public', crit, fumble, damageFormula: dmgFormula, damageLabel: it.attackDamage ? dmgLabel : undefined });
         break;
       }
       case 'chat': {
@@ -581,32 +635,7 @@ export class HostCore {
         if (t.charId && (patch.x !== undefined || patch.y !== undefined) && this.roomReveal()) this.reveal(revealAround(this.s.map, t.x, t.y));
         break;
       }
-      case 'gm:damage': {
-        const names: string[] = [];
-        for (const id of it.targets) {
-          const t = this.s.tokens.find((x) => x.id === id);
-          if (!t) continue;
-          names.push(t.name);
-          if (t.charId) {
-            const c = this.s.characters[t.charId];
-            if (it.amount > 0 && c.state.hp === 0 && !c.state.dead) {
-              c.state.deathSaves.f += it.crit ? 2 : 1;
-              c.state.stable = false;
-              if (c.state.deathSaves.f >= 3) {
-                c.state.dead = true;
-                this.system(`${c.build.name} has died.`);
-              }
-            }
-            this.applyHp(c, -it.amount);
-            this.syncToken(t.charId);
-          } else {
-            t.hp = Math.max(0, Math.min(t.maxHp, t.hp - it.amount));
-            if (t.hp === 0 && !t.conditions.includes('unconscious') && t.kind === 'monster') this.system(`${t.name} falls!`, 'public');
-          }
-        }
-        if (names.length) this.system(`${names.join(', ')} ${it.amount >= 0 ? `take${names.length > 1 ? '' : 's'} ${it.amount} damage` : `regain${names.length > 1 ? '' : 's'} ${-it.amount} HP`}.`, 'gm');
-        break;
-      }
+      case 'gm:damage': this.damageTokens(it.targets, it.amount, it.crit); break;
       case 'gm:doorState': {
         if (it.state === null) delete this.s.map.doors[it.key];
         else this.s.map.doors[it.key] = it.state;
@@ -819,7 +848,8 @@ export class HostCore {
     c.order = c.order.filter((o) => o.tokenId !== tokenId);
     c.order.push({ tokenId, init, dex });
     c.order.sort((a, b) => b.init - a.init || b.dex - a.dex);
-    if (cur) c.turn = Math.max(0, c.order.findIndex((o) => o.tokenId === cur));
+    // before anyone has taken a turn, a late initiative roll can still go first; after that the turn stays put
+    if (cur && c.begun) c.turn = Math.max(0, c.order.findIndex((o) => o.tokenId === cur));
     else c.turn = 0;
   }
 
@@ -844,6 +874,7 @@ export class HostCore {
       c.round = Math.max(1, c.round - 1);
     }
     c.turn = next;
+    c.begun = true;
     const t = this.s.tokens.find((x) => x.id === c.order[next].tokenId);
     if (t) {
       t.movedFeet = 0;

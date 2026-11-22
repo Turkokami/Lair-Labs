@@ -12,6 +12,7 @@ import { creatureById, monsterIdCandidates, normMonsterId } from '../library/cre
 import type { CreatureDef } from '../library/art/types';
 import { ObjectBrowser, CreatureBrowser, StarterMaps, RoomTemplates, fetchLibraryMap, type ObjChoice, type CreatureChoice } from './Library';
 import { MONSTERS, monsterById } from '../rules/monsters';
+import { actionReachFt, gapFt, nearestFoe } from './targets';
 import { CONDITIONS, conditionName, fmtMod, mod } from '../rules/core';
 import { computeSheet } from '../rules/character';
 import { d20Formula } from '../engine/dice';
@@ -157,6 +158,10 @@ function GMTable({ host, onEnd }: { host: HostSession; onEnd: () => void }) {
     if (e) toast(e, 'error');
     return !e;
   };
+  // recording and testing hook: ?rec exposes the GM's controls to a script driving the screen
+  useEffect(() => {
+    if (new URLSearchParams(location.search).has('rec')) (window as unknown as { __gm?: unknown }).__gm = { gm, core, templates: TEMPLATES };
+  });
   const v = core.view('gm');
   const s = core.s;
   const map = s.map;
@@ -378,7 +383,7 @@ function GMTable({ host, onEnd }: { host: HostSession; onEnd: () => void }) {
                 combatActive={s.combat?.active}
                 speedLeft={(() => { const t = s.tokens.find((k) => k.id === (selected ?? core.currentTokenId())); return t ? t.speed - t.movedFeet : undefined; })()}
                 log={v.log}
-                hud={mode === 'play' && s.combat?.active ? <GmHud3D t={s.tokens.find((k) => k.id === core.currentTokenId())} gm={gm} roll={roll} round={s.combat.round} /> : undefined}
+                hud={mode === 'play' && s.combat?.active ? <GmHud3D t={s.tokens.find((k) => k.id === core.currentTokenId())} tokens={s.tokens} gm={gm} roll={roll} round={s.combat.round} /> : undefined}
                 onMove={(id, x, y) => gm({ t: 'move', tokenId: id, x, y })}
                 onExit={() => setView3d(false)}
                 onTap={(info) => {
@@ -518,7 +523,7 @@ function GMTable({ host, onEnd }: { host: HostSession; onEnd: () => void }) {
                 ))}
               </nav>
               <div className="pad stack scroll">
-                {sel && <TokenCard t={sel} gm={gm} roll={roll} onClose={() => setSelected(undefined)} onSheet={() => sel.charId && setSheetFor(sel.charId)} monsterHp={s.settings.monsterHp} />}
+                {sel && <TokenCard t={sel} tokens={s.tokens} gm={gm} roll={roll} onClose={() => setSelected(undefined)} onSheet={() => sel.charId && setSheetFor(sel.charId)} monsterHp={s.settings.monsterHp} />}
                 {playTab === 'table' && (
                   <TableTab
                     s={s}
@@ -737,6 +742,7 @@ function TableTab({ s, gm, joinUrl, onQr, onKick, onEnd }: { s: GameState; gm: (
           <option value="exact">Exact numbers</option>
         </select>
       </label>
+      <label className="inline"><input type="checkbox" checked={s.settings.autoAttacks !== false} onChange={(e) => gm({ t: 'gm:settings', patch: { autoAttacks: e.target.checked } })} /> Aimed attacks check AC and roll damage for you</label>
       <label className="inline">New heroes start at level
         <select value={s.settings.startLevel ?? 1} onChange={(e) => gm({ t: 'gm:settings', patch: { startLevel: Number(e.target.value) } })}>
           {[1, 2, 3, 4, 5].map((l) => <option key={l} value={l}>{l}</option>)}
@@ -831,7 +837,7 @@ function CombatTab({ s, gm, core, selected, setSelected }: { s: GameState; gm: (
 }
 
 /** The GM's turn controls over the 3D view: whose turn, their attacks, next turn. */
-function GmHud3D({ t, gm, roll, round }: { t?: Token; gm: (i: Intent) => boolean; roll: RollFn; round: number }) {
+function GmHud3D({ t, tokens, gm, roll, round }: { t?: Token; tokens: Token[]; gm: (i: Intent) => boolean; roll: RollFn; round: number }) {
   const mon = t?.monsterId ? monsterById(t.monsterId) : undefined;
   const acts = (mon?.actions ?? []).filter((a) => a.hit !== undefined).slice(0, 3);
   return (
@@ -847,7 +853,13 @@ function GmHud3D({ t, gm, roll, round }: { t?: Token; gm: (i: Intent) => boolean
       <div className="v3d-acts">
         {t &&
           acts.map((a) => (
-            <button key={a.name} onClick={() => roll(d20Formula(a.hit!, 'none'), `${t.name}: ${a.name} attack`, a.dmg ? { attackDamage: a.dmg } : undefined)}>
+            <button
+              key={a.name}
+              onClick={() => {
+                const aim = nearestFoe(tokens, t, actionReachFt(a.text));
+                roll(d20Formula(a.hit!, 'none'), `${t.name}: ${a.name} attack${aim ? ` vs ${aim.name}` : ''}`, a.dmg ? { attackDamage: a.dmg, targetId: aim?.id } : undefined);
+              }}
+            >
               {a.name}
               <small>{fmtMod(a.hit!)}{a.dmg ? ` · ${a.dmg}` : ''}</small>
             </button>
@@ -860,8 +872,11 @@ function GmHud3D({ t, gm, roll, round }: { t?: Token; gm: (i: Intent) => boolean
   );
 }
 
-function TokenCard({ t, gm, roll, onClose, onSheet, monsterHp }: { t: Token; gm: (i: Intent) => boolean; roll: RollFn; onClose: () => void; onSheet: () => void; monsterHp: string }) {
+function TokenCard({ t, tokens, gm, roll, onClose, onSheet, monsterHp }: { t: Token; tokens: Token[]; gm: (i: Intent) => boolean; roll: RollFn; onClose: () => void; onSheet: () => void; monsterHp: string }) {
   const [amt, setAmt] = useState('');
+  const [aimId, setAimId] = useState('');
+  const foes = tokens.filter((k) => k.id !== t.id && k.hp > 0 && (t.kind === 'pc' ? k.kind !== 'pc' : k.kind === 'pc')).sort((a, b) => gapFt(t, a) - gapFt(t, b));
+  const aim = foes.find((k) => k.id === aimId) ?? foes[0];
   const [crit, setCrit] = useState(false);
   const n = Math.max(0, parseInt(amt, 10) || 0);
   const mon = t.monsterId ? monsterById(t.monsterId) : undefined;
@@ -898,12 +913,19 @@ function TokenCard({ t, gm, roll, onClose, onSheet, monsterHp }: { t: Token; gm:
             {['STR', 'DEX', 'CON', 'INT', 'WIS', 'CHA'].map((a, i) => <span key={a}>{a} {mon.abilities[i]} ({fmtMod(mod(mon.abilities[i]))})</span>)}
           </div>
           <div className="small muted">{mon.senses}</div>
+          {foes.length > 0 && (
+            <label className="inline small">Attacks aim at
+              <select value={aim?.id ?? ''} onChange={(e) => setAimId(e.target.value)}>
+                {foes.map((k) => <option key={k.id} value={k.id}>{k.name} · {gapFt(t, k)} ft</option>)}
+              </select>
+            </label>
+          )}
           {mon.traits?.map((tr) => <p key={tr.name} className="small"><b>{tr.name}.</b> {tr.text}</p>)}
           {mon.actions.map((a) => (
             <div key={a.name} className="row between small action-line">
               <span><b>{a.name}.</b> {a.hit !== undefined ? `${fmtMod(a.hit)} to hit, ` : ''}{a.dmg ? `${a.dmg} ${a.type ?? ''}` : ''}{a.save ? ` ${a.save}` : ''}{a.text ? ` ${a.text}` : ''}</span>
               <span className="row gap">
-                {a.hit !== undefined && <button className="small" onClick={() => roll(d20Formula(a.hit!, 'none'), `${t.name}: ${a.name} attack`, a.dmg ? { attackDamage: a.dmg } : undefined)}>Attack</button>}
+                {a.hit !== undefined && <button className="small" onClick={() => roll(d20Formula(a.hit!, 'none'), `${t.name}: ${a.name} attack${aim ? ` vs ${aim.name}` : ''}`, a.dmg ? { attackDamage: a.dmg, targetId: aim?.id } : undefined)}>Attack</button>}
                 {a.dmg && <button className="ghost small" onClick={() => roll(a.dmg!, `${t.name}: ${a.name} damage`)}>Dmg</button>}
               </span>
             </div>

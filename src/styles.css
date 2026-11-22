@@ -234,6 +234,9 @@ input.num.small { width: 52px; min-height: 34px; padding: 2px; }
 .log-roll.crit { border-color: #4ade80; box-shadow: 0 0 12px rgba(74, 222, 128, 0.25); }
 .log-roll.fumble { border-color: var(--red); }
 .log-roll-head { display: flex; gap: 8px; align-items: baseline; flex-wrap: wrap; }
+.log-verdict { font-weight: 700; font-size: 0.9rem; margin: 2px 0; }
+.log-verdict.hit { color: #ffcf6b; }
+.log-verdict.miss { color: #a9a196; }
 .log-roll-body { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
 .total { font-size: 1.6rem; font-weight: 800; color: var(--gold2); min-width: 40px; animation: pop 0.35s ease-out; }
 @keyframes pop { 0% { transform: scale(0.4) rotate(-20deg); opacity: 0; } 70% { transform: scale(1.2); } 100% { transform: none; opacity: 1; } }
@@ -342,9 +345,10 @@ canvas.thumb { display: block; }
 .v3d-float.down { color: #ff3b30; font-size: 1.3rem; letter-spacing: 0.04em; }
 .v3d-float.crit { color: #ffd34d; font-size: 1.45rem; }
 .v3d-float.miss { color: #b9b2a6; }
+.v3d-float.hitmark { color: #ffe08a; font-size: 1.3rem; }
 .v3d-float.dmgroll { color: #ffb08a; }
 .v3d-float.roll { color: #f3e9d2; font-size: 1.05rem; }
-.v3d-hud { position: absolute; right: 8px; bottom: 10px; left: 176px; z-index: 4; display: flex; flex-direction: column; align-items: flex-end; gap: 6px; pointer-events: none; }
+.v3d-hud { position: absolute; right: 8px; bottom: 64px; /* clear of the round dice button */ left: 176px; z-index: 4; display: flex; flex-direction: column; align-items: flex-end; gap: 6px; pointer-events: none; }
 .v3d-hud > * { pointer-events: auto; }
 .v3d-chip { white-space: nowrap; max-width: 100%; overflow: hidden; text-overflow: ellipsis; background: rgba(20, 17, 13, 0.86); color: #fff; padding: 5px 10px; border-radius: 12px; font-size: 0.85rem; border: 1px solid rgba(255, 255, 255, 0.12); }
 .v3d-chip b { color: var(--gold); }

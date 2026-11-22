@@ -172,7 +172,9 @@ export function peerClient(opts = peerOptionsFromUrl()): ClientTransport {
       }
       const p = peer;
       return new Promise<Conn>((resolve, reject) => {
-        const dc = p.connect(PEER_PREFIX + code, { reliable: true, serialization: 'json' });
+        // binary, not json: PeerJS drops any json message over about 16 KB, and a big map's view is bigger than that.
+        // The binary channel splits big messages into pieces and puts them back together.
+        const dc = p.connect(PEER_PREFIX + code, { reliable: true, serialization: 'binary' });
         const timer = setTimeout(() => reject(new Error("Couldn't find that table. Check the code, and make sure the GM's screen is open.")), 12000);
         const onErr = (e: Error & { type?: string }) => {
           clearTimeout(timer);

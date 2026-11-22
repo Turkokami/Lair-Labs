@@ -6,6 +6,7 @@ import type { Character } from '../rules/character';
 import { computeSheet } from '../rules/character';
 import { conditionName } from '../rules/core';
 import { TurnHud3D } from './TurnHud3D';
+import { nearestFoe } from './targets';
 import { MapCanvas, lineToTemplate, type TemplateShape } from './MapCanvas';
 import { CharBuilder } from './CharBuilder';
 import { SheetPanel, ActionsPanel, BagPanel } from './Sheet';
@@ -93,7 +94,9 @@ function PlayerTable({ s, onLeave }: { s: ClientSession; onLeave: () => void }) 
   const [menu, setMenu] = useState(false);
   const [mapTool, setMapTool] = useState<'move' | 'measure' | 'area'>('move');
   const [view3d, setView3d] = useState<boolean>(() => store.get('view3d', false));
-  useEffect(() => store.set('view3d', view3d), [view3d]);
+  useEffect(() => {
+    store.set('view3d', view3d);
+  }, [view3d]);
   const [area, setArea] = useState<TemplateShape>({ shape: 'sphere', size: 20, color: '#4cc9f0' });
   const [safetyOpen, setSafetyOpen] = useState(false);
   const [target, setTarget] = useState<string | undefined>();
@@ -102,7 +105,9 @@ function PlayerTable({ s, onLeave }: { s: ClientSession; onLeave: () => void }) 
   const safe = (p: Promise<void>) => p.catch((e: Error) => toast(e.message, 'error'));
   const roll: RollFn = (formula, label, opts) => safe(send({ t: 'roll', formula, label, ...opts })).then(() => tab !== 'log' && toast(`Rolled ${label || formula}`));
 
-  useEffect(() => store.set('autoJoin', v.code), [v.code]);
+  useEffect(() => {
+    store.set('autoJoin', v.code);
+  }, [v.code]);
   // keep a copy of my hero on this phone so I can bring it next time
   useEffect(() => {
     if (!ch) return;
@@ -119,7 +124,7 @@ function PlayerTable({ s, onLeave }: { s: ClientSession; onLeave: () => void }) 
   }, [myTurn]);
 
   const myToken = v.tokens.find((t) => t.id === v.myTokenId);
-  const combat = { active: v.combat.active, myTurn, inOrder: v.combat.order.some((o) => o.isYou), movedLeft: myToken && myTurn ? myToken.speed - myToken.movedFeet : undefined };
+  const combat = { active: v.combat.active, myTurn, inOrder: v.combat.order.some((o) => o.isYou), movedLeft: myToken && myTurn ? myToken.speed - myToken.movedFeet : undefined, aim: (reachFt: number) => nearestFoe(v.tokens, myToken, reachFt) };
 
   if (building || !ch)
     return (
@@ -193,7 +198,7 @@ function PlayerTable({ s, onLeave }: { s: ClientSession; onLeave: () => void }) 
                   canMove={(t) => t.id === v.myTokenId && (!v.combat.active || myTurn)}
                   onMove={(id, x, y) => safe(send({ t: 'move', tokenId: id, x, y }))}
                   onExit={() => setView3d(false)}
-                  hud={<TurnHud3D v={v} ch={ch} target={target} setTarget={setTarget} roll={roll} endTurn={() => safe(send({ t: 'endTurn' }))} />}
+                  hud={<TurnHud3D v={v} ch={ch} target={target} setTarget={setTarget} roll={roll} endTurn={() => safe(send({ t: 'endTurn' }))} rollInit={() => safe(send({ t: 'initiative' }))} />}
                   targetId={target && v.tokens.some((t) => t.id === target && !t.hidden) ? target : undefined}
                   onTap={(info) => {
                     if (info.edge && v.map.doors[info.edge]) safe(send({ t: 'door', key: info.edge }));

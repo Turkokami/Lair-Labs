@@ -13,6 +13,7 @@ import { registerCustomModels } from './custom-models';
 registerCustomModels();
 import { reach, route } from './path';
 import { EYE, WALL_H } from './dungeon';
+import { isDown } from '../ui/targets';
 
 export type Cam = 'first' | 'shoulder' | 'table';
 type VTok = Token & { hpLabel?: string };
@@ -78,7 +79,9 @@ export default function View3D(p: View3DProps) {
   const [fps, setFps] = useState(0);
   const [hint, setHint] = useState<string | null>(null);
   const [work, setWork] = useState(p.role === 'gm');
-  useEffect(() => eng.current?.setLook(work, cam === 'table'), [work, cam, ready]);
+  useEffect(() => {
+    eng.current?.setLook(work, cam === 'table');
+  }, [work, cam, ready]);
   const view = useRef({ yaw: Math.PI, pitch: -0.25, dist: p.myTokenId ? 3.2 : p.startDist ?? 15, tyaw: Math.PI, focus: startSpot(p.map) });
   const props = useRef(p);
   props.current = p;
@@ -95,6 +98,8 @@ export default function View3D(p: View3DProps) {
   const steerRef = useRef(steerId);
   const lastStep = useRef(0);
   steerRef.current = steerId;
+  // recording hook for the demo videos: a recording script that sets window.__rec can set where the camera looks
+  if (typeof window !== 'undefined' && '__rec' in window) (window as unknown as { __v3d?: unknown }).__v3d = { view, figs, cam: () => camRef.current };
 
   // ---------- engine lifetime (rebuilt when quality changes) ----------
   useEffect(() => {
@@ -192,7 +197,9 @@ export default function View3D(p: View3DProps) {
     hl.current = null;
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [layoutKey]);
-  useEffect(() => eng.current?.setDoors(p.map), [p.map]);
+  useEffect(() => {
+    eng.current?.setDoors(p.map);
+  }, [p.map]);
   useEffect(() => {
     applyVision();
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -273,8 +280,17 @@ export default function View3D(p: View3DProps) {
     seenLog.current = last.id;
     if (first || last.kind !== 'roll' || !last.roll) return;
     const label = `${last.roll.label} ${last.text ?? ''}`;
-    const isAttack = !!last.damageFormula || /attack|hit|strike|bite|claw|slam|shot|bolt/i.test(label);
+    const isAttack = (!!last.damageFormula || last.hit !== undefined || /attack|hit|strike|bite|claw|slam|shot|bolt/i.test(label)) && !last.appliedTo;
     const who = p.tokens.find((t) => t.name === last.from) ?? p.tokens.find((t) => last.roll!.label.startsWith(t.name + ':')) ?? p.tokens.find((t) => t.id === p.currentTokenId);
+    const aimed = last.targetId ? p.tokens.find((t) => t.id === last.targetId) : undefined;
+    // an aimed attack: everyone sees Hit or Miss over the target, and the damage the table rolled lands on it
+    if (aimed && last.hit !== undefined && !last.appliedTo) popFloat(aimed.id, last.hit ? (last.crit ? 'Critical hit!' : 'Hit!') : 'Miss', last.hit ? (last.crit ? 'crit' : 'hitmark') : 'miss');
+    if (aimed && last.appliedTo) {
+      // where this phone sees HP the drop pops as −N on its own; elsewhere show the damage rolled
+      if (!(aimed.hp >= 0 && aimed.maxHp > 0)) popFloat(aimed.id, `${last.roll.total} dmg`, 'dmgroll');
+      figs.current.get(aimed.id)?.play('hurt', 0.08);
+      return;
+    }
     if (!who) return;
     // the dice total floats up over whoever rolled it
     const r = last.roll;
@@ -288,7 +304,7 @@ export default function View3D(p: View3DProps) {
     const f = figs.current.get(who.id);
     if (!f) return;
     // face the nearest token of the other side
-    const foes = p.tokens.filter((t) => (who.kind === 'pc' ? t.kind !== 'pc' : t.kind === 'pc') && t.hp > 0);
+    const foes = aimed ? [aimed] : p.tokens.filter((t) => (who.kind === 'pc' ? t.kind !== 'pc' : t.kind === 'pc') && !isDown(t));
     let best: VTok | undefined, bd = Infinity;
     for (const t of foes) {
       const d = Math.hypot(t.x - who.x, t.y - who.y);

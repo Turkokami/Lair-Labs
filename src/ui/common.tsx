@@ -96,7 +96,7 @@ export function Pips({ max, used, onChange, label }: { max: number; used: number
 }
 
 // ---------- rolls and the log ----------
-export type RollFn = (formula: string, label: string, opts?: { visibility?: Visibility; attackDamage?: string; critRange?: number }) => void;
+export type RollFn = (formula: string, label: string, opts?: { visibility?: Visibility; attackDamage?: string; critRange?: number; targetId?: string }) => void;
 
 export function RollLine({ e, onDamage, gm }: { e: LogEntry; onDamage?: (formula: string, label: string) => void; gm?: boolean }) {
   const time = new Date(e.ts).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
@@ -117,9 +117,13 @@ export function RollLine({ e, onDamage, gm }: { e: LogEntry; onDamage?: (formula
         {e.visibility !== 'public' && <span className="tag">{e.visibility === 'gm' ? 'to GM' : e.visibility === 'blind' ? 'blind' : 'private'}</span>}
         <span className="muted small right">{time}</span>
       </div>
+      {e.target && !e.appliedTo && e.hit !== undefined && (
+        <div className={'log-verdict ' + (e.hit ? 'hit' : 'miss')}>{e.hit ? (e.crit ? 'Critical hit on ' : 'Hits ') : 'Misses '}{e.target}</div>
+      )}
       {r ? (
         <div className="log-roll-body">
           <span className="total">{r.total}</span>
+          {e.appliedTo && <span className="badge bad">to {e.appliedTo}</span>}
           <span className="muted small">{r.formula} = {describeRoll(r)}</span>
           {e.crit && <span className="badge good">Natural 20!</span>}
           {e.fumble && <span className="badge bad">Natural 1</span>}
@@ -141,7 +145,10 @@ export function LogView({ log, myId, onDamage, onChat, gm, players }: { log: Log
   const end = useRef<HTMLDivElement>(null);
   const [text, setText] = useState('');
   const [to, setTo] = useState('');
-  useEffect(() => end.current?.scrollIntoView({ block: 'end' }), [log.length]);
+  // a block body: newer browsers return a promise from scrollIntoView, and React would try to call it as a cleanup
+  useEffect(() => {
+    end.current?.scrollIntoView({ block: 'end' });
+  }, [log.length]);
   return (
     <div className="log">
       <div className="log-list">

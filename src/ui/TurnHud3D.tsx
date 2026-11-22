@@ -5,11 +5,11 @@ import type { PlayerView } from '../engine/game';
 import type { Character } from '../rules/character';
 import { computeSheet } from '../rules/character';
 import { fmtMod } from '../rules/core';
-import { weaponById } from '../rules/equipment';
 import { d20Formula } from '../engine/dice';
 import type { RollFn } from './common';
+import { gapFt, nearestFoe, weaponReach } from './targets';
 
-export function TurnHud3D({ v, ch, target, setTarget, roll, endTurn }: { v: PlayerView; ch: Character; target?: string; setTarget: (id: string | undefined) => void; roll: RollFn; endTurn: () => void }) {
+export function TurnHud3D({ v, ch, target, setTarget, roll, endTurn, rollInit }: { v: PlayerView; ch: Character; target?: string; setTarget: (id: string | undefined) => void; roll: RollFn; endTurn: () => void; rollInit: () => void }) {
   const sh = computeSheet(ch.build);
   const myTurn = !!v.myTokenId && v.combat.current === v.myTokenId;
   const myToken = v.tokens.find((t) => t.id === v.myTokenId);
@@ -17,24 +17,8 @@ export function TurnHud3D({ v, ch, target, setTarget, roll, endTurn }: { v: Play
   const inOrder = v.combat.order.some((o) => o.isYou);
   // ----- the 3D view's turn controls: who you're aiming at, how far, your attacks, end turn -----
   const tgt = target ? v.tokens.find((t) => t.id === target && !t.hidden) : undefined;
-  const gapFt = (a: { x: number; y: number; size: number }, b: { x: number; y: number; size: number }) => {
-    const as = Math.max(1, a.size), bs = Math.max(1, b.size);
-    const dx = Math.max(0, b.x - (a.x + as - 1), a.x - (b.x + bs - 1));
-    const dy = Math.max(0, b.y - (a.y + as - 1), a.y - (b.y + bs - 1));
-    return Math.max(dx, dy) * 5;
-  };
   const tgtFt = tgt && myToken ? gapFt(myToken, tgt) : undefined;
-  /** How far each attack reaches: melee 5 ft (10 with reach), ranged/thrown by the weapon's normal/long range. */
-  const reachOf = (name: string) => {
-    const w = ch.build.weapons.map(weaponById).find((x) => x?.name === name);
-    if (!w) return { near: 5, far: 5 };
-    if (w.range && (w.props.includes('ranged') || w.props.includes('thrown'))) {
-      const [n, f] = w.range.split('/').map((x) => parseInt(x, 10));
-      return { near: n || 5, far: f || n || 5, thrownMelee: !w.props.includes('ranged') };
-    }
-    const r = w.props.includes('reach') ? 10 : 5;
-    return { near: r, far: r };
-  };
+  const reachOf = (name: string) => weaponReach(ch, name);
   const quick = sh.attacks.filter((a) => a.name !== 'Unarmed Strike').slice(0, 3);
   if (!quick.length) quick.push(...sh.attacks.slice(0, 1));
   const canAct = v.combat.active ? myTurn : !!tgt;
@@ -57,6 +41,14 @@ export function TurnHud3D({ v, ch, target, setTarget, roll, endTurn }: { v: Play
         )}
       </div>
       {v.combat.active && !myTurn && inOrder && <div className="v3d-chip">{curName ? `${curName}’s turn` : 'Someone else’s turn'}</div>}
+      {v.combat.active && !inOrder && (
+        <div className="v3d-acts">
+          <button className="end" onClick={rollInit}>
+            Roll initiative
+            <small>{fmtMod(sh.initiative)}</small>
+          </button>
+        </div>
+      )}
       {canAct && (
         <div className="v3d-acts">
           {quick.map((a) => {
@@ -68,12 +60,18 @@ export function TurnHud3D({ v, ch, target, setTarget, roll, endTurn }: { v: Play
               <button
                 key={a.name}
                 disabled={out}
-                onClick={() =>
-                  roll(d20Formula(a.toHit, adv), `${a.name} attack${tgt ? ` vs ${tgt.name}` : ''}${adv === 'dis' ? ' (long range)' : ''}`, {
+                onClick={() => {
+                  // no one picked: swing at the nearest foe this weapon can reach
+                  const aim = tgt ?? nearestFoe(v.tokens, myToken, r.far);
+                  if (aim && !tgt) setTarget(aim.id);
+                  const aimFt = aim && myToken ? gapFt(myToken, aim) : undefined;
+                  const dis = aimFt !== undefined && aimFt > r.near && r.far > 5 ? 'dis' : 'none';
+                  roll(d20Formula(a.toHit, dis), `${a.name} attack${aim ? ` vs ${aim.name}` : ''}${dis === 'dis' ? ' (long range)' : ''}`, {
                     attackDamage: a.dmg,
                     critRange: ch.build.classId === 'fighter' && ch.build.level >= 3 ? 19 : 20,
-                  })
-                }
+                    targetId: aim?.id,
+                  });
+                }}
               >
                 {a.name}
                 <small>{out ? 'Too far' : `${fmtMod(a.toHit)} · ${a.dmg}${adv === 'dis' ? ' · disadv.' : ''}`}</small>
