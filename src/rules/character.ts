@@ -239,8 +239,13 @@ export function defaultBuild(classId: string, speciesId = 'human', backgroundId?
   }
   const expertise = cls.id === 'rogue' || (cls.id === 'bard' && level >= 2) ? skills.slice(0, 2) : [];
   const pool = spellsFor(cls.id, maxSpellLevel(cls, level));
-  const cantrips = pool.filter((s) => s.level === 0 && (s.damage || s.heal)).concat(pool.filter((s) => s.level === 0 && !s.damage)).map((s) => s.id).slice(0, cls.cantrips?.[level - 1] ?? 0);
-  const prepared = pool.filter((s) => s.level > 0).sort((a, b) => b.level - a.level || (b.damage || b.heal ? 1 : 0) - (a.damage || a.heal ? 1 : 0)).map((s) => s.id).slice(0, cls.prepared?.[level - 1] ?? 0);
+  // classic picks first (the spells most tables reach for), then the rest
+  const spellRank = (id: string) => {
+    const i = CLASSIC_SPELLS.indexOf(id);
+    return i < 0 ? 999 : i;
+  };
+  const cantrips = pool.filter((s) => s.level === 0).sort((a, b) => spellRank(a.id) - spellRank(b.id) || (b.damage || b.heal ? 1 : 0) - (a.damage || a.heal ? 1 : 0)).map((s) => s.id).slice(0, cls.cantrips?.[level - 1] ?? 0);
+  const prepared = pool.filter((s) => s.level > 0).sort((a, b) => spellRank(a.id) - spellRank(b.id) || b.level - a.level || (b.damage || b.heal ? 1 : 0) - (a.damage || a.heal ? 1 : 0)).map((s) => s.id).slice(0, cls.prepared?.[level - 1] ?? 0);
   return {
     id: uid('c_'), name: name || `${cls.name} hero`, classId, speciesId, backgroundId: bgId, level,
     base, bgBonus, asi, skills, expertise, cantrips, spells: prepared,
@@ -259,6 +264,11 @@ export function freshState(b: CharacterBuild): CharacterState {
 
 export const masteryText = (m?: string) => (m ? MASTERY_TEXT[m] ?? '' : '');
 
+const CLASSIC_SPELLS = [
+  'fireBolt', 'rayOfFrost', 'sacredFlame', 'eldritchBlast', 'viciousMockery', 'produceFlame', 'guidance', 'mageHand', 'light', 'prestidigitation',
+  'fireball', 'magicMissile', 'shield', 'healingWord', 'cureWounds', 'guidingBolt', 'spiritGuardians', 'spiritualWeapon', 'bless', 'revivify',
+  'callLightning', 'moonbeam', 'scorchingRay', 'mistyStep', 'shatter', 'holdPerson', 'sleep', 'thunderwave', 'counterspell', 'lightningBolt',
+];
 export const PREMADE_NAMES: Record<string, [string, string]> = {
   barbarian: ['Bruna Stonefist', 'goliath'], bard: ['Pell Wrenwhistle', 'halfling'], cleric: ['Sister Oriel', 'dwarf'],
   druid: ['Thessaly Fern', 'elf'], fighter: ['Garrick Vale', 'human'], monk: ['Kai Ashborn', 'human'],

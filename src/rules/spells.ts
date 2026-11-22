@@ -19,6 +19,8 @@ export interface Spell {
   dmgType?: string;
   heal?: string; // healing dice; + spellcasting mod added
   healMod?: boolean;
+  /** A burst centred on a point you pick: everyone inside makes the save. Radius in feet. */
+  burst?: number;
   text: string;
 }
 
@@ -83,14 +85,14 @@ export const SPELLS: Spell[] = [
   { id: 'passWithoutTrace', name: 'Pass without Trace', level: 2, school: 'Abjuration', time: '1 action', range: 'Self', conc: true, classes: [D, R], text: 'You and allies within 30 ft get +10 to Stealth checks for 1 hour.' },
   { id: 'prayerOfHealing', name: 'Prayer of Healing', level: 2, school: 'Abjuration', time: '10 minutes', range: '30 ft', classes: [C, P], heal: '2d8', upcast: '1d8', healMod: true, text: 'Up to five creatures regain HP and get a free short-rest benefit.' },
   { id: 'scorchingRay', name: 'Scorching Ray', level: 2, school: 'Evocation', time: '1 action', range: '120 ft', classes: [S, W], attack: 'ranged', damage: '2d6', dmgType: 'fire', text: 'Three rays; make a separate attack roll for each (one more ray per slot level above 2nd).' },
-  { id: 'shatter', name: 'Shatter', level: 2, school: 'Evocation', time: '1 action', range: '60 ft', classes: [B, S, K, W], save: 'con', damage: '3d8', upcast: '1d8', dmgType: 'thunder', text: 'A 10-ft-radius sphere of ringing noise (half on a save).' },
+  { id: 'shatter', name: 'Shatter', level: 2, school: 'Evocation', time: '1 action', range: '60 ft', classes: [B, S, K, W], save: 'con', damage: '3d8', upcast: '1d8', dmgType: 'thunder', burst: 10, text: 'A 10-ft-radius sphere of ringing noise (half on a save).' },
   { id: 'spiritualWeapon', name: 'Spiritual Weapon', level: 2, school: 'Evocation', time: 'Bonus action', range: '60 ft', conc: true, classes: [C], attack: 'melee', damage: '1d8', upcast: '1d8', dmgType: 'force', text: 'A floating weapon; bonus action to move it and attack (add your spellcasting mod to damage).' },
   { id: 'web', name: 'Web', level: 2, school: 'Conjuration', time: '1 action', range: '60 ft', conc: true, classes: [S, W], save: 'dex', text: 'A 20-ft cube of sticky webs; creatures are restrained on a failed Dex save.' },
   // 3rd level
   { id: 'callLightning', name: 'Call Lightning', level: 3, school: 'Conjuration', time: '1 action', range: '120 ft', conc: true, classes: [D], save: 'dex', damage: '3d10', upcast: '1d10', dmgType: 'lightning', text: 'A storm cloud; each turn call a bolt on a 5-ft-radius area (half on a save).' },
   { id: 'counterspell', name: 'Counterspell', level: 3, school: 'Abjuration', time: 'Reaction', range: '60 ft', classes: [S, K, W], text: 'The caster of a spell makes a Con save or the spell fails (the slot is not spent).' },
   { id: 'dispelMagic', name: 'Dispel Magic', level: 3, school: 'Abjuration', time: '1 action', range: '120 ft', classes: [B, C, D, P, R, S, K, W], text: 'End spells of 3rd level or lower on a target; higher ones need a check.' },
-  { id: 'fireball', name: 'Fireball', level: 3, school: 'Evocation', time: '1 action', range: '150 ft', classes: [S, W], save: 'dex', damage: '8d6', upcast: '1d6', dmgType: 'fire', text: 'A 20-ft-radius explosion of flame (half on a save).' },
+  { id: 'fireball', name: 'Fireball', level: 3, school: 'Evocation', time: '1 action', range: '150 ft', classes: [S, W], save: 'dex', damage: '8d6', upcast: '1d6', dmgType: 'fire', burst: 20, text: 'A 20-ft-radius explosion of flame (half on a save).' },
   { id: 'fly', name: 'Fly', level: 3, school: 'Transmutation', time: '1 action', range: 'Touch', conc: true, classes: [S, K, W], text: 'A creature gains a fly speed of 60 ft for 10 minutes.' },
   { id: 'haste', name: 'Haste', level: 3, school: 'Transmutation', time: '1 action', range: '30 ft', conc: true, classes: [S, W], text: 'Double speed, +2 AC, advantage on Dex saves and an extra limited action; lethargic when it ends.' },
   { id: 'hypnoticPattern', name: 'Hypnotic Pattern', level: 3, school: 'Illusion', time: '1 action', range: '120 ft', conc: true, classes: [B, S, K, W], save: 'wis', text: 'Creatures in a 30-ft cube are charmed and incapacitated on a failed save.' },
@@ -102,3 +104,28 @@ export const SPELLS: Spell[] = [
 export const spellById = (id: string) => SPELLS.find((s) => s.id === id);
 export const spellsFor = (classId: string, maxLevel: number) =>
   SPELLS.filter((s) => s.classes.includes(classId) && s.level <= maxLevel);
+
+/** Damage dice for a spell cast with a given slot (cantrips grow at level 5). */
+export function spellDamage(sp: Spell, charLevel: number, slot: number) {
+  if (sp.level === 0) return charLevel >= 5 && sp.damage5 ? sp.damage5 : sp.damage;
+  if (!sp.damage) return undefined;
+  if (!sp.upcast || slot <= sp.level) return sp.damage;
+  const extra = sp.upcast.replace(/^(\d*)d(\d+)$/, (_, n, s) => `${(n ? parseInt(n, 10) : 1) * (slot - sp.level)}d${s}`);
+  return `${sp.damage}+${extra}`;
+}
+/** Healing dice for a spell cast with a given slot, before the caster's modifier. */
+export function spellHeal(sp: Spell, slot: number) {
+  if (!sp.heal) return undefined;
+  if (sp.level > 0 && slot > sp.level && sp.upcast) {
+    const m = /^(\d*)d(\d+)$/.exec(sp.upcast);
+    if (m) return `${sp.heal}+${(m[1] ? parseInt(m[1], 10) : 1) * (slot - sp.level)}d${m[2]}`;
+  }
+  return sp.heal;
+}
+/** Range in feet ("120 ft", "Touch" = 5, "Self" = 0). */
+export function spellRangeFt(sp: Spell) {
+  const m = /(\d+)\s*ft/.exec(sp.range);
+  if (/^touch/i.test(sp.range)) return 5;
+  if (/^self/i.test(sp.range)) return 0;
+  return m ? parseInt(m[1], 10) : 30;
+}

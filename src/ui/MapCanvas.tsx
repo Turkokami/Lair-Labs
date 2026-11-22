@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { type GameMap, nearestEdge, moveCost } from '../engine/map';
-import type { Token, AreaTemplate } from '../engine/game';
+import type { Token, AreaTemplate, LogEntry } from '../engine/game';
+import { SHIELD_MARK } from '../engine/game';
+import { drawMapFx, mapFxAlive, mapFxFrom, type MapFx } from './mapfx';
 import { drawScene, CELL } from '../render/scene';
 import { browserFloors, onFloorsLoaded } from '../render/floors';
 import { gridFeet } from '../engine/areas';
@@ -47,6 +49,8 @@ export interface MapCanvasProps {
   highlight?: [number, number][];
   /** Data URL of the map's background picture, if it has one. */
   backdrop?: string;
+  /** The table log: new spell casts in it play their effect on the map. */
+  log?: LogEntry[];
 }
 
 export function MapCanvas(p: MapCanvasProps) {
@@ -56,6 +60,36 @@ export function MapCanvas(p: MapCanvasProps) {
   const [size, setSize] = useState({ w: 0, h: 0 });
   const [, force] = useState(0);
   const redraw = () => force((n) => n + 1);
+  // ----- spell effects: new casts in the log animate on the map until they finish -----
+  const fx = useRef<MapFx[]>([]);
+  const seenLog = useRef<string | null>(null);
+  const raf = useRef(0);
+  useEffect(() => {
+    const log = p.log ?? [];
+    if (!log.length) return;
+    const lastId = log[log.length - 1].id;
+    if (lastId === seenLog.current) return;
+    const first = seenLog.current === null;
+    let from = first ? log.length : log.findIndex((e) => e.id === seenLog.current) + 1;
+    if (!first && from <= 0) from = log.length - 1;
+    seenLog.current = lastId;
+    const now = performance.now();
+    // coming back to the map (from the sheet, say) still plays a cast made a moment ago
+    if (first) while (from > 0 && Date.now() - log[from - 1].ts < 2500) from--;
+    for (const e of log.slice(from)) {
+      const f = mapFxFrom(e, now);
+      if (f) fx.current.push(f);
+    }
+    if (fx.current.length && !raf.current) {
+      const tick = () => {
+        fx.current = fx.current.filter((f) => mapFxAlive(f, performance.now()));
+        redraw();
+        raf.current = fx.current.length ? requestAnimationFrame(tick) : 0;
+      };
+      raf.current = requestAnimationFrame(tick);
+    }
+  }, [p.log]);
+  useEffect(() => () => cancelAnimationFrame(raf.current), []);
   const pointers = useRef(new Map<number, { x: number; y: number }>());
   const gesture = useRef<
     | { kind: 'pan'; sx: number; sy: number; cx: number; cy: number; moved: boolean; t: number; gx: number; gy: number }
@@ -203,6 +237,27 @@ export function MapCanvas(p: MapCanvasProps) {
         g.fillStyle = '#fff';
         g.fillText(label, lx, ly);
       }
+    }
+    // Shield bubbles on whoever has one up, then any spell going off right now
+    for (const t of p.tokens) {
+      if (!t.conditions?.includes(SHIELD_MARK)) continue;
+      const r = Math.max(1, t.size) * CELL * 0.62, cx = (t.x + Math.max(1, t.size) / 2) * CELL, cy = (t.y + Math.max(1, t.size) / 2) * CELL;
+      g.strokeStyle = 'rgba(110,200,255,0.85)';
+      g.lineWidth = Math.max(1.5, 2.5 / s);
+      g.beginPath();
+      for (let i = 0; i <= 6; i++) {
+        const a = (i / 6) * Math.PI * 2 + Math.PI / 6;
+        if (i) g.lineTo(cx + Math.cos(a) * r, cy + Math.sin(a) * r);
+        else g.moveTo(cx + Math.cos(a) * r, cy + Math.sin(a) * r);
+      }
+      g.stroke();
+    }
+    if (fx.current.length) {
+      const pos = (id: string): [number, number] | undefined => {
+        const t = p.tokens.find((k) => k.id === id);
+        return t ? [t.x + Math.max(1, t.size) / 2, t.y + Math.max(1, t.size) / 2] : undefined;
+      };
+      drawMapFx(g, fx.current, performance.now(), pos, CELL, s);
     }
   });
 

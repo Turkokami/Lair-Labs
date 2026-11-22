@@ -48,6 +48,8 @@ export class Engine3D {
   quality: Quality;
   pool: THREE.PointLight[] = [];
   carried = new THREE.PointLight('#ffcf8a', 0, 9, 1.6);
+  /** One light the spell effects move around (always in the scene so adding it never recompiles shaders). */
+  fxLight = new THREE.PointLight('#ffffff', 0, 6, 1.8);
   hemi = new THREE.HemisphereLight('#888', '#222', 0.5);
   sun = new THREE.DirectionalLight('#fff4e0', 0);
   clock = new THREE.Clock();
@@ -80,7 +82,7 @@ export class Engine3D {
     setTextureDetail(quality);
     this.kitMats = kitMaterials(this.vis);
     this.scene.environment = dungeonEnv();
-    this.scene.add(this.hemi, this.sun, this.sun.target, this.carried);
+    this.scene.add(this.hemi, this.sun, this.sun.target, this.carried, this.fxLight);
     for (let i = 0; i < Q.lights; i++) {
       const l = new THREE.PointLight('#ffffff', 0, 8, 1.6);
       if (Q.shadows && i === 0) {

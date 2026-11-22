@@ -100,6 +100,7 @@ export type RollFn = (formula: string, label: string, opts?: { visibility?: Visi
 
 export function RollLine({ e, onDamage, gm }: { e: LogEntry; onDamage?: (formula: string, label: string) => void; gm?: boolean }) {
   const time = new Date(e.ts).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+  if (e.kind === 'system' && e.fx) return <div className="log-sys log-cast">✨ {e.text}</div>;
   if (e.kind === 'system') return <div className="log-sys">{e.text}{e.visibility === 'gm' && <span className="tag">GM only</span>}</div>;
   if (e.kind === 'chat')
     return (
@@ -120,10 +121,14 @@ export function RollLine({ e, onDamage, gm }: { e: LogEntry; onDamage?: (formula
       {e.target && !e.appliedTo && e.hit !== undefined && (
         <div className={'log-verdict ' + (e.hit ? 'hit' : 'miss')}>{e.hit ? (e.crit ? 'Critical hit on ' : 'Hits ') : 'Misses '}{e.target}</div>
       )}
+      {e.dc !== undefined && e.saved !== undefined && (
+        <div className={'log-verdict ' + (e.saved ? 'miss' : 'hit')}>{e.saved ? `Saves (DC ${e.dc})` : `Fails the DC ${e.dc} save`}</div>
+      )}
       {r ? (
         <div className="log-roll-body">
           <span className="total">{r.total}</span>
-          {e.appliedTo && <span className="badge bad">to {e.appliedTo}</span>}
+          {e.appliedTo && <span className={'badge ' + (e.heal ? 'good' : 'bad')}>{e.heal ? 'heals' : 'to'} {e.appliedTo}</span>}
+          {e.text && <span className="muted small">{e.text}</span>}
           <span className="muted small">{r.formula} = {describeRoll(r)}</span>
           {e.crit && <span className="badge good">Natural 20!</span>}
           {e.fumble && <span className="badge bad">Natural 1</span>}

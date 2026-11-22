@@ -536,7 +536,17 @@ export class Figure {
 
   /** Called when the server's copy of the token changes. */
   private lastLabel?: string;
+  private hpHold = 0;
+  private heldHp?: { t: Token & { hpLabel?: string }; current: boolean };
+  /** Let a spell reach the figure before it flinches, falls or shows its new HP. */
+  holdHp(until: number) {
+    this.hpHold = Math.max(this.hpHold, until);
+  }
   sync(t: Token & { hpLabel?: string }, current: boolean, path?: [number, number][]) {
+    if (performance.now() < this.hpHold && (t.hp !== this.lastHp || (t.hpLabel ?? '') !== (this.lastLabel ?? ''))) {
+      this.heldHp = { t, current };
+      t = { ...t, hp: this.lastHp, hpLabel: this.lastLabel };
+    } else if (this.heldHp && performance.now() >= this.hpHold) this.heldHp = undefined;
     const key = `${t.name}|${t.hp}|${t.maxHp}|${t.hpLabel ?? ''}|${current ? 1 : 0}`;
     if (key !== this.lastPlate) {
       this.plate.draw(t, current);
@@ -568,6 +578,11 @@ export class Figure {
   }
 
   update(dt: number) {
+    if (this.heldHp && performance.now() >= this.hpHold) {
+      const h = this.heldHp;
+      this.heldHp = undefined;
+      this.sync({ ...h.t, x: this.token.x, y: this.token.y }, h.current);
+    }
     this.mixer.update(dt);
     if (this.path.length) {
       const [tx, tz] = this.path[0];

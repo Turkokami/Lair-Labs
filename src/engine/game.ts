@@ -1,13 +1,15 @@
 // The live game. The GM's device runs HostCore as the single source of truth: it checks every
 // intent, rolls every die, and sends each phone only what that player is allowed to see.
 import { type GameMap, type DoorState, blankMap, cell, edgeCells, isFloor, moveCost, revealAround, floodRoom, blocks, edgeBetween } from './map';
-import { roll, critFormula, type RollResult } from './dice';
+import { roll, critFormula, d20Formula, type RollResult } from './dice';
+import { spellById, spellDamage, spellHeal } from '../rules/spells';
+import { tokensInArea } from './areas';
 import { type Character, type CharacterBuild, type CharacterState, computeSheet, freshState } from '../rules/character';
 import { monsterById, sizeSquares } from '../rules/monsters';
 import { speciesById } from '../rules/origins';
 import { partyVision, type VisionResult } from './vision';
 import { creatureForMonster } from '../library/creatures';
-import { mod } from '../rules/core';
+import { mod, ABILITIES, ABILITY_NAMES, type Ability } from '../rules/core';
 
 export type Visibility = 'public' | 'gm' | 'self' | 'blind';
 
@@ -63,7 +65,31 @@ export interface LogEntry {
   hit?: boolean;
   /** A damage roll the table rolled for you after a hit, already taken off the target. */
   appliedTo?: string;
+  /** Part of a spell: the spell's id (the 3D view and the map draw its effect from the cast entry's fx). */
+  spell?: string;
+  /** A saving throw the table rolled for a creature caught by a spell: the DC and whether it made it. */
+  dc?: number;
+  saved?: boolean;
+  /** Healing rather than damage. */
+  heal?: boolean;
+  fx?: SpellFx;
 }
+
+/** What a cast did, for the effects every screen draws: who cast it, where it went, and what happened to each creature. */
+export interface SpellFx {
+  caster?: string;
+  hits: { id: string; hit?: boolean; crit?: boolean; saved?: boolean; amount?: number; darts?: number; heal?: boolean }[];
+  /** Burst spells: the point (grid corner) and radius in feet. */
+  point?: [number, number];
+  radius?: number;
+  /** Shield cast after a hit turned it into a miss. */
+  blocked?: boolean;
+}
+/** Markers a spell puts on a token while it lasts (shown with its conditions). */
+export const SHIELD_MARK = 'Shield (+5 AC)';
+export const CHILL_MARK = 'Slowed (−10 ft)';
+/** A spell effect that ends when the caster's next turn starts. */
+export interface Effect { kind: 'shield' | 'chill'; by: string; tokenId: string }
 
 export interface Combat {
   active: boolean; round: number; turn: number; order: { tokenId: string; init: number; dex: number }[];
@@ -97,6 +123,8 @@ export interface GameState {
   templates?: AreaTemplate[];
   /** When someone last tapped the X-card (anonymous). */
   xcardAt?: number;
+  /** Spell effects running now (Shield, Ray of Frost's slow). */
+  effects?: Effect[];
 }
 
 export type Intent =
@@ -121,6 +149,8 @@ export type Intent =
   | { t: 'removeTemplate'; id: string }
   | { t: 'xcard' }
   | { t: 'torch'; tokenId: string; on: boolean }
+  /** Cast a spell: the table rolls the attack or everyone's saves and applies the damage or healing. */
+  | { t: 'cast'; spellId: string; slot?: number; targets?: string[]; point?: [number, number]; adv?: 'none' | 'adv' | 'dis'; charId?: string }
   // GM-only intents
   | { t: 'gm:setMap'; map: GameMap }
   | { t: 'gm:editMap'; map: GameMap }
@@ -302,7 +332,11 @@ export class HostCore {
     const gm = from === 'gm';
     if (it.t.startsWith('gm:') && !gm) throw new GameError('Only the GM can do that.');
     if (!gm && it.t !== 'hello' && !this.s.players[from]) throw new GameError('Join the table first.');
+    // Shield works against the hit that just landed, so remember it until the next roll, cast or turn
+    const lastHit = this.lastHit;
+    if (it.t === 'roll' || it.t === 'cast' || it.t === 'endTurn' || it.t === 'gm:nextTurn') this.lastHit = undefined;
     switch (it.t) {
+      case 'cast': this.cast(from, it, lastHit); break;
       case 'hello': {
         const existing = this.s.players[it.clientId];
         if (!existing && this.s.settings.locked) throw new GameError('The GM has locked this table.');
@@ -369,6 +403,7 @@ export class HostCore {
             const d = roll(dmgFormula + ` # ${dmgLabel}`);
             this.add({ kind: 'roll', from: this.playerName(from), fromId: from, roll: d, visibility: vis, crit, targetId: tgt.id, target: tgt.name, appliedTo: tgt.name });
             this.damageTokens([tgt.id], Math.max(0, d.total), crit);
+            this.lastHit = { targetId: tgt.id, total: r.total, crit, amount: Math.max(0, d.total), by: this.playerName(from) === 'GM' ? weapon.split(':')[0] : this.playerName(from) };
           }
           break;
         }
@@ -659,6 +694,7 @@ export class HostCore {
       case 'gm:endCombat': {
         const xp = this.s.tokens.filter((t) => t.kind === 'monster' && t.hp === 0).reduce((s, t) => s + (monsterById(t.monsterId ?? '')?.xp ?? 0), 0);
         this.s.combat = { active: false, round: 0, turn: 0, order: [] };
+        for (const e of [...(this.s.effects ?? [])]) this.endEffects(e.by);
         this.system(xp ? `Combat is over. Defeated foes are worth ${xp} XP.` : 'Combat is over.');
         break;
       }
@@ -696,6 +732,183 @@ export class HostCore {
       p.connected = on;
       this.bump();
     }
+  }
+
+  private lastHit?: { targetId: string; total: number; crit: boolean; amount: number; by: string };
+
+  /** Effects someone started end when their next turn begins. */
+  private endEffects(byTokenId: string) {
+    const all = this.s.effects ?? [];
+    const ending = all.filter((e) => e.by === byTokenId);
+    if (!ending.length) return;
+    this.s.effects = all.filter((e) => e.by !== byTokenId);
+    for (const e of ending) {
+      const t = this.s.tokens.find((x) => x.id === e.tokenId);
+      if (!t) continue;
+      if (t.charId) this.syncToken(t.charId);
+      else if (e.kind === 'chill') {
+        t.speed += 10;
+        t.conditions = t.conditions.filter((x) => x !== CHILL_MARK);
+      }
+    }
+  }
+  private addEffect(e: Effect) {
+    const all = (this.s.effects ??= []);
+    if (all.some((x) => x.kind === e.kind && x.tokenId === e.tokenId)) return;
+    all.push(e);
+    const t = this.s.tokens.find((x) => x.id === e.tokenId);
+    if (!t) return;
+    if (t.charId) this.syncToken(t.charId);
+    else if (e.kind === 'chill') {
+      t.speed = Math.max(0, t.speed - 10);
+      t.conditions = toggle(t.conditions, CHILL_MARK, true);
+    }
+  }
+  /** A creature's saving throw bonus: a hero's sheet, or a monster's ability modifier. */
+  private saveBonus(t: Token, ab: Ability) {
+    if (t.charId && this.s.characters[t.charId]) return computeSheet(this.s.characters[t.charId].build).saves[ab].total;
+    const m = t.monsterId ? monsterById(t.monsterId) : undefined;
+    return m ? mod(m.abilities[ABILITIES.indexOf(ab)]) : 0;
+  }
+
+  /** Cast a spell: spend the slot, roll the attack or each creature's save, and take the damage or healing off at once. */
+  private cast(from: string, it: Extract<Intent, { t: 'cast' }>, lastHit: HostCore['lastHit']) {
+    const gm = from === 'gm';
+    const c = gm && it.charId ? this.s.characters[it.charId] : this.charOf(from);
+    if (!c) throw new GameError('Pick a character first.');
+    const sp = spellById(it.spellId);
+    if (!sp) throw new GameError("That spell isn't in the book.");
+    const sh = computeSheet(c.build);
+    if (!sh.spell) throw new GameError(`${c.build.name} doesn't cast spells.`);
+    if (!gm && ![...sh.spell.cantrips, ...sh.spell.prepared].some((x) => x.id === sp.id)) throw new GameError(`${c.build.name} doesn't have ${sp.name} ready.`);
+    if (c.state.dead || c.state.hp === 0) throw new GameError(`${c.build.name} can't cast right now.`);
+    const slot = sp.level ? Math.max(sp.level, Math.min(9, it.slot ?? sp.level)) : 0;
+    if (slot) {
+      const used = sh.spell.slots.map((_, i) => c.state.slotsUsed[i] ?? 0);
+      if ((sh.spell.slots[slot - 1] ?? 0) - used[slot - 1] <= 0) throw new GameError(`No level ${slot} spell slots left.`);
+      used[slot - 1]++;
+      c.state.slotsUsed = used;
+    }
+    if (sp.conc) c.state.concentration = sp.name;
+    const me = this.tokenForChar(c.build.id);
+    const who = c.build.name;
+    const lvlTxt = slot > sp.level ? ` at level ${slot}` : '';
+    const find = (id: string) => this.s.tokens.find((t) => t.id === id && (gm || !t.hidden));
+    let targets = (it.targets ?? []).map(find).filter((t): t is Token => !!t);
+    const fx: SpellFx = { caster: me?.id, hits: [] };
+    const base = { from: who, fromId: from, visibility: 'public' as Visibility, spell: sp.id };
+    const dmgType = sp.dmgType ? ` ${sp.dmgType}` : '';
+
+    // burst spells catch everyone inside, friend or foe
+    if (sp.burst && it.point) {
+      fx.point = it.point;
+      fx.radius = sp.burst;
+      targets = tokensInArea({ shape: 'sphere', x: it.point[0], y: it.point[1], tx: it.point[0] + 1, ty: it.point[1], size: sp.burst }, this.s.tokens.filter((t) => gm || !t.hidden));
+    }
+    const names = targets.map((t) => t.name);
+    const onTxt = sp.burst && it.point ? (names.length ? `, catching ${names.join(', ')}` : ', catching no one') : names.length ? ` ${sp.heal ? 'on' : 'at'} ${names.join(' and ')}` : '';
+    this.add({ ...base, kind: 'system', text: `${who} casts ${sp.name}${lvlTxt}${onTxt}.`, fx });
+    if (sp.conc) this.system(`${who} is concentrating on ${sp.name}.`);
+
+    const dmg = spellDamage(sp, c.build.level, slot || sp.level);
+    if (sp.id === 'shield') {
+      if (!me) return;
+      this.addEffect({ kind: 'shield', by: me.id, tokenId: me.id });
+      fx.hits.push({ id: me.id });
+      if (lastHit && lastHit.targetId === me.id && !lastHit.crit && lastHit.total < me.ac) {
+        fx.blocked = true;
+        this.damageTokens([me.id], -lastHit.amount);
+        this.system(`Shield! ${lastHit.by}'s ${lastHit.total} no longer beats AC ${me.ac}: the hit becomes a miss and ${who} gets the ${lastHit.amount} HP back.`);
+      } else this.system(`${who}'s AC is ${me.ac} until the start of their next turn.`);
+      return;
+    }
+    if (sp.id === 'magicMissile') {
+      // three darts (one more per slot level above 1st) that always hit, split as the caster chose
+      const darts = 3 + Math.max(0, slot - 1);
+      if (!targets.length) return;
+      const per = new Map<string, number>();
+      for (let i = 0; i < darts; i++) {
+        const t = targets[i % targets.length];
+        per.set(t.id, (per.get(t.id) ?? 0) + 1);
+      }
+      for (const [id, n] of per) {
+        const t = find(id)!;
+        const shielded = (this.s.effects ?? []).some((e) => e.kind === 'shield' && e.tokenId === id);
+        if (shielded) {
+          fx.hits.push({ id, darts: n, hit: false });
+          this.system(`${t.name}'s Shield stops the darts.`);
+          continue;
+        }
+        const d = roll(`${n}d4+${n} # ${sp.name}: ${n} dart${n > 1 ? 's' : ''} (force)`);
+        this.add({ ...base, kind: 'roll', roll: d, targetId: id, target: t.name, appliedTo: t.name });
+        this.damageTokens([id], Math.max(0, d.total));
+        fx.hits.push({ id, darts: n, hit: true, amount: Math.max(0, d.total) });
+      }
+      return;
+    }
+    if (sp.attack) {
+      const t = targets[0];
+      const r = roll(d20Formula(sh.spell.attack, it.adv ?? 'none') + ` # ${sp.name} attack${t ? ` vs ${t.name}` : ''}`);
+      const crit = r.natural === 20, fumble = r.natural === 1;
+      if (!t || this.s.settings.autoAttacks === false) {
+        this.add({ ...base, kind: 'roll', roll: r, crit, fumble, damageFormula: dmg ? (crit ? critFormula(dmg) : dmg) : undefined, damageLabel: `${sp.name} damage${crit ? ' (critical!)' : ''}` });
+        if (t) fx.hits.push({ id: t.id });
+        return;
+      }
+      const hit = crit || (!fumble && r.total >= t.ac);
+      this.add({ ...base, kind: 'roll', roll: r, crit, fumble, targetId: t.id, target: t.name, hit });
+      let amount: number | undefined;
+      if (hit && dmg) {
+        const d = roll((crit ? critFormula(dmg) : dmg) + ` # ${sp.name} damage${crit ? ' (critical!)' : ''} (${sp.dmgType ?? ''})`);
+        amount = Math.max(0, d.total);
+        this.add({ ...base, kind: 'roll', roll: d, crit, targetId: t.id, target: t.name, appliedTo: t.name });
+        this.damageTokens([t.id], amount, crit);
+        if (sp.id === 'rayOfFrost' && me && t.hp > 0) {
+          this.addEffect({ kind: 'chill', by: me.id, tokenId: t.id });
+          this.system(`${t.name} is slowed: 10 ft less speed until ${who}'s next turn.`);
+        }
+      }
+      fx.hits.push({ id: t.id, hit, crit, amount });
+      return;
+    }
+    if (sp.save && dmg) {
+      const dc = sh.spell.dc;
+      const d = roll(`${dmg} # ${sp.name} damage${dmgType ? ` (${sp.dmgType})` : ''}`);
+      this.add({ ...base, kind: 'roll', roll: d, text: targets.length ? `DC ${dc} ${ABILITY_NAMES[sp.save]} save for everyone caught` : undefined });
+      const half = sp.level > 0; // leveled spells do half on a save; cantrips do nothing
+      const out: string[] = [];
+      for (const t of targets) {
+        const b = this.saveBonus(t, sp.save);
+        const r = roll(`1d20${b >= 0 ? '+' : ''}${b} # ${t.name}: ${ABILITY_NAMES[sp.save]} save`);
+        const saved = r.total >= dc;
+        const amount = saved ? (half ? Math.floor(d.total / 2) : 0) : d.total;
+        this.add({ kind: 'roll', from: t.name, fromId: 'gm', visibility: 'public', spell: sp.id, roll: r, targetId: t.id, target: t.name, dc, saved });
+        if (amount > 0) this.damageTokens([t.id], amount);
+        fx.hits.push({ id: t.id, saved, amount });
+        out.push(`${t.name} ${saved ? 'saves and ' : ''}takes ${amount}`);
+      }
+      if (out.length) this.system(`${sp.name}: ${out.join('; ')}${dmgType} damage.`);
+      return;
+    }
+    if (sp.heal) {
+      const t = targets[0] ?? me;
+      const f = spellHeal(sp, slot || sp.level)! + (sp.healMod !== false ? `${sh.mods[sh.spell.ability] >= 0 ? '+' : ''}${sh.mods[sh.spell.ability]}` : '');
+      const h = roll(`${f} # ${sp.name} healing`);
+      const amount = Math.max(0, h.total);
+      if (!t) {
+        this.add({ ...base, kind: 'roll', roll: h, heal: true });
+        return;
+      }
+      this.add({ ...base, kind: 'roll', roll: h, targetId: t.id, target: t.name, appliedTo: t.name, heal: true });
+      this.damageTokens([t.id], -amount);
+      fx.hits.push({ id: t.id, heal: true, amount });
+      return;
+    }
+    if (dmg) {
+      const d = roll(`${dmg} # ${sp.name}${dmgType}`);
+      this.add({ ...base, kind: 'roll', roll: d });
+    }
+    for (const t of targets) fx.hits.push({ id: t.id });
   }
 
   private applyHp(c: Character, delta: number) {
@@ -758,7 +971,13 @@ export class HostCore {
     const c = this.s.characters[charId];
     if (!t || !c) return;
     const sh = computeSheet(c.build);
-    Object.assign(t, { name: c.build.name, hp: c.state.hp, maxHp: sh.maxHp, ac: sh.ac, conditions: c.state.conditions, initMod: sh.initiative, speed: sh.speed, color: c.build.color });
+    const fx = (this.s.effects ?? []).filter((e) => e.tokenId === t.id);
+    const shield = fx.some((e) => e.kind === 'shield'), chill = fx.some((e) => e.kind === 'chill');
+    Object.assign(t, {
+      name: c.build.name, hp: c.state.hp, maxHp: sh.maxHp, ac: sh.ac + (shield ? 5 : 0),
+      conditions: [...c.state.conditions, ...(shield ? [SHIELD_MARK] : []), ...(chill ? [CHILL_MARK] : [])],
+      initMod: sh.initiative, speed: Math.max(0, sh.speed - (chill ? 10 : 0)), color: c.build.color,
+    });
     t.darkvision = speciesById(c.build.speciesId)?.darkvision ?? 0;
     t.art = `hero-${c.build.speciesId}-${c.build.classId}`;
   }
@@ -875,6 +1094,7 @@ export class HostCore {
     }
     c.turn = next;
     c.begun = true;
+    this.endEffects(c.order[next].tokenId);
     const t = this.s.tokens.find((x) => x.id === c.order[next].tokenId);
     if (t) {
       t.movedFeet = 0;

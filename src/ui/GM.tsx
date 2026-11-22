@@ -402,6 +402,7 @@ function GMTable({ host, onEnd }: { host: HostSession; onEnd: () => void }) {
           ) : (
           <MapCanvas
             map={map}
+            log={v.log}
             role="gm"
             revealed={s.revealed}
             showFog={mode === 'play'}

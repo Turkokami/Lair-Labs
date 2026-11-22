@@ -14,6 +14,9 @@ registerCustomModels();
 import { reach, route } from './path';
 import { EYE, WALL_H } from './dungeon';
 import { isDown } from '../ui/targets';
+import { SpellFx, fxKind } from './spellfx';
+import { spellById } from '../rules/spells';
+import { SHIELD_MARK, CHILL_MARK } from '../engine/game';
 
 export type Cam = 'first' | 'shoulder' | 'table';
 type VTok = Token & { hpLabel?: string };
@@ -89,6 +92,9 @@ export default function View3D(p: View3DProps) {
   camRef.current = cam;
   const hl = useRef<THREE.InstancedMesh | null>(null);
   const seenLog = useRef<string | null>(null);
+  const spellFx = useRef<SpellFx | null>(null);
+  const holdUntil = useRef(new Map<string, number>());
+  const quietHeal = useRef(new Map<string, number>());
   // numbers that float up over a figure: damage, healing, dice totals
   const floatLayer = useRef<HTMLDivElement>(null);
   const floats = useRef<{ el: HTMLDivElement; tokenId: string; born: number; up: number }[]>([]);
@@ -113,6 +119,7 @@ export default function View3D(p: View3DProps) {
       return;
     }
     eng.current = e;
+    spellFx.current = new SpellFx(e.scene, e.fxLight, e.camera, e.renderer);
     // red notched ring under the token you're aiming at
     {
       const g = new THREE.RingGeometry(0.42, 0.5, 24, 1);
@@ -142,6 +149,7 @@ export default function View3D(p: View3DProps) {
     let acc = 0, n = 0;
     e.onFrame = (dt) => {
       for (const f of figs.current.values()) f.update(dt);
+      spellFx.current?.update(dt);
       placeCamera(dt);
       placeFloats();
       acc += dt;
@@ -176,6 +184,8 @@ export default function View3D(p: View3DProps) {
       }
       for (const f of floats.current) f.el.remove();
       floats.current = [];
+      spellFx.current?.dispose();
+      spellFx.current = null;
       e.dispose();
       eng.current = null;
     };
@@ -263,26 +273,46 @@ export default function View3D(p: View3DProps) {
         e.scene.remove(f.group);
         f.dispose();
         figs.current.delete(id);
-      }
+      }    // Shield bubbles and frost rings stay on whoever has them until they wear off
+    const auras: Parameters<SpellFx['setAuras']>[0] = [];
+    for (const t of q.tokens) {
+      const f = figs.current.get(t.id);
+      if (!f) continue;
+      const get = () => (f.group.visible ? f.group.position : null);
+      if (t.conditions.includes(SHIELD_MARK)) auras.push({ key: t.id + ':shield', kind: 'shield', size: Math.max(1, t.size), get });
+      if (t.conditions.includes(CHILL_MARK)) auras.push({ key: t.id + ':chill', kind: 'chill', size: Math.max(1, t.size), get });
+    }
+    spellFx.current?.setAuras(auras);
   }
   useEffect(() => {
+    scanLog();
     syncTokens();
     updateHighlight();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [p.tokens, p.currentTokenId, ready]);
 
-  // ---------- attacks in the log play the attack clip ----------
-  useEffect(() => {
-    const log = p.log ?? [];
-    const last = log[log.length - 1];
-    if (!last || last.id === seenLog.current) return;
+  // ---------- the log: attacks play the attack clip, spells play their effects ----------
+  /** Read every log entry that arrived since last time (several can land at once: a cast, its rolls, the damage). */
+  function scanLog() {
+    const log = props.current.log ?? [];
+    if (!log.length) return;
+    const lastId = log[log.length - 1].id;
+    if (lastId === seenLog.current) return;
     const first = seenLog.current === null;
-    seenLog.current = last.id;
-    if (first || last.kind !== 'roll' || !last.roll) return;
+    let from = first ? log.length : log.findIndex((e) => e.id === seenLog.current) + 1;
+    if (!first && from <= 0) from = log.length - 1; // the one we saw scrolled off: just take the newest
+    seenLog.current = lastId;
+    for (const e of log.slice(from)) onLogEntry(e);
+  }
+  function onLogEntry(last: LogEntry) {
+    const q = props.current;
+    if (last.fx && last.spell) return castSpell(last);
+    if (last.spell) return; // a spell's own rolls: the effect shows them when it lands
+    if (last.kind !== 'roll' || !last.roll) return;
     const label = `${last.roll.label} ${last.text ?? ''}`;
     const isAttack = (!!last.damageFormula || last.hit !== undefined || /attack|hit|strike|bite|claw|slam|shot|bolt/i.test(label)) && !last.appliedTo;
-    const who = p.tokens.find((t) => t.name === last.from) ?? p.tokens.find((t) => last.roll!.label.startsWith(t.name + ':')) ?? p.tokens.find((t) => t.id === p.currentTokenId);
-    const aimed = last.targetId ? p.tokens.find((t) => t.id === last.targetId) : undefined;
+    const who = q.tokens.find((t) => t.name === last.from) ?? q.tokens.find((t) => last.roll!.label.startsWith(t.name + ':')) ?? q.tokens.find((t) => t.id === q.currentTokenId);
+    const aimed = last.targetId ? q.tokens.find((t) => t.id === last.targetId) : undefined;
     // an aimed attack: everyone sees Hit or Miss over the target, and the damage the table rolled lands on it
     if (aimed && last.hit !== undefined && !last.appliedTo) popFloat(aimed.id, last.hit ? (last.crit ? 'Critical hit!' : 'Hit!') : 'Miss', last.hit ? (last.crit ? 'crit' : 'hitmark') : 'miss');
     if (aimed && last.appliedTo) {
@@ -304,7 +334,7 @@ export default function View3D(p: View3DProps) {
     const f = figs.current.get(who.id);
     if (!f) return;
     // face the nearest token of the other side
-    const foes = aimed ? [aimed] : p.tokens.filter((t) => (who.kind === 'pc' ? t.kind !== 'pc' : t.kind === 'pc') && !isDown(t));
+    const foes = aimed ? [aimed] : q.tokens.filter((t) => (who.kind === 'pc' ? t.kind !== 'pc' : t.kind === 'pc') && !isDown(t));
     let best: VTok | undefined, bd = Infinity;
     for (const t of foes) {
       const d = Math.hypot(t.x - who.x, t.y - who.y);
@@ -315,7 +345,56 @@ export default function View3D(p: View3DProps) {
     }
     if (best) f.lookAt(...Figure.centre(best));
     f.play('attack', 0.1);
-  }, [p.log, p.tokens, p.currentTokenId]);
+  }
+  /** A cast: the caster gestures, the effect flies, and when it lands each target shows what happened to it. */
+  function castSpell(e: LogEntry) {
+    const fxp = spellFx.current, fx = e.fx!;
+    const sp = spellById(e.spell!);
+    if (!fxp || !sp) return;
+    const caster = fx.caster ? figs.current.get(fx.caster) : undefined;
+    const tf = fx.hits.map((h) => ({ h, f: figs.current.get(h.id) })).filter((x): x is { h: typeof x.h; f: Figure } => !!x.f && x.f.group.visible);
+    const look = fx.point ? new THREE.Vector3(fx.point[0], 0, fx.point[1]) : tf[0]?.f.group.position;
+    if (caster && look && look.distanceToSquared(caster.group.position) > 0.01) caster.lookAt(look.x, look.z);
+    caster?.play('attack', 0.1);
+    const cpos = caster?.group.position ?? look ?? new THREE.Vector3();
+    const face = caster ? caster.face : 0;
+    const hand = new THREE.Vector3(cpos.x + Math.sin(face) * 0.32, (caster?.height ?? 1.2) * 0.66, cpos.z + Math.cos(face) * 0.32);
+    const kind = fxKind(sp);
+    const lands = fxp.play({
+      spell: sp.id, dmgType: sp.dmgType, kind, hand, casterFeet: cpos.clone(), casterSize: Math.max(1, caster?.token.size ?? 1), blocked: fx.blocked,
+      point: fx.point ? new THREE.Vector3(fx.point[0], 0, fx.point[1]) : undefined, radius: fx.radius,
+      targets: tf.map(({ h, f }) => ({ id: h.id, chest: f.group.position.clone().setY(f.height * 0.58), feet: f.group.position.clone(), size: Math.max(1, f.token.size), hit: h.hit, saved: h.saved, crit: h.crit, heal: h.heal, darts: h.darts })),
+    });
+    const now = performance.now();
+    if (kind === 'shield') {
+      // the hit it turned aside is refunded; show that as Blocked!, not as healing
+      if (caster && fx.blocked) quietHeal.current.set(caster.token.id, now + 2500);
+      if (caster && fx.blocked) setTimeout(() => popFloat(caster.token.id, 'Blocked!', 'hitmark'), lands[0] ?? 150);
+      else if (caster) setTimeout(() => popFloat(caster.token.id, 'Shield +5 AC', 'roll'), lands[0] ?? 150);
+      return;
+    }
+    tf.forEach(({ h, f }, i) => {
+      // several targets in one burst: stagger their words a little so they don't print on top of each other
+      const ms = (lands[i] ?? 300) + (kind === 'burst' ? i * 160 : 0);
+      // hold this figure's HP change (and its −N pop) until the effect reaches it
+      holdUntil.current.set(h.id, now + ms);
+      f.holdHp(now + ms);
+      setTimeout(() => {
+        const tok = props.current.tokens.find((t) => t.id === h.id);
+        const hpShown = !!tok && tok.hp >= 0 && tok.maxHp > 0;
+        if (h.saved !== undefined) popFloat(h.id, h.saved ? 'Saved' : 'Failed', h.saved ? 'miss' : 'hitmark');
+        else if (h.hit !== undefined && kind !== 'darts') popFloat(h.id, h.hit ? (h.crit ? 'Critical hit!' : 'Hit!') : 'Miss', h.hit ? (h.crit ? 'crit' : 'hitmark') : 'miss');
+        else if (kind === 'darts' && h.hit === false) popFloat(h.id, 'Shield!', 'miss');
+        if (h.amount && !hpShown && !h.heal) popFloat(h.id, `${h.amount} ${sp.dmgType ?? 'dmg'}`, 'dmgroll');
+        if (h.amount && h.heal && !hpShown) popFloat(h.id, `+${h.amount}`, 'heal');
+        if (h.amount && !h.heal) f.play('hurt', 0.08);
+      }, ms);
+    });
+  }
+  useEffect(() => {
+    scanLog();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [p.log, ready]);
 
   // ---------- floating numbers ----------
   function popFloat(tokenId: string, text: string, cls: string) {
@@ -370,9 +449,17 @@ export default function View3D(p: View3DProps) {
   }
   /** Compare a token's old and new state and pop what changed: damage, healing, bloodied, down. */
   function hpPops(a: VTok, b: VTok) {
+    const wait = (holdUntil.current.get(b.id) ?? 0) - performance.now();
+    if (wait > 0) {
+      setTimeout(() => hpPopsNow(a, b), wait);
+      return;
+    }
+    hpPopsNow(a, b);
+  }
+  function hpPopsNow(a: VTok, b: VTok) {
     if (a.hp >= 0 && b.hp >= 0 && a.maxHp > 0) {
       if (b.hp < a.hp) popFloat(b.id, `−${a.hp - b.hp}`, 'dmg');
-      else if (b.hp > a.hp) popFloat(b.id, `+${b.hp - a.hp}`, 'heal');
+      else if (b.hp > a.hp && !((quietHeal.current.get(b.id) ?? 0) > performance.now())) popFloat(b.id, `+${b.hp - a.hp}`, 'heal');
       if (b.hp === 0 && a.hp > 0) popFloat(b.id, 'Down', 'down');
       return;
     }

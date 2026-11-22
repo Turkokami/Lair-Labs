@@ -228,6 +228,7 @@ input.num.small { width: 52px; min-height: 34px; padding: 2px; }
 .log-list { flex: 1; overflow-y: auto; padding: 8px; display: flex; flex-direction: column; gap: 6px; min-height: 120px; max-height: 100%; }
 .gm .log-list { max-height: 50vh; }
 .log-sys { font-size: 0.85rem; color: var(--muted); font-style: italic; text-align: center; }
+.log-sys.log-cast { color: #e7c8ff; font-style: normal; font-weight: 600; }
 .log-chat { background: var(--card); border-radius: 10px; padding: 6px 10px; }
 .log-chat.whisper { border: 1px dashed var(--purple); }
 .log-roll { background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 6px 10px; display: flex; flex-direction: column; gap: 4px; }
@@ -358,4 +359,9 @@ canvas.thumb { display: block; }
 .v3d-acts button small { display: block; color: var(--gold); font-weight: 700; }
 .v3d-acts button.end { background: var(--gold); color: #1a140c; font-weight: 700; }
 .v3d-acts button:disabled { opacity: 0.45; }
+.v3d-acts button.spell, .v3d-acts button.spells-toggle { border-color: rgba(190, 140, 255, 0.55); }
+.v3d-acts button.spell small, .v3d-acts button.spells-toggle small { color: #d9b8ff; }
+.v3d-acts button.spells-toggle.on { background: rgba(110, 60, 170, 0.92); }
+.v3d-spells { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); width: 100%; max-width: 300px; }
+.v3d-spells button { text-align: left; }
 .v3d-canvas::after { content: ''; position: absolute; inset: 0; pointer-events: none; background: radial-gradient(ellipse at 50% 55%, transparent 58%, rgba(0, 0, 0, 0.42) 100%); }

@@ -3,7 +3,7 @@ import { useState } from 'react';
 import type { Character, CharacterState } from '../rules/character';
 import { computeSheet, masteryText } from '../rules/character';
 import { ABILITIES, ABILITY_NAMES, ABILITY_SHORT, CONDITIONS, fmtMod, conditionName } from '../rules/core';
-import type { Spell } from '../rules/spells';
+import { spellDamage, type Spell } from '../rules/spells';
 import { d20Formula } from '../engine/dice';
 import type { Intent } from '../engine/game';
 import { Pips, toast, type RollFn } from './common';
@@ -159,15 +159,8 @@ export function SheetPanel({ ch, roll, send, canEdit }: SheetProps) {
   );
 }
 
-function spellDamage(sp: Spell, charLevel: number, slot: number) {
-  if (sp.level === 0) return charLevel >= 5 && sp.damage5 ? sp.damage5 : sp.damage;
-  if (!sp.damage) return undefined;
-  if (!sp.upcast || slot <= sp.level) return sp.damage;
-  const extra = sp.upcast.replace(/^(\d*)d(\d+)$/, (_, n, s) => `${(n ? parseInt(n, 10) : 1) * (slot - sp.level)}d${s}`);
-  return `${sp.damage}+${extra}`;
-}
 
-export function ActionsPanel({ ch, roll, send, canEdit, combat }: SheetProps & { combat?: { active: boolean; myTurn: boolean; inOrder: boolean; movedLeft?: number; aim?: (reachFt: number) => { id: string; name: string } | undefined } }) {
+export function ActionsPanel({ ch, roll, send, canEdit, combat }: SheetProps & { combat?: { active: boolean; myTurn: boolean; inOrder: boolean; movedLeft?: number; aim?: (reachFt: number) => { id: string; name: string } | undefined; plan?: (sp: Spell) => { targets?: string[]; point?: [number, number]; why?: string } } }) {
   const sh = computeSheet(ch.build);
   const st = ch.state;
   const [adv, setAdv] = useState<Adv>('none');
@@ -180,26 +173,12 @@ export function ActionsPanel({ ch, roll, send, canEdit, combat }: SheetProps & {
     return send({ t: 'charState', charId: id, patch: { slotsUsed: used } });
   };
   const cast = async (sp: Spell, slot: number) => {
+    // the table rolls it: the attack or everyone's saves, and the damage or healing comes off at once
+    const plan = combat?.plan?.(sp) ?? {};
+    if (plan.why && (sp.attack || sp.burst || sp.id === 'magicMissile') && combat?.active) toast(plan.why);
     try {
-      if (sp.level > 0) {
-        if (slotsLeft(slot) <= 0) return toast(`No level ${slot} slots left.`, 'error');
-        await useSlot(slot);
-      }
-      if (sp.conc) await send({ t: 'charState', charId: id, patch: { concentration: sp.name } });
-      const dmg = spellDamage(sp, ch.build.level, slot);
-      const lvlTxt = sp.level > 0 && slot > sp.level ? ` (level ${slot})` : '';
-      if (sp.attack) {
-        roll(d20Formula(sh.spell!.attack, adv), `${sp.name}${lvlTxt} attack`, dmg ? { attackDamage: dmg } : undefined);
-      } else if (sp.save) {
-        await send({ t: 'chat', text: `casts ${sp.name}${lvlTxt}: targets make a DC ${sh.spell!.dc} ${ABILITY_NAMES[sp.save]} save.` });
-        if (dmg) roll(dmg, `${sp.name} damage (${sp.dmgType ?? ''})`);
-      } else if (sp.heal) {
-        const extra = sp.level > 0 && slot > sp.level ? `+${slot - sp.level}${sp.heal.replace(/^\d+/, '')}` : '';
-        roll(`${sp.heal}${extra}${sp.healMod !== false ? fmtMod(sh.mods[sh.spell!.ability]) : ''}`, `${sp.name} healing`);
-      } else {
-        await send({ t: 'chat', text: `casts ${sp.name}${lvlTxt}.` });
-        if (dmg) roll(dmg, `${sp.name} (${sp.dmgType ?? ''})`);
-      }
+      await send({ t: 'cast', spellId: sp.id, slot: sp.level ? slot : undefined, targets: plan.targets, point: plan.point, adv });
+      if (sp.conc) toast(`Concentrating on ${sp.name}.`);
     } catch (e) {
       toast((e as Error).message, 'error');
     }
