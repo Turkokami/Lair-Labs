@@ -9,7 +9,7 @@ type Rand = () => number;
 const TAU = Math.PI * 2;
 
 /** One broad leaf from (x,y) pointing at angle a: a pointed oval with a midrib. */
-function leaf(g: G, x: number, y: number, a: number, L: number, W: number, color: string, lw = 1.1) {
+export function leaf(g: G, x: number, y: number, a: number, L: number, W: number, color: string, lw = 1.1) {
   const ca = Math.cos(a), sa = Math.sin(a);
   const tipx = x + ca * L, tipy = y + sa * L;
   const mx = x + ca * L * 0.45, my = y + sa * L * 0.45;
@@ -26,7 +26,7 @@ function leaf(g: G, x: number, y: number, a: number, L: number, W: number, color
 }
 
 /** A ring of broad leaves round a centre, outer ring darker. Used for jungle crowns and plants. */
-function leafCrown(g: G, cx: number, cy: number, R: number, color: string, r: Rand, rings = 3) {
+export function leafCrown(g: G, cx: number, cy: number, R: number, color: string, r: Rand, rings = 3) {
   for (let k = 0; k < rings; k++) {
     const n = 7 + k * 2;
     const rad = R * (1 - k * 0.24);

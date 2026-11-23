@@ -20,6 +20,24 @@ import { MORE_MODELS } from './models-more';
 import { EXTRA_MODELS } from './models-extra';
 import { MORE_MODELS2 } from './models-more2';
 import { OUTDOOR_MODELS } from './models-outdoor';
+import { OUTDOOR_MODELS2 } from './models-outdoor2';
+import { OUTDOOR_MODELS3 } from './models-outdoor3';
+
+/** A clipped hedge: a leafy core with lumpy, slightly uneven clumps along its top and sides. */
+function hedgeRow(k: Kit, O: Spot, w: number, d: number, R: () => number) {
+  const along = w >= d, len = along ? w : d, thick = along ? d : w;
+  const greens = ['#3f6a32', '#46743a', '#38602c', '#4a7a3c'];
+  k.B('fabric', O, 0, 0, 0, along ? len * 0.96 : thick * 0.8, 1.05, along ? thick * 0.8 : len * 0.96, '#365c2a');
+  const n = Math.max(2, Math.round(len / 0.42));
+  for (let i = 0; i < n; i++) {
+    const t = (i + 0.5) / n - 0.5, off = t * len * 0.95;
+    for (const [y, r, side] of [[1.02, 0.3, 0], [0.55, 0.32, 1], [0.55, 0.32, -1]] as const) {
+      const lat = side * thick * 0.32 + (R() - 0.5) * 0.06;
+      const x = along ? off + (R() - 0.5) * 0.08 : lat, z = along ? lat : off + (R() - 0.5) * 0.08;
+      k.S('fabric', O, x, y + (R() - 0.5) * 0.08, z, r * (0.9 + R() * 0.25), greens[Math.floor(R() * greens.length)], 'ico');
+    }
+  }
+}
 
 const MODELS: Record<string, Model> = {
   barrel: (k, O) => barrel(k, O),
@@ -423,15 +441,22 @@ const MODELS: Record<string, Model> = {
     for (let i = 0; i < 4; i++) k.S('fabric', O, (R() - 0.5) * 0.4, 0.3 + R() * 0.15, (R() - 0.5) * 0.4, 0.3, '#3f6a32', 'ico');
   },
   'thorn-bush': (k, O, w, d, R, c, p) => MODELS.bush(k, O, w, d, R, c, p),
-  hedge: (k, O, w, d) => k.B('fabric', O, 0, 0, 0, w * 0.9, 1.3, d * 0.8, '#3f6a32'),
-  'hedge-long': (k, O, w, d) => k.B('fabric', O, 0, 0, 0, w * 0.95, 1.3, d * 0.8, '#3f6a32'),
+  hedge: (k, O, w, d, R) => hedgeRow(k, O, w * 0.9, d * 0.8, R),
+  'hedge-long': (k, O, w, d, R) => hedgeRow(k, O, w * 0.95, d * 0.8, R),
   stump: (k, O) => k.C('wood', O, 0, 0, 0, 0.3, 0.4, '#6a4a2a', 'cyl16'),
   'log-fallen': (k, O, w) => k.P('wood', O, 'cyl16', 0, 0.25, 0, 0.5, w * 0.9, 0.5, '#6a4a2a', 0, 0, Math.PI / 2),
   'log-pile': (k, O, w, d) => {
     for (let i = 0; i < 6; i++) k.P('wood', O, 'cyl16', 0, 0.14 + (i > 2 ? 0.24 : 0), (i % 3 - 1) * 0.28 + (i > 2 ? 0.14 : 0), 0.26, w * 0.8, 0.26, '#7a5432', 0, 0, Math.PI / 2);
   },
   firewood: (k, O, w, d, R, c, p) => MODELS['log-pile'](k, O, w, d, R, c, p),
-  'hay-bale': (k, O, w, d) => k.B('fabric', O, 0, 0, 0, w * 0.8, 0.5, d * 0.6, '#d8b860'),
+  'hay-bale': (k, O, w, d, R) => {
+    // two stacked bales and one leaning: straw blocks bound with twine
+    const L = w * 0.62, D = d * 0.42;
+    for (const [x, y, z, ry] of [[-0.1, 0, -0.1, 0], [0.12, 0, 0.16, 0.25], [0, 0.46, 0.02, -0.12]] as const) {
+      k.B('fabric', O, x, y, z, L, 0.44, D, R() < 0.5 ? '#d8b860' : '#cfae58', 0, ry);
+      for (const t of [-0.28, 0.28]) k.B('fabric', O, x + Math.cos(ry) * t * L, y - 0.005, z - Math.sin(ry) * t * L, 0.03, 0.45, D + 0.01, '#7a5a30', 0, ry);
+    }
+  },
   'standing-stone': (k, O) => k.P('stone', O, 'box', 0, 1.1, 0, 0.6, 2.2, 0.4, '#8f887c', 0.05, 0.2, 0.04),
   obelisk: (k, O) => {
     k.B('stone', O, 0, 0, 0, 0.6, 2.4, 0.6, '#5a5550');
@@ -444,7 +469,7 @@ const MODELS: Record<string, Model> = {
   rug: () => {},
 };
 // more models live in their own files; an id already modelled above wins
-for (const [k, v] of Object.entries({ ...MORE_MODELS, ...MORE_MODELS2, ...EXTRA_MODELS, ...OUTDOOR_MODELS })) if (!MODELS[k]) MODELS[k] = v;
+for (const [k, v] of Object.entries({ ...MORE_MODELS, ...MORE_MODELS2, ...EXTRA_MODELS, ...OUTDOOR_MODELS, ...OUTDOOR_MODELS2, ...OUTDOOR_MODELS3 })) if (!MODELS[k]) MODELS[k] = v;
 
 /** A sprite card laid flat: the object's own overhead art, on the floor or on top of a stand-in body. */
 const spriteTexCache = new Map<string, THREE.Texture>();

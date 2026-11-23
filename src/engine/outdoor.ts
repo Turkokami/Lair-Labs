@@ -366,7 +366,7 @@ function forest(mk: Maker, big: boolean) {
     else if (what === 'circle') { mk.tryPut('stone-circle', cx - 2, cy - 2, cx + 2, cy + 2, land); mk.note(cx, cy, 'Standing stones: something old sleeps here.'); }
     else {
       mk.tryPut('campfire', cx - 1, cy - 1, cx + 1, cy + 1, land);
-      for (const k of ['tent', 'tent', 'bedroll', 'log-pile']) mk.tryPut(k, cx - 4, cy - 4, cx + 4, cy + 4, land, { pad: 0 });
+      for (const k of ['tent', 'tent', 'bedroll', 'log-pile', 'totem-pole']) mk.tryPut(k, cx - 4, cy - 4, cx + 4, cy + 4, land, { pad: 0 });
       mk.note(cx, cy, 'Camp: bandits, hunters or other travellers.');
     }
     mk.disc(cx, cy, r * 0.8, (x, y) => { mk.keep[mk.idx(x, y)] = 1; });
@@ -381,6 +381,12 @@ function forest(mk: Maker, big: boolean) {
   mk.scatter([['bush', 3], ['flowers', 3], ['boulder', 1], ['tree-oak', 1], ['grass-tall', 2]], 0.02, open);
   mk.scatter([['ferns', 4], ['log-fallen', 2], ['stump', 2], ['mushrooms', 2], ['boulder', 2], ['rock-outcrop', 1], ['thorn-bush', 1]], 0.035, wood);
   mk.scatter([['reeds', 3], ['lily-pads', 1]], 0.25, (x, y) => mk.mat(x, y) === 'mud' || (mk.mat(x, y) === 'water-shallow' && [[1, 0], [-1, 0], [0, 1], [0, -1]].some(([a, b]) => !mk.isWater(x + a, y + b))));
+  // old things in the deep wood: a fairy ring, a barrow, a cave, wisps
+  const deep = (x: number, y: number) => wood(x, y) && !mk.keep[mk.idx(x, y)];
+  mk.tryPut('fairy-ring', 2, 2, cols - 2, rows - 2, deep, { tries: 60 });
+  if (cols >= 40) { const b = mk.tryPut('barrow', 2, 2, cols - 2, rows - 2, (x, y) => land(x, y) && !mk.keep[mk.idx(x, y)], { tries: 120 }); if (b) mk.note(b[0] + 1, b[1] + 1, 'A barrow mound: the dead king does not like visitors.'); }
+  if (big) { const c = mk.tryPut('cave-entrance', 2, 2, cols - 2, rows - 2, deep, { tries: 80 }); if (c) mk.note(c[0] + 1, c[1] + 1, 'A cave mouth under the roots.'); mk.tryPut('ruin-columns', 2, 2, cols - 2, rows - 2, deep, { tries: 60 }); }
+  mk.scatter([['will-o-wisps', 1]], 0.0015, deep);
 }
 
 function village(mk: Maker, big: boolean) {
@@ -478,6 +484,16 @@ function village(mk: Maker, big: boolean) {
   mk.tryPut('wagon', cx - 8, cy - 2, cx + 8, cy + 2, groundOK);
   mk.tryPut('signpost', cx - sq - 3, cy - sq - 3, cx + sq + 3, cy + sq + 3, groundOK);
   mk.tryPut('windmill', 0, 0, cols, rows, (x, y) => groundOK(x, y) && Math.hypot(x - cx, y - cy) > 14);
+  // farm life round the edge of town, a watermill on the river, an orchard
+  // the mill's wheel is on its east side when unturned, so face it at the water: east bank turns it round
+  const waterTo = (dir: number) => (x: number, y: number) => !mk.isWater(x, y) && [1, 2, 3, 4, 5].some((a) => mk.isWater(x + a * dir, y));
+  const mill = mk.tryPut('watermill', Math.floor(rx) - 10, 2, Math.floor(rx) + 1, rows - 2, waterTo(1), { tries: 150 }) ?? mk.tryPut('watermill', Math.floor(rx) - 1, 2, Math.floor(rx) + 10, rows - 2, waterTo(-1), { tries: 150, rot: 180 });
+  if (mill) mk.note(mill[0] + 1, mill[1] + 1, 'The watermill: the miller hears every rumour in town.');
+  const outskirts = (x: number, y: number) => groundOK(x, y) && Math.hypot(x - cx, y - cy) > sq + 4;
+  for (const k of ['granary', 'animal-pen', 'pumpkin-patch', 'dovecote', 'kiln', 'smithy-shed', 'roundhouse', ...(big ? ['granary', 'animal-pen', 'pumpkin-patch', 'dovecote', 'mausoleum'] : [])])
+    mk.tryPut(k, cx - (big ? 26 : 16), cy - (big ? 20 : 13), cx + (big ? 26 : 16), cy + (big ? 20 : 13), outskirts, { pad: 1, tries: 40 });
+  const orchard = mk.tryPut('tree-fruit', 0, 0, cols, rows, (x, y) => outskirts(x, y) && Math.hypot(x - cx, y - cy) > 12, { tries: 60 });
+  if (orchard) for (let k = 0; k < (big ? 10 : 5); k++) mk.tryPut('tree-fruit', orchard[0] - 5, orchard[1] - 5, orchard[0] + 7, orchard[1] + 7, groundOK, { tries: 8 });
   void placed;
 }
 
@@ -538,6 +554,14 @@ function coast(mk: Maker, big: boolean) {
   mk.scatter([['grass-tall', 3], ['bush', 1]], 0.04, (x, y) => mk.mat(x, y) === 'beach-sand' && depth(x, y) > 0.46);
   mk.scatter([['tree-pine', 2], ['tree-oak', 2], ['bush', 3], ['boulder', 1], ['tree-cluster', 1]], 0.03, (x, y) => land(x, y) && depth(x, y) > 0.62);
   mk.scatter([['boulder', 2], ['rock-outcrop', 1]], 0.02, (x, y) => mk.mat(x, y) === 'rocky-ground');
+  // a lighthouse on the point, a wreck on the rocks, sea stacks and beachcombing
+  const head = mk.tryPut('lighthouse', 0, 0, cols, rows, (x, y) => { const d = depth(x, y); return d > 0.5 && d < 0.62 && !mk.isWater(x, y) && mk.m.cells[mk.idx(x, y)] !== 5; }, { tries: 100, pad: 1 });
+  if (head) mk.note(head[0] + 1, head[1] + 1, 'The lighthouse: its keeper has not lit the lamp in a week.');
+  const wreck = mk.tryPut('shipwreck', 0, 0, cols, rows, (x, y) => mk.mat(x, y) === 'water-shallow' || mk.mat(x, y) === 'beach-sand', { tries: 100, rot: side % 2 ? 90 : 0 });
+  if (wreck) mk.note(wreck[0] + 2, wreck[1] + 1, 'A wreck on the sandbar: cargo, crabs, and something in the hold.');
+  mk.scatter([['sea-stack', 1]], big ? 0.004 : 0.006, (x, y) => mk.mat(x, y) === 'water-shallow' || (mk.mat(x, y) === 'water-deep' && depth(x, y) > 0.3));
+  mk.scatter([['driftwood', 3], ['tide-pools', 2]], 0.012, (x, y) => mk.mat(x, y) === 'beach-sand' || mk.mat(x, y) === 'rocky-ground');
+  for (let h = 0; h < (big ? 3 : 1); h++) mk.tryPut('fishing-hut', jx - 10, jy - 10, jx + 10, jy + 10, (x, y) => land(x, y) || mk.mat(x, y) === 'beach-sand', { tries: 30, pad: 1 });
 }
 
 function desert(mk: Maker, big: boolean) {
@@ -571,6 +595,12 @@ function desert(mk: Maker, big: boolean) {
   mk.scatter([['cactus', 3], ['desert-rocks', 2], ['boulder', 1], ['sand-ripples', 2], ['skull-bleached', 0.3], ['thorn-bush', 1]], 0.02, flat);
   mk.scatter([['boulder', 2], ['boulder-large', 1]], 0.05, (x, y) => mk.mat(x, y) === 'scree');
   mk.tryPut('tent-round', ox - 10, oy - 10, ox + 10, oy + 10, (x, y) => flat(x, y) && !oasisRing(x, y));
+  // mud-brick houses by the oasis, a rock arch, old columns, dunes
+  for (let h = 0; h < (big ? 5 : 2); h++) mk.tryPut('house-adobe', Math.floor(ox - orad - 8), Math.floor(oy - orad - 8), Math.floor(ox + orad + 8), Math.floor(oy + orad + 8), (x, y) => flat(x, y) && !oasisRing(x, y), { pad: 1, tries: 40 });
+  const arch = mk.tryPut('rock-arch', 2, 2, cols - 2, rows - 2, (x, y) => flat(x, y) && mk.mat(x, y) !== 'grass', { tries: 60 });
+  if (arch) mk.note(arch[0] + 2, arch[1] + 1, 'A great stone arch: the wind sings through it at dusk.');
+  for (let k = 0; k < (big ? 3 : 1); k++) mk.tryPut('ruin-columns', 2, 2, cols - 2, rows - 2, (x, y) => mk.mat(x, y) === 'sand', { tries: 40 });
+  mk.scatter([['sand-dune', 1]], big ? 0.004 : 0.006, (x, y) => mk.mat(x, y) === 'sand');
 }
 
 function swamp(mk: Maker, big: boolean) {
@@ -600,6 +630,15 @@ function swamp(mk: Maker, big: boolean) {
   mk.scatter([['reeds', 5], ['lily-pads', 3]], 0.18, (x, y) => wet(x, y) && [[1, 0], [-1, 0], [0, 1], [0, -1]].some(([a, b]) => !wet(x + a, y + b)));
   mk.scatter([['reeds', 3], ['mud-patch', 1], ['grass-tall', 2], ['mushrooms', 1], ['log-fallen', 1], ['bones-mud', 0.3]], 0.04, soggy);
   mk.scatter([['ferns', 2], ['bush', 2], ['mushrooms', 1], ['stump', 1]], 0.04, dry);
+  // stilt huts with boardwalks, mangroves, wisps, a drowned statue
+  for (let h = 0; h < (big ? 4 : 2); h++) {
+    const at = mk.tryPut('stilt-hut', 2, 2, cols - 2, rows - 2, (x, y) => soggy(x, y) || wet(x, y), { tries: 50, pad: 1 });
+    if (at) { for (let k = 0; k < 3; k++) if (!mk.tryPut('boardwalk', at[0] + 1, at[1] + 3, at[0] + 2, at[1] + 7 + k * 3, (x, y) => !dry(x, y), { tries: 4 })) break; if (h === 0) mk.note(at[0] + 1, at[1] + 1, 'Stilt huts: the bog folk trade in leeches and secrets.'); }
+  }
+  mk.scatter([['tree-mangrove', 1]], 0.006, (x, y) => wet(x, y) || soggy(x, y));
+  mk.scatter([['will-o-wisps', 1]], 0.003, (x, y) => wet(x, y) || soggy(x, y));
+  const statue = mk.tryPut('sunken-statue', 2, 2, cols - 2, rows - 2, wet, { tries: 60 });
+  if (statue) mk.note(statue[0] + 1, statue[1] + 1, 'A drowned statue: its eyes follow you.');
 }
 
 function mountains(mk: Maker, big: boolean, winter = false) {
@@ -644,6 +683,10 @@ function mountains(mk: Maker, big: boolean, winter = false) {
   mk.scatter([['boulder', 3], ['boulder-large', 2], ['cairn', 0.2]], 0.02, (x, y) => ok(x, y) && elev(x, y) >= 0.74);
   if (winter) mk.scatter([['snowdrift', 1]], 0.012, (x, y) => ok(x, y) && mk.mat(x, y) === 'snow');
   if (!winter) mk.scatter([['bush', 2], ['flowers', 1], ['grass-tall', 2]], 0.02, (x, y) => ok(x, y) && elev(x, y) < 0.5);
+  const mouth = mk.tryPut('cave-entrance', 0, 0, cols, rows, (x, y) => ok(x, y) && elev(x, y) > 0.6 && elev(x, y) < 0.74, { tries: 80 });
+  if (mouth) mk.note(mouth[0] + 1, mouth[1] + 1, 'A cave into the mountain: dwarf-cut steps go down.');
+  if (big) mk.tryPut('barrow', 0, 0, cols, rows, (x, y) => ok(x, y) && elev(x, y) < 0.6, { tries: 60 });
+  if (winter) mk.scatter([['ice-spikes', 1]], 0.003, (x, y) => ok(x, y) && elev(x, y) >= 0.66);
 }
 
 function winterland(mk: Maker, big: boolean) {
@@ -664,6 +707,11 @@ function winterland(mk: Maker, big: boolean) {
   mk.tryPut('campfire', cx - 1, cy - 1, cx + 1, cy + 1, () => true);
   for (const k of ['tent-round', 'lean-to', 'log-pile', 'igloo']) mk.tryPut(k, cx - 6, cy - 6, cx + 6, cy + 6, (x, y) => !mk.isWater(x, y));
   mk.note(cx, cy, 'A hunters\' camp: warm fire, cold welcome.');
+  mk.tryPut('yurt', cx - 8, cy - 8, cx + 8, cy + 8, (x, y) => !mk.isWater(x, y), { pad: 1 });
+  mk.tryPut('sled', cx - 6, cy - 6, cx + 6, cy + 6, (x, y) => !mk.isWater(x, y));
+  mk.scatter([['ice-spikes', 1]], 0.004, (x, y) => mk.mat(x, y) === 'ice' || mk.mat(x, y) === 'tundra');
+  const tomb = mk.tryPut(big ? 'mausoleum' : 'barrow', 2, 2, cols - 2, rows - 2, (x, y) => mk.mat(x, y) === 'snow', { tries: 60, pad: 1 });
+  if (tomb) mk.note(tomb[0] + 1, tomb[1] + 1, 'A tomb half under the snow. The door is not frozen shut.');
 }
 
 /** A whole land at one mile a square: height and wetness make the ground, then rivers, towns and roads. */
@@ -879,6 +927,9 @@ function jungle(mk: Maker, big: boolean) {
   else mk.scatter([['tree-emergent', 1]], 0.0008, thick);
   mk.scatter([['tree-jungle', 6], ['tree-palm', 1], ['tree-cluster', 1]], 0.42, thick, [0, 0, 1, 2, 3]);
   mk.scatter([['tree-palm', 3]], 0.12, bank, [0, 2]);
+  mk.scatter([['tree-mangrove', 1]], 0.01, bank);
+  mk.scatter([['totem-pole', 1]], 0.0015, thin);
+  mk.tryPut('sunken-statue', 0, 0, cols, rows, (x, y) => mk.isWater(x, y), { tries: 60 });
   mk.scatter([['tree-jungle', 2], ['tree-palm', 2], ['plant-broadleaf', 3], ['bush', 1]], 0.06, thin);
   mk.scatter([['plant-broadleaf', 4], ['ferns', 4], ['vines-hanging', 2], ['log-fallen', 2], ['boulder', 1], ['mushrooms', 1], ['stone-idol', 0.15]], 0.06, land);
   mk.scatter([['reeds', 3], ['lily-pads', 2]], 0.22, (x, y) => mk.mat(x, y) === 'mud' || (mk.isWater(x, y) && [[1, 0], [-1, 0], [0, 1], [0, -1]].some(([a, b]) => !mk.isWater(x + a, y + b))));
@@ -926,6 +977,9 @@ function fungus(mk: Maker, big: boolean) {
   mk.scatter([['glow-pods', 4], ['glowing-fungus', 3], ['tendrils', 2], ['spore-vent', 1], ['mushrooms', 2, [2]], ['crystal-spire', 0.6]], 0.035, land, [0, 1, 2, 3]);
   mk.scatter([['glow-pods', 3], ['glowing-fungus', 2], ['tendrils', 1]], 0.12, shore, [0, 1, 3]);
   mk.scatter([['boulder', 2, [2]], ['rock-outcrop', 0.5], ['crystal-spire', 1, [1, 2]]], 0.06, (x, y) => land(x, y) && stony(x, y));
+  mk.scatter([['crystal-tree', 3], ['monolith', 0.6]], 0.005, (x, y) => land(x, y) && !thick(x, y));
+  const crater = mk.tryPut('crater', 2, 2, cols - 2, rows - 2, (x, y) => land(x, y) && !mk.keep[mk.idx(x, y)], { tries: 60, pad: 1 });
+  if (crater) mk.note(crater[0] + 1, crater[1] + 1, 'A fresh crater: something fell from the sky, and the fungus is growing towards it.');
   mk.m.ambient = 'dim';
   mk.m.viewRange = big ? 40 : 30;
 }

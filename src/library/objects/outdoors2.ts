@@ -10,8 +10,8 @@ const TAU = Math.PI * 2;
 
 // ---------- roofs ----------
 
-type RoofStyle = 'thatch' | 'shingle' | 'slate' | 'tile';
-const ROOF: Record<string, string> = { thatch: '#b89a5a', shingle: '#6e4a32', slate: '#4f565e', tile: '#a5513a' };
+export type RoofStyle = 'thatch' | 'shingle' | 'slate' | 'tile';
+export const ROOF: Record<string, string> = { thatch: '#b89a5a', shingle: '#6e4a32', slate: '#4f565e', tile: '#a5513a' };
 
 /** Clip to a polygon and run f inside it. */
 function clipped(g: G, pts: number[][], f: () => void) {
@@ -71,7 +71,7 @@ function courses(g: G, ax: number, ay: number, bx: number, by: number, nx: numbe
 }
 
 /** A hipped roof seen from above: four slopes, the ridge along the long side. Lit from the top-left. */
-function hipRoof(g: G, x: number, y: number, w: number, h: number, base: string, style: RoofStyle, r: Rand) {
+export function hipRoof(g: G, x: number, y: number, w: number, h: number, base: string, style: RoofStyle, r: Rand) {
   const long = w >= h;
   const hw = Math.min(w, h) / 2;
   const cx = x + w / 2, cy = y + h / 2;
@@ -118,7 +118,7 @@ function hipRoof(g: G, x: number, y: number, w: number, h: number, base: string,
 }
 
 /** A gabled roof: two slopes meeting on a ridge along the long side, with gable ends. */
-function gableRoof(g: G, x: number, y: number, w: number, h: number, base: string, style: RoofStyle, r: Rand) {
+export function gableRoof(g: G, x: number, y: number, w: number, h: number, base: string, style: RoofStyle, r: Rand) {
   const long = w >= h;
   g.fillStyle = 'rgba(0,0,0,0.28)';
   rr(g, x + 5, y + 7, w, h, 3);
@@ -142,7 +142,7 @@ function gableRoof(g: G, x: number, y: number, w: number, h: number, base: strin
   paint(g, 'rgba(0,0,0,0)', INK, LW);
 }
 
-function chimney(g: G, x: number, y: number, s: number, color = '#7d7266', smoke = true) {
+export function chimney(g: G, x: number, y: number, s: number, color = '#7d7266', smoke = true) {
   g.fillStyle = 'rgba(0,0,0,0.3)';
   g.fillRect(x + 4, y + 5, s, s);
   rr(g, x, y, s, s, 2);
@@ -156,22 +156,22 @@ function chimney(g: G, x: number, y: number, s: number, color = '#7d7266', smoke
 }
 
 /** A stone or timber wall of a building, peeking out under the eaves at the bottom (the side facing the viewer). */
-function wallBase(g: G, x: number, y: number, w: number, h: number, color: string) {
+export function wallBase(g: G, x: number, y: number, w: number, h: number, color: string) {
   rr(g, x, y + h - 10, w, 12, 2);
   paint(g, shade(color, -0.25), INK, 1.6);
 }
 
 /** A front door under the bottom eave. */
-function door(g: G, cx: number, y: number, color = '#5a3a20') {
+export function door(g: G, cx: number, y: number, color = '#5a3a20') {
   rr(g, cx - 9, y - 4, 18, 9, 1.5);
   paint(g, color, INK, 1.4);
   rr(g, cx - 13, y + 5, 26, 7, 2);
   paint(g, '#8a8378', INK, 1.2);
 }
 
-interface House { id: string; name: string; w: number; h: number; roof: 'hip' | 'gable'; style: RoofStyle; chimney?: [number, number][]; tags: string[]; desc: string; sets: ObjDef['sets']; extra?: (g: G, w: number, h: number, c: Record<string, string>, r: Rand) => void }
+export interface House { id: string; name: string; w: number; h: number; roof: 'hip' | 'gable'; style: RoofStyle; chimney?: [number, number][]; tags: string[]; desc: string; sets: ObjDef['sets']; extra?: (g: G, w: number, h: number, c: Record<string, string>, r: Rand) => void }
 
-function houseDef(o: House): ObjDef {
+export function houseDef(o: House): ObjDef {
   const styles: { name: string; style: RoofStyle }[] = [
     { name: 'Thatch', style: 'thatch' }, { name: 'Wood shingle', style: 'shingle' }, { name: 'Slate', style: 'slate' }, { name: 'Clay tile', style: 'tile' },
   ];
@@ -199,7 +199,7 @@ function houseDef(o: House): ObjDef {
 
 // ---------- walls ----------
 
-function stoneCourse(g: G, x: number, y: number, w: number, h: number, base: string, r: Rand, bw = 20, bh = 12) {
+export function stoneCourse(g: G, x: number, y: number, w: number, h: number, base: string, r: Rand, bw = 20, bh = 12) {
   rr(g, x, y, w, h, 3);
   paint(g, shade(base, -0.15), INK, LW);
   g.save();
@@ -225,7 +225,7 @@ function battlements(g: G, x: number, y: number, w: number, h: number, base: str
   }
 }
 
-function logEnd(g: G, cx: number, cy: number, rad: number, wood: string) {
+export function logEnd(g: G, cx: number, cy: number, rad: number, wood: string) {
   circle(g, cx, cy, rad);
   paint(g, domeFill(g, cx, cy, rad, wood, 0.3), INK, 1.6);
   circle(g, cx, cy, rad * 0.55);
@@ -234,7 +234,7 @@ function logEnd(g: G, cx: number, cy: number, rad: number, wood: string) {
 
 // ---------- trees and rocks ----------
 
-function trunkRoots(g: G, cx: number, cy: number, len: number, color: string, r: Rand, n = 5) {
+export function trunkRoots(g: G, cx: number, cy: number, len: number, color: string, r: Rand, n = 5) {
   for (let i = 0; i < n; i++) {
     const a = r() * TAU;
     g.beginPath();
@@ -250,7 +250,7 @@ function trunkRoots(g: G, cx: number, cy: number, len: number, color: string, r:
 }
 
 /** Ground shadow under a canopy, offset down-right. */
-function canopyShadow(g: G, cx: number, cy: number, rad: number) {
+export function canopyShadow(g: G, cx: number, cy: number, rad: number) {
   g.fillStyle = 'rgba(0,0,0,0.22)';
   circle(g, cx + rad * 0.18, cy + rad * 0.22, rad);
   g.fill();

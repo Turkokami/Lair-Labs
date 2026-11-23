@@ -258,6 +258,257 @@
    "generated": true
   },
   {
+   "id": "outdoor-swamp-medium",
+   "name": "The Sunken Fen",
+   "cols": 80,
+   "rows": 60,
+   "ambient": "bright",
+   "description": "A fen of black water and bog: stilt huts on boardwalks, mangroves, will-o-wisps and a drowned statue.",
+   "setting": "wilderness",
+   "tags": [
+    "outdoor",
+    "swamp",
+    "bog",
+    "medium"
+   ],
+   "rooms": 0,
+   "encounters": 0,
+   "size": "medium",
+   "generated": true
+  },
+  {
+   "id": "outdoor-swamp-large",
+   "name": "Weepwater",
+   "cols": 140,
+   "rows": 100,
+   "ambient": "bright",
+   "description": "A wide marsh cut by a channel, with a witch's hut on the one dry hump and bog folk in stilt huts.",
+   "setting": "wilderness",
+   "tags": [
+    "outdoor",
+    "swamp",
+    "bog",
+    "large"
+   ],
+   "rooms": 0,
+   "encounters": 0,
+   "size": "large",
+   "generated": true
+  },
+  {
+   "id": "outdoor-winter-medium",
+   "name": "The White Reach",
+   "cols": 80,
+   "rows": 60,
+   "ambient": "bright",
+   "description": "Snowfields and a frozen lake with thin ice, a hunters' camp with a yurt and sled, and a half-buried tomb.",
+   "setting": "wilderness",
+   "tags": [
+    "outdoor",
+    "winter",
+    "snow",
+    "ice",
+    "medium"
+   ],
+   "rooms": 0,
+   "encounters": 0,
+   "size": "medium",
+   "generated": true
+  },
+  {
+   "id": "outdoor-winter-pass-large",
+   "name": "Hoarfell",
+   "cols": 140,
+   "rows": 100,
+   "ambient": "bright",
+   "description": "A frozen mountain pass: an icy river, snowy firs, ice spikes on the heights and a cave into the mountain.",
+   "setting": "wilderness",
+   "tags": [
+    "outdoor",
+    "winter",
+    "mountains",
+    "pass",
+    "large"
+   ],
+   "rooms": 0,
+   "encounters": 0,
+   "size": "large",
+   "generated": true
+  },
+  {
+   "id": "outdoor-forest-large",
+   "name": "The Greenhollow",
+   "cols": 140,
+   "rows": 100,
+   "ambient": "bright",
+   "description": "Old deep woods with giant trees, a barrow mound, a fairy ring, wisps, ruins and a cave under the roots.",
+   "setting": "wilderness",
+   "tags": [
+    "outdoor",
+    "forest",
+    "large"
+   ],
+   "rooms": 0,
+   "encounters": 0,
+   "size": "large",
+   "generated": true
+  },
+  {
+   "id": "outdoor-village-large",
+   "name": "Oakham",
+   "cols": 140,
+   "rows": 100,
+   "ambient": "bright",
+   "description": "A market town on a river: watermill, orchard, granaries, a smithy, pens and pumpkin patches round the edge.",
+   "setting": "town",
+   "tags": [
+    "outdoor",
+    "village",
+    "town",
+    "farm",
+    "large"
+   ],
+   "rooms": 0,
+   "encounters": 0,
+   "size": "large",
+   "generated": true
+  },
+  {
+   "id": "outdoor-village-small",
+   "name": "Oakham",
+   "cols": 40,
+   "rows": 30,
+   "ambient": "bright",
+   "description": "A small hamlet by a stream: a few houses, a watermill, a kiln and a pen. Good for a quick stop.",
+   "setting": "town",
+   "tags": [
+    "outdoor",
+    "village",
+    "hamlet",
+    "small"
+   ],
+   "rooms": 0,
+   "encounters": 0,
+   "size": "small",
+   "generated": true
+  },
+  {
+   "id": "outdoor-coast-large",
+   "name": "Wrecker's Cove",
+   "cols": 140,
+   "rows": 100,
+   "ambient": "bright",
+   "description": "A long shore with a lighthouse on the point, a wreck on the sandbar, sea stacks and tide pools.",
+   "setting": "wilderness",
+   "tags": [
+    "outdoor",
+    "coast",
+    "sea",
+    "lighthouse",
+    "large"
+   ],
+   "rooms": 0,
+   "encounters": 0,
+   "size": "large",
+   "generated": true
+  },
+  {
+   "id": "outdoor-desert-small",
+   "name": "The Dry Sea",
+   "cols": 40,
+   "rows": 30,
+   "ambient": "bright",
+   "description": "An oasis with mud-brick houses, a stone arch and old columns in the sand.",
+   "setting": "wilderness",
+   "tags": [
+    "outdoor",
+    "desert",
+    "oasis",
+    "small"
+   ],
+   "rooms": 0,
+   "encounters": 0,
+   "size": "small",
+   "generated": true
+  },
+  {
+   "id": "outdoor-mountains-large",
+   "name": "Greyfang Pass",
+   "cols": 140,
+   "rows": 100,
+   "ambient": "bright",
+   "description": "A long mountain pass with a watchtower, a barrow in the valley and a cave mouth on the heights.",
+   "setting": "wilderness",
+   "tags": [
+    "outdoor",
+    "mountains",
+    "pass",
+    "large"
+   ],
+   "rooms": 0,
+   "encounters": 0,
+   "size": "large",
+   "generated": true
+  },
+  {
+   "id": "outdoor-jungle-small",
+   "name": "Temple of the Hollow Sun",
+   "cols": 40,
+   "rows": 30,
+   "ambient": "bright",
+   "description": "A patch of jungle by a muddy river, with a temple clearing and totems in the trees.",
+   "setting": "wilderness",
+   "tags": [
+    "outdoor",
+    "jungle",
+    "small"
+   ],
+   "rooms": 0,
+   "encounters": 0,
+   "size": "small",
+   "generated": true
+  },
+  {
+   "id": "outdoor-fungus-large",
+   "name": "The Sporelands",
+   "cols": 140,
+   "rows": 100,
+   "ambient": "dim",
+   "description": "A huge alien grove: crystal trees, monoliths, glowing pools and a fresh crater where something fell.",
+   "setting": "wilderness",
+   "tags": [
+    "outdoor",
+    "alien",
+    "fungus",
+    "crater",
+    "large"
+   ],
+   "rooms": 0,
+   "encounters": 0,
+   "size": "large",
+   "generated": true
+  },
+  {
+   "id": "outdoor-region-medium",
+   "name": "Isles of Varrow",
+   "cols": 80,
+   "rows": 60,
+   "ambient": "bright",
+   "description": "A smaller land at a mile a square: a coast, a range, forests and a handful of towns.",
+   "setting": "region",
+   "tags": [
+    "outdoor",
+    "region",
+    "world map",
+    "medium"
+   ],
+   "rooms": 0,
+   "encounters": 0,
+   "size": "medium",
+   "scale": 5280,
+   "generated": true
+  },
+  {
    "id": "outdoor-region-huge",
    "name": "Duskvale",
    "cols": 160,
@@ -275,6 +526,60 @@
    "encounters": 0,
    "size": "huge",
    "scale": 5280,
+   "generated": true
+  },
+  {
+   "id": "quick-dungeon-small",
+   "name": "The Sunken Vaults",
+   "cols": 56,
+   "rows": 42,
+   "ambient": "dark",
+   "description": "A small dungeon of stone halls: storerooms, a shrine and a vault at the end.",
+   "setting": "dungeon",
+   "tags": [
+    "dungeon",
+    "indoor",
+    "small"
+   ],
+   "rooms": 8,
+   "encounters": 0,
+   "size": "small",
+   "generated": true
+  },
+  {
+   "id": "quick-dungeon-medium",
+   "name": "Halls of the Iron Warden",
+   "cols": 80,
+   "rows": 58,
+   "ambient": "dark",
+   "description": "A full dungeon level: barracks, a library, a crypt, a mess hall and a guarded vault.",
+   "setting": "dungeon",
+   "tags": [
+    "dungeon",
+    "indoor",
+    "medium"
+   ],
+   "rooms": 10,
+   "encounters": 0,
+   "size": "medium",
+   "generated": true
+  },
+  {
+   "id": "quick-dungeon-large",
+   "name": "The Deep Keep",
+   "cols": 104,
+   "rows": 76,
+   "ambient": "dark",
+   "description": "A big delve for a whole session: many rooms, a lair, a ritual chamber and the vault below.",
+   "setting": "dungeon",
+   "tags": [
+    "dungeon",
+    "indoor",
+    "large"
+   ],
+   "rooms": 14,
+   "encounters": 0,
+   "size": "large",
    "generated": true
   }
  ],

@@ -9,7 +9,7 @@ import { foliageOn, bushCrown } from './foliage3d';
 
 const TAU = Math.PI * 2, HALF = Math.PI / 2, Q = Math.PI / 4, RT2 = Math.SQRT2;
 
-const tint = (hex: string, f: number) => {
+export const tint = (hex: string, f: number) => {
   if (!/^#[0-9a-f]{6}$/i.test(hex)) return hex;
   const n = parseInt(hex.slice(1), 16);
   const ch = (s: number) => {
@@ -19,14 +19,14 @@ const tint = (hex: string, f: number) => {
   return '#' + ((ch(16) << 16) | (ch(8) << 8) | ch(0)).toString(16).padStart(6, '0');
 };
 
-const sub = (O: Spot, lx: number, lz: number, dry = 0): Spot => {
+export const sub = (O: Spot, lx: number, lz: number, dry = 0): Spot => {
   const yaw = O.ry ?? 0, c = Math.cos(yaw), s = Math.sin(yaw);
   return { x: O.x + lx * c + lz * s, z: O.z - lx * s + lz * c, ry: yaw + dry, y: O.y };
 };
 
 /** A piece turned by yaw (about y) after pitch (about x) and roll (about z), which plain XYZ angles can't express. */
 const E = new THREE.Euler(), QA = new THREE.Quaternion(), QB = new THREE.Quaternion(), AX = new THREE.Vector3(1, 0, 0), AY = new THREE.Vector3(0, 1, 0), AZ = new THREE.Vector3(0, 0, 1);
-function PT(k: Kit, bin: Bin, O: Spot, gk: GeoKey, x: number, y: number, z: number, sx: number, sy: number, sz: number, col: string, yaw: number, pitch: number, roll = 0) {
+export function PT(k: Kit, bin: Bin, O: Spot, gk: GeoKey, x: number, y: number, z: number, sx: number, sy: number, sz: number, col: string, yaw: number, pitch: number, roll = 0) {
   QA.setFromAxisAngle(AY, yaw).multiply(QB.setFromAxisAngle(AX, pitch)).multiply(QB.setFromAxisAngle(AZ, roll));
   E.setFromQuaternion(QA, 'XYZ');
   k.P(bin, O, gk, x, y, z, sx, sy, sz, col, E.x, E.y, E.z);
@@ -34,11 +34,11 @@ function PT(k: Kit, bin: Bin, O: Spot, gk: GeoKey, x: number, y: number, z: numb
 
 // ---------- buildings ----------
 
-type Roof = 'gable' | 'hip';
+export type Roof = 'gable' | 'hip';
 interface Bld { roof: Roof; roofCol: string; wall: string; H: number; chim?: [number, number][]; timber?: boolean; boards?: boolean; fw?: number; fd?: number }
 
 /** A roof over a W x D box whose walls stop at y = top. 45 degree pitch; ridge along the longer side. Returns the ridge height. */
-function roof(k: Kit, O: Spot, W: number, D: number, top: number, kind: Roof, col: string, R: () => number) {
+export function roof(k: Kit, O: Spot, W: number, D: number, top: number, kind: Roof, col: string, R: () => number) {
   const ov = 0.36, alongX = W >= D, L = (alongX ? W : D) + ov, S = (alongX ? D : W) + ov, rh = S / 2, s = S / RT2;
   const dark = tint(col, -0.28);
   if (kind === 'gable') {
@@ -74,7 +74,7 @@ function roof(k: Kit, O: Spot, W: number, D: number, top: number, kind: Roof, co
 }
 
 /** A window on a wall: dark glass, a timber frame, a sill and (sometimes) shutters. face: +1/-1 front/back (z), +2/-2 right/left (x). */
-function windowAt(k: Kit, O: Spot, x: number, y: number, z: number, face: number, R: () => number, w = 0.42, h = 0.52, frame = DARKWOOD) {
+export function windowAt(k: Kit, O: Spot, x: number, y: number, z: number, face: number, R: () => number, w = 0.42, h = 0.52, frame = DARKWOOD) {
   const onZ = Math.abs(face) === 1, sg = Math.sign(face), t = 0.05;
   const glass = R() < 0.25 ? '#e7b765' : '#25303a';
   const X = (a: number) => (onZ ? x + a : x + sg * t), Z = (a: number) => (onZ ? z + sg * t : z + a);
@@ -95,7 +95,7 @@ function windowAt(k: Kit, O: Spot, x: number, y: number, z: number, face: number
 }
 
 /** A house: stone footing, plastered or boarded walls with timber framing, windows, a door at the front, a roof and chimneys. */
-function building(k: Kit, O: Spot, w: number, d: number, R: () => number, o: Bld) {
+export function building(k: Kit, O: Spot, w: number, d: number, R: () => number, o: Bld) {
   const W = w * (o.fw ?? 0.84), D = d * (o.fd ?? 0.8), H = o.H, beam = tint(DARKWOOD, -0.1);
   k.B('stone', O, 0, 0, 0, W + 0.12, 0.26, D + 0.12, STONE);
   k.B('lit', O, 0, 0.2, 0, W, H - 0.2, D, tint(o.wall, 0.12));
@@ -153,7 +153,7 @@ const house = (o: { roof: Roof; H: number; chim?: [number, number][]; timber?: b
 // ---------- plants ----------
 
 /** Lianas hanging from (x, y, z) down to y1, with a few leaves on them. */
-function liana(k: Kit, O: Spot, x: number, y: number, z: number, y1: number, col: string, R: () => number, glow = false) {
+export function liana(k: Kit, O: Spot, x: number, y: number, z: number, y1: number, col: string, R: () => number, glow = false) {
   const n = 4;
   let px = x, pz = z, py = y;
   for (let i = 1; i <= n; i++) {
@@ -165,7 +165,7 @@ function liana(k: Kit, O: Spot, x: number, y: number, z: number, y1: number, col
 }
 
 /** Buttress roots: thin triangular fins flaring out from a trunk (each piece makes two opposite fins). */
-function buttress(k: Kit, O: Spot, r: number, h: number, col: string, R: () => number, n = 4) {
+export function buttress(k: Kit, O: Spot, r: number, h: number, col: string, R: () => number, n = 4) {
   const half = Math.ceil(n / 2);
   for (let i = 0; i < half; i++) {
     const a = (i / half) * Math.PI + R() * 0.4;
@@ -174,7 +174,7 @@ function buttress(k: Kit, O: Spot, r: number, h: number, col: string, R: () => n
 }
 
 /** A broad leaf on a short stalk pointing out at angle a, drooping. */
-function broadLeaf(k: Kit, O: Spot, a: number, len: number, y: number, col: string, R: () => number) {
+export function broadLeaf(k: Kit, O: Spot, a: number, len: number, y: number, col: string, R: () => number) {
   const c = Math.cos(a), s = Math.sin(a), d = len * 0.55;
   k.Beam('fabric', O, [0, 0, 0], [c * d * 0.5, y, s * d * 0.5], 0.018, tint(col, -0.25), 'cyl6');
   PT(k, 'fabric', O, 'sph', c * d, y + 0.02, s * d, len * 0.45, 0.025, len, tint(col, (R() - 0.4) * 0.25), -a + HALF, 0.35 + R() * 0.35);
@@ -182,7 +182,7 @@ function broadLeaf(k: Kit, O: Spot, a: number, len: number, y: number, col: stri
 }
 
 /** An alien mushroom: pale stem, shelf rings, a cap glowing from underneath. */
-function bigShroom(k: Kit, O: Spot, x: number, z: number, H: number, rc: number, cap: string, spot: string, R: () => number) {
+export function bigShroom(k: Kit, O: Spot, x: number, z: number, H: number, rc: number, cap: string, spot: string, R: () => number) {
   k.S('lit', O, x, 0.12, z, rc * 0.32, '#d6cfc2', 'ico');
   k.C('lit', O, x, 0, z, rc * 0.17, H, '#e3dccd', 'cyl16');
   for (let i = 1; i <= 2; i++) k.P('lit', O, 'hemi', x + (R() - 0.5) * 0.05, H * (0.3 + i * 0.2), z, rc * 0.7, 0.12, rc * 0.7, tint(cap, 0.15));

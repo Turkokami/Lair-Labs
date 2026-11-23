@@ -951,13 +951,26 @@ export const MORE_MODELS2: Record<string, Model> = {
       const x = -w * 0.375 + r * w * 0.25, L = d * 0.88;
       k.B('lit', O, x, 0, 0, 0.24, 0.07, L, soil);
       if (kind === 0) {
-        // wheat
-        k.B('fabric', O, x, 0.07, 0, 0.18, 0.55, L * 0.96, crop);
-        k.B('fabric', O, x, 0.62, 0, 0.2, 0.08, L * 0.96, tint(crop, 0.2));
+        // wheat: a dense band of stalks with a ragged line of heavy ears along the top
+        k.B('fabric', O, x, 0.07, 0, 0.14, 0.42, L * 0.96, tint(crop, -0.08));
+        const n = Math.max(5, Math.round(L / 0.16));
+        for (let i = 0; i < n; i++) {
+          const z = -L * 0.48 + (i + 0.5) * (L * 0.96 / n);
+          k.P('fabric', O, 'ico', x + (R() - 0.5) * 0.08, 0.5 + R() * 0.08, z, 0.15, 0.2, 0.13, tint(crop, 0.08 + (R() - 0.5) * 0.12), (R() - 0.5) * 0.4, R() * TAU, (R() - 0.5) * 0.4);
+        }
       } else if (kind === 2) {
-        // corn, tall enough to hide in
-        k.B('fabric', O, x, 0.07, 0, 0.2, 1.55, L * 0.96, crop);
-        k.B('fabric', O, x, 1.62, 0, 0.12, 0.12, L * 0.9, '#d9c26a');
+        // corn, tall enough to hide in: single stalks with blades, cobs and tassels
+        const n = Math.max(3, Math.round(L / 0.36));
+        for (let i = 0; i < n; i++) {
+          const z = -L * 0.45 + (i + 0.5) * (L * 0.9 / n) + (R() - 0.5) * 0.06, h = 1.45 + R() * 0.2, xs = x + (R() - 0.5) * 0.05;
+          k.C('fabric', O, xs, 0.07, z, 0.035, h, tint(crop, -0.05), 'cyl6');
+          for (let j = 0; j < 3; j++) {
+            const a = R() * TAU, y = 0.45 + j * 0.38;
+            k.Beam('fabric', O, [xs, y, z], [xs + Math.cos(a) * 0.32, y + 0.2, z + Math.sin(a) * 0.32], 0.035, tint(crop, 0.06 * j), 'cyl6');
+          }
+          k.P('fabric', O, 'cyl6', xs + 0.05, 0.85, z, 0.07, 0.24, 0.07, '#e2c860', 0, 0, 0.35);
+          k.P('fabric', O, 'cone', xs, h + 0.14, z, 0.1, 0.22, 0.1, '#d9c26a');
+        }
       } else if (kind === 1) for (let i = 0; i < 4; i++) k.S('fabric', O, x, 0.15, -L * 0.375 + i * L * 0.25, 0.13, i % 2 ? crop : tint(crop, -0.1), 'ico');
       else {
         // pumpkins on a vine
