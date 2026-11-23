@@ -1,5 +1,6 @@
 import { HostCore, GameError, type GameState, type Intent, type PlayerView } from '../engine/game';
 import type { Conn, HostTransport, ClientTransport, ToClient, ToHost } from './transport';
+import type { Profile } from '../engine/profile';
 
 /** Runs on the GM's device: owns the game and serves each phone its own filtered view. */
 export class HostSession {
@@ -8,6 +9,7 @@ export class HostSession {
   private timer: ReturnType<typeof setTimeout> | null = null;
   private lastSent = new Map<Conn, string>();
   private sentBackdrop = new Map<Conn, string>();
+  private sentProfiles = new Map<Conn, string>();
   /** Background pictures by id (data URLs). Kept out of the game state so views stay small. */
   backdrops = new Map<string, string>();
   onLocalChange: () => void = () => {};
@@ -52,6 +54,7 @@ export class HostSession {
       const id = this.conns.get(c);
       this.conns.delete(c);
       this.lastSent.delete(c);
+      this.sentProfiles.delete(c);
       if (id && ![...this.conns.values()].includes(id)) this.core.setConnected(id, false);
     });
   }
@@ -59,6 +62,14 @@ export class HostSession {
   private onMessage(c: Conn, m: ToHost) {
     if (!m || typeof m !== 'object') return;
     if (m.t === 'ping') return;
+    if (m.t === 'img?') {
+      const id = this.conns.get(c);
+      if (!id || !Array.isArray(m.ids)) return;
+      for (const imgId of m.ids.slice(0, 40)) {
+        if (typeof imgId === 'string' && this.core.canSeeImage(id, imgId)) c.send({ t: 'img', id: imgId, data: this.core.images.get(imgId)! } satisfies ToClient);
+      }
+      return;
+    }
     if (m.t !== 'intent' || !m.intent) return;
     const it = m.intent;
     let id = this.conns.get(c) ?? null;
@@ -119,6 +130,12 @@ export class HostSession {
       this.sentBackdrop.set(c, bid);
       c.send({ t: 'backdrop', id: bid, data: this.backdrops.get(bid)! } satisfies ToClient);
     }
+    const profiles = this.core.profilesFor(id);
+    const pj = JSON.stringify(profiles);
+    if (this.sentProfiles.get(c) !== pj) {
+      this.sentProfiles.set(c, pj);
+      c.send({ t: 'profiles', list: profiles } satisfies ToClient);
+    }
     const json = JSON.stringify(view);
     if (this.lastSent.get(c) === json) return;
     this.lastSent.set(c, json);
@@ -132,6 +149,13 @@ export type ClientStatus = 'connecting' | 'connected' | 'reconnecting' | 'closed
 export class ClientSession {
   view?: PlayerView;
   backdrops = new Map<string, string>();
+  /** Character profiles this phone may read, by id. */
+  profiles: Record<string, Profile> = {};
+  /** Profile pictures by id. */
+  images = new Map<string, string>();
+  private asked = new Set<string>();
+  /** Called when a profile picture arrives (so the phone can keep a copy). */
+  onImage: (id: string, data: string) => void = () => {};
   status: ClientStatus = 'connecting';
   error = '';
   private conn?: Conn;
@@ -203,6 +227,16 @@ export class ClientSession {
     this.status = 'closed';
   }
 
+  /** Ask the GM for profile pictures this phone hasn't got yet. */
+  requestImages(ids: string[]) {
+    const need = ids.filter((i) => i && !this.images.has(i) && !this.asked.has(i));
+    if (!need.length || !this.conn) return;
+    for (const i of need) this.asked.add(i);
+    this.conn.send({ t: 'img?', ids: need } satisfies ToHost);
+    // ask again later if nothing came (a dropped link)
+    setTimeout(() => need.forEach((i) => !this.images.has(i) && this.asked.delete(i)), 8000);
+  }
+
   send(intent: Intent): Promise<void> {
     const c = this.conn;
     if (!c) return Promise.reject(new Error('Not connected yet. Hang on…'));
@@ -236,6 +270,17 @@ export class ClientSession {
         break;
       case 'notice':
         this.onNotice(m.text);
+        break;
+      case 'profiles':
+        if (Array.isArray(m.list)) this.profiles = Object.fromEntries(m.list.map((p) => [p.id, p]));
+        this.onUpdate();
+        break;
+      case 'img':
+        if (typeof m.data === 'string' && m.data.startsWith('data:image/')) {
+          this.images.set(m.id, m.data);
+          this.onImage(m.id, m.data);
+          this.onUpdate();
+        }
         break;
       case 'kicked':
         this.status = 'kicked';

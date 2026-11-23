@@ -21,6 +21,9 @@ import { MapCanvas, lineToTemplate, type MapCanvasProps, type TemplateShape } fr
 const View3D = lazy(() => import('../view3d/View3D'));
 import { SheetPanel, ActionsPanel, BagPanel } from './Sheet';
 import { DiceTray, LogView, Modal, store, toast, type RollFn } from './common';
+import { Avatar, ProfileModal, type ImgFn } from './Profile';
+import { getImages, putImage } from './imagestore';
+import { profileImageIds, type Profile } from '../engine/profile';
 import { peerParams, safeDiscord } from './Player';
 
 type Tool =
@@ -44,6 +47,9 @@ export function GMApp({ onExit }: { onExit: () => void }) {
       for (const p of Object.values(state.players)) p.connected = false;
     } else {
       state = newGame(makeCode(), TEMPLATES[0].make());
+      // the GM's NPCs and monsters with profiles carry over to every new session
+      const cast = store.get<Record<string, Profile> | null>('gm.cast', null);
+      if (cast) state.profiles = { ...cast };
       try {
         state = { ...state, map: await fetchLibraryMap('maps', 'crypt-of-the-ashen-saint') };
       } catch {
@@ -56,6 +62,7 @@ export function GMApp({ onExit }: { onExit: () => void }) {
         await h.start();
         const bg = store.get<{ id: string; data: string } | null>('gm.backdrop', null);
         if (bg && state.map.backdrop?.id === bg.id) h.backdrops.set(bg.id, bg.data);
+        h.core.onImage = (id, data) => void putImage(id, data);
         setHost(h);
         setStatus('idle');
         return;
@@ -125,6 +132,7 @@ function GMTable({ host, onEnd }: { host: HostSession; onEnd: () => void }) {
   const [selected, setSelected] = useState<string | undefined>();
   const [panelOpen, setPanelOpen] = useState(true);
   const [sheetFor, setSheetFor] = useState<string | null>(null);
+  const [profileFor, setProfileFor] = useState<string | null>(null);
   const [qr, setQr] = useState(false);
   const [publicRolls, setPublicRolls] = useState(false);
   const undo = useRef<GameMap[]>([]);
@@ -136,9 +144,15 @@ function GMTable({ host, onEnd }: { host: HostSession; onEnd: () => void }) {
     host.onLocalChange = () => {
       setTick((n) => n + 1);
       clearTimeout(t);
-      t = setTimeout(() => store.set('gm.game', core.s), 800);
+      t = setTimeout(() => {
+        store.set('gm.game', core.s);
+        store.set('gm.cast', Object.fromEntries(Object.entries(core.s.profiles ?? {}).filter(([, p]) => p.kind !== 'pc')));
+      }, 800);
     };
     store.set('gm.game', core.s);
+    // profile pictures live on this device; load them for the table
+    const ids = Object.values(core.s.profiles ?? {}).flatMap(profileImageIds).filter((i) => !core.images.has(i));
+    if (ids.length) getImages(ids).then((m) => { for (const [k, d] of m) core.images.set(k, d); setTick((n) => n + 1); });
     return () => {
       host.onLocalChange = () => {};
       clearTimeout(t);
@@ -162,6 +176,19 @@ function GMTable({ host, onEnd }: { host: HostSession; onEnd: () => void }) {
   useEffect(() => {
     if (new URLSearchParams(location.search).has('rec')) (window as unknown as { __gm?: unknown }).__gm = { gm, core, templates: TEMPLATES };
   });
+  const img: ImgFn = (id) => (id ? core.images.get(id) : undefined);
+  const gmSend = async (i: Intent) => {
+    const e = host.gm(i);
+    if (e) throw new Error(e);
+  };
+  const openTokenProfile = (t: Token) => {
+    if (t.charId) return setProfileFor(t.charId);
+    if (t.profileId && s.profiles?.[t.profileId]) return setProfileFor(t.profileId);
+    if (gm({ t: 'gm:linkProfile', tokenId: t.id })) {
+      const pid = core.s.tokens.find((k) => k.id === t.id)?.profileId;
+      if (pid) setProfileFor(pid);
+    }
+  };
   const v = core.view('gm');
   const s = core.s;
   const map = s.map;
@@ -524,7 +551,7 @@ function GMTable({ host, onEnd }: { host: HostSession; onEnd: () => void }) {
                 ))}
               </nav>
               <div className="pad stack scroll">
-                {sel && <TokenCard t={sel} tokens={s.tokens} gm={gm} roll={roll} onClose={() => setSelected(undefined)} onSheet={() => sel.charId && setSheetFor(sel.charId)} monsterHp={s.settings.monsterHp} />}
+                {sel && <TokenCard t={sel} tokens={s.tokens} gm={gm} roll={roll} onClose={() => setSelected(undefined)} onSheet={() => sel.charId && setSheetFor(sel.charId)} monsterHp={s.settings.monsterHp} profiles={s.profiles ?? {}} img={img} onProfile={() => openTokenProfile(sel)} />}
                 {playTab === 'table' && (
                   <TableTab
                     s={s}
@@ -577,7 +604,7 @@ function GMTable({ host, onEnd }: { host: HostSession; onEnd: () => void }) {
                     </div>
                   </div>
                 )}
-                {playTab === 'party' && <PartyTab s={s} gm={gm} onSheet={setSheetFor} />}
+                {playTab === 'party' && <PartyTab s={s} gm={gm} onSheet={setSheetFor} onProfile={setProfileFor} img={img} />}
                 {playTab === 'fog' && (
                   <div className="stack">
                     <label className="inline">What players see
@@ -620,6 +647,20 @@ function GMTable({ host, onEnd }: { host: HostSession; onEnd: () => void }) {
           )}
         </aside>
       </div>
+      {profileFor && (s.characters[profileFor] || s.profiles?.[profileFor]) && (
+        <ProfileModal
+          id={profileFor}
+          profile={s.profiles?.[profileFor]}
+          ch={s.characters[profileFor]}
+          token={s.tokens.find((t) => t.charId === profileFor || t.profileId === profileFor)}
+          canEdit
+          isGM
+          isOwner={false}
+          img={img}
+          send={gmSend}
+          onClose={() => setProfileFor(null)}
+        />
+      )}
       {qr && <JoinModal code={s.code} url={joinUrl} onClose={() => setQr(false)} />}
       {sheetFor && s.characters[sheetFor] && (
         <Modal title={s.characters[sheetFor].build.name} onClose={() => setSheetFor(null)} wide>
@@ -873,7 +914,9 @@ function GmHud3D({ t, tokens, gm, roll, round }: { t?: Token; tokens: Token[]; g
   );
 }
 
-function TokenCard({ t, tokens, gm, roll, onClose, onSheet, monsterHp }: { t: Token; tokens: Token[]; gm: (i: Intent) => boolean; roll: RollFn; onClose: () => void; onSheet: () => void; monsterHp: string }) {
+function TokenCard({ t, tokens, gm, roll, onClose, onSheet, monsterHp, profiles, img, onProfile }: { t: Token; tokens: Token[]; gm: (i: Intent) => boolean; roll: RollFn; onClose: () => void; onSheet: () => void; monsterHp: string; profiles: Record<string, Profile>; img: ImgFn; onProfile: () => void }) {
+  const prof = profiles[t.charId ?? t.profileId ?? ''];
+  const npcProfiles = Object.values(profiles).filter((p) => p.kind !== 'pc');
   const [amt, setAmt] = useState('');
   const [aimId, setAimId] = useState('');
   const foes = tokens.filter((k) => k.id !== t.id && k.hp > 0 && (t.kind === 'pc' ? k.kind !== 'pc' : k.kind === 'pc')).sort((a, b) => gapFt(t, a) - gapFt(t, b));
@@ -884,9 +927,23 @@ function TokenCard({ t, tokens, gm, roll, onClose, onSheet, monsterHp }: { t: To
   return (
     <div className="card token-card">
       <div className="row between">
-        <b style={{ color: t.color }}>{t.name}</b>
-        <button className="ghost icon small" onClick={onClose} aria-label="Close">✕</button>
+        <span className="row gap">
+          <Avatar src={img(prof?.portrait)} name={t.name} color={t.color} size={40} onClick={onProfile} />
+          <b style={{ color: t.color }}>{t.name}</b>
+        </span>
+        <span className="row gap">
+          <button className="small" onClick={onProfile}>{prof || t.charId ? 'Profile' : 'Make profile'}</button>
+          <button className="ghost icon small" onClick={onClose} aria-label="Close">✕</button>
+        </span>
       </div>
+      {!t.charId && npcProfiles.length > 0 && (
+        <label className="inline small">Profile
+          <select value={t.profileId ?? ''} onChange={(e) => e.target.value && gm({ t: 'gm:linkProfile', tokenId: t.id, profileId: e.target.value })}>
+            <option value="">{t.profileId ? '' : 'None yet'}</option>
+            {npcProfiles.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
+          </select>
+        </label>
+      )}
       <div className="row gap wrap small">
         <span>HP <b>{t.hp}/{t.maxHp}</b></span>
         <span>AC <b>{t.ac}</b></span>
@@ -963,11 +1020,18 @@ function Bestiary({ value, onPick, roll }: { value: string; onPick: (id: string)
   );
 }
 
-function PartyTab({ s, gm, onSheet }: { s: GameState; gm: (i: Intent) => boolean; onSheet: (id: string) => void }) {
+function PartyTab({ s, gm, onSheet, onProfile, img }: { s: GameState; gm: (i: Intent) => boolean; onSheet: (id: string) => void; onProfile: (id: string) => void; img: ImgFn }) {
   const chars = Object.values(s.characters).filter((c) => s.tokens.some((t) => t.charId === c.build.id));
-  if (!chars.length) return <p className="muted">Heroes show up here once players make them on their phones.</p>;
+  const cast = Object.values(s.profiles ?? {}).filter((p) => p.kind !== 'pc').sort((a, b) => a.name.localeCompare(b.name));
+  const newNpc = () => {
+    const name = prompt('Name of the new character', '');
+    if (!name?.trim()) return;
+    const id = 'pf_' + Math.random().toString(36).slice(2, 12);
+    if (gm({ t: 'gm:newProfile', name: name.trim(), id })) onProfile(id);
+  };
   return (
     <div className="stack">
+      {!chars.length && <p className="muted">Heroes show up here once players make them on their phones.</p>}
       {chars.map((c) => {
         const sh = computeSheet(c.build);
         const owner = Object.values(s.players).find((p) => p.charId === c.build.id);
@@ -975,7 +1039,11 @@ function PartyTab({ s, gm, onSheet }: { s: GameState; gm: (i: Intent) => boolean
           <div key={c.build.id} className="card">
             <div className="row between">
               <span><b style={{ color: c.build.color }}>{c.build.name}</b> <span className="muted small">{sh.speciesName} {sh.cls.name} {c.build.level}{owner ? ` · ${owner.name}` : ''}</span></span>
-              <button className="ghost small" onClick={() => onSheet(c.build.id)}>Sheet</button>
+              <span className="row gap">
+                <Avatar src={img(s.profiles?.[c.build.id]?.portrait)} name={c.build.name} color={c.build.color} size={32} onClick={() => onProfile(c.build.id)} />
+                <button className="ghost small" onClick={() => onProfile(c.build.id)}>Profile</button>
+                <button className="ghost small" onClick={() => onSheet(c.build.id)}>Sheet</button>
+              </span>
             </div>
             <div className="row gap wrap small">
               <span>HP <b>{c.state.hp}/{sh.maxHp}</b>{c.state.tempHp ? ` +${c.state.tempHp}` : ''}</span>
@@ -991,6 +1059,17 @@ function PartyTab({ s, gm, onSheet }: { s: GameState; gm: (i: Intent) => boolean
           </div>
         );
       })}
+      <div className="row between">
+        <h3>NPCs and monsters</h3>
+        <button className="small" onClick={newNpc}>New profile</button>
+      </div>
+      {!cast.length && <p className="muted small">Make a profile for anyone the heroes meet: a picture, their story, stats and secrets. Tap a creature on the map and choose Make profile, or start one here. They stay on this device for your next sessions.</p>}
+      {cast.map((p) => (
+        <button key={p.id} className="pick row gap" onClick={() => onProfile(p.id)}>
+          <Avatar src={img(p.portrait)} name={p.name} size={36} />
+          <span className="grow left"><b>{p.name}</b>{p.title ? <span className="muted small"> {p.title}</span> : null}<br /><span className="muted small">{p.shared ? 'Players can open it' : 'Only you'} · {s.tokens.filter((t) => t.profileId === p.id).length} on the map</span></span>
+        </button>
+      ))}
     </div>
   );
 }

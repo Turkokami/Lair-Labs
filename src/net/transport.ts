@@ -1,15 +1,20 @@
 // Network layer. The GM's device is the host; phones connect to it directly (peer to peer) using PeerJS.
 // A tiny in-memory transport lets tests run a host and several phones in one process.
 import type { Intent, PlayerView } from '../engine/game';
+import type { Profile } from '../engine/profile';
 
-export type ToHost = { t: 'intent'; rid?: number; intent: Intent } | { t: 'ping' };
+export type ToHost = { t: 'intent'; rid?: number; intent: Intent } | { t: 'ping' } | { t: 'img?'; ids: string[] };
 export type ToClient =
   | { t: 'view'; view: PlayerView }
   | { t: 'ack'; rid: number; ok: boolean; error?: string }
   | { t: 'notice'; text: string }
   | { t: 'kicked'; reason: string }
   /** A map's background picture (Universal VTT imports). Sent once per connection, apart from the view. */
-  | { t: 'backdrop'; id: string; data: string };
+  | { t: 'backdrop'; id: string; data: string }
+  /** The character profiles this phone may read. Sent apart from the view, and only when they change. */
+  | { t: 'profiles'; list: Profile[] }
+  /** A profile picture the phone asked for. */
+  | { t: 'img'; id: string; data: string };
 
 export interface Conn {
   send(msg: unknown): void;

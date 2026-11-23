@@ -365,3 +365,46 @@ canvas.thumb { display: block; }
 .v3d-spells { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); width: 100%; max-width: 300px; }
 .v3d-spells button { text-align: left; }
 .v3d-canvas::after { content: ''; position: absolute; inset: 0; pointer-events: none; background: radial-gradient(ellipse at 50% 55%, transparent 58%, rgba(0, 0, 0, 0.42) 100%); }
+
+/* ---------- character profiles ---------- */
+.avatar { display: inline-flex; align-items: center; justify-content: center; flex: none; border-radius: 50%; overflow: hidden; border: 2px solid var(--line); background: #3a3025; color: var(--gold2); font-family: Georgia, serif; font-weight: 700; padding: 0; min-height: 0; }
+.avatar img { width: 100%; height: 100%; object-fit: cover; display: block; }
+button.avatar { cursor: pointer; }
+.profile-head { display: flex; gap: 14px; align-items: flex-start; }
+.profile-head h2 { margin: 0; }
+.profile-pic { display: flex; flex-direction: column; align-items: center; gap: 6px; }
+.profile-pic button.small { min-height: 32px; font-size: 0.8rem; padding: 0 8px; }
+.profile-title { font-style: italic; color: var(--gold2); }
+.profile-tabs { display: flex; overflow-x: auto; width: 100%; }
+.profile-tabs button { flex: 1 0 auto; padding: 0 10px; font-size: 0.85rem; }
+.profile-actions { position: sticky; bottom: -14px; background: var(--bg2); padding: 8px 0; border-top: 1px solid var(--line); }
+.info-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 8px; }
+.info-dl { display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 8px; margin: 0; }
+.info-dl div { background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 6px 10px; }
+.info-dl dt { font-size: 0.75rem; color: var(--muted); }
+.info-dl dd { margin: 0; }
+.story-text { line-height: 1.55; }
+.ability-row { display: grid; grid-template-columns: repeat(6, 1fr); gap: 6px; }
+.ability-box { display: flex; flex-direction: column; align-items: center; background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 6px 2px; color: var(--text); }
+.ability-box b { font-size: 1.15rem; }
+.ability-box input.num { width: 100%; max-width: 52px; text-align: center; padding: 4px; min-height: 36px; }
+.statline { display: flex; flex-wrap: wrap; gap: 6px 14px; }
+.skill-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 2px 10px; }
+.prof { color: var(--gold2); }
+.thumbs { display: flex; gap: 6px; overflow-x: auto; }
+.thumb { width: 72px; height: 72px; flex: none; border-radius: 8px; overflow: hidden; padding: 0; min-height: 0; }
+.thumb img { width: 100%; height: 100%; object-fit: cover; }
+.gallery { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px; }
+.gallery figure { margin: 0; display: flex; flex-direction: column; gap: 6px; padding: 6px; }
+.gallery figure > button { padding: 0; min-height: 0; border-radius: 8px; overflow: hidden; aspect-ratio: 1; background: #120f0b; }
+.gallery img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.gallery .row button { min-height: 32px; font-size: 0.75rem; padding: 0 6px; }
+.pic-wait { display: flex; align-items: center; justify-content: center; width: 100%; height: 100%; min-height: 60px; color: var(--muted); font-size: 0.75rem; }
+.lightbox { position: fixed; inset: 0; z-index: 80; background: rgba(0, 0, 0, 0.92); display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 16px; gap: 10px; }
+.lightbox img { max-width: 100%; max-height: 78vh; object-fit: contain; border-radius: 8px; }
+.lightbox-cap { color: var(--text); text-align: center; max-width: 600px; }
+.lightbox-nav button { min-width: 52px; font-size: 1.4rem; }
+.lightbox-close { position: absolute; top: max(10px, env(safe-area-inset-top)); right: 10px; }
+.profile-link { width: 100%; margin-bottom: 10px; text-align: left; justify-content: flex-start; min-height: 60px; }
+button.party-mini { min-height: 0; padding: 3px 10px; border: 0; background: var(--card); color: var(--text); }
+.pick .avatar { margin-right: 4px; }

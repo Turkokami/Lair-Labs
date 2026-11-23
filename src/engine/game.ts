@@ -4,12 +4,13 @@ import { type GameMap, type DoorState, blankMap, cell, edgeCells, isFloor, moveC
 import { roll, critFormula, d20Formula, type RollResult } from './dice';
 import { spellById, spellDamage, spellHeal } from '../rules/spells';
 import { tokensInArea } from './areas';
-import { type Character, type CharacterBuild, type CharacterState, computeSheet, freshState } from '../rules/character';
+import { type Character, type CharacterBuild, type CharacterState, computeSheet, freshState, uid } from '../rules/character';
 import { monsterById, sizeSquares } from '../rules/monsters';
 import { speciesById } from '../rules/origins';
 import { partyVision, type VisionResult } from './vision';
 import { creatureForMonster } from '../library/creatures';
 import { mod, ABILITIES, ABILITY_NAMES, type Ability } from '../rules/core';
+import { type Profile, type ProfileKind, blankProfile, cleanProfile, validImageData, isImageId, profileImageIds, LIMITS } from './profile';
 
 export type Visibility = 'public' | 'gm' | 'self' | 'blind';
 
@@ -38,6 +39,8 @@ export interface Token {
   light?: { bright: number; dim: number };
   /** Darkvision in feet. */
   darkvision?: number;
+  /** The profile this NPC or monster shows (heroes use their character id). */
+  profileId?: string;
 }
 
 /** An area-of-effect shape on the map. Origin and target in grid units. Size in feet. */
@@ -125,6 +128,8 @@ export interface GameState {
   xcardAt?: number;
   /** Spell effects running now (Shield, Ray of Frost's slow). */
   effects?: Effect[];
+  /** Character profiles by id: a hero's id is its character id. Pictures are kept apart, by id. */
+  profiles?: Record<string, Profile>;
 }
 
 export type Intent =
@@ -151,7 +156,17 @@ export type Intent =
   | { t: 'torch'; tokenId: string; on: boolean }
   /** Cast a spell: the table rolls the attack or everyone's saves and applies the damage or healing. */
   | { t: 'cast'; spellId: string; slot?: number; targets?: string[]; point?: [number, number]; adv?: 'none' | 'adv' | 'dis'; charId?: string }
+  /** Save a profile's words (a hero's own player or the GM). */
+  | { t: 'profile:save'; profile: Partial<Profile> & { id: string } }
+  /** Add a picture to a profile: as the profile picture, or to the gallery. */
+  | { t: 'profile:image'; profileId: string; data: string; slot: 'portrait' | 'gallery'; caption?: string }
+  /** Take a picture off a profile. */
+  | { t: 'profile:dropImage'; profileId: string; imageId: string }
   // GM-only intents
+  /** Make a profile for an NPC or monster token (or link it to an existing one). */
+  | { t: 'gm:linkProfile'; tokenId: string; profileId?: string }
+  | { t: 'gm:newProfile'; name: string; kind?: ProfileKind; id?: string }
+  | { t: 'gm:deleteProfile'; profileId: string }
   | { t: 'gm:setMap'; map: GameMap }
   | { t: 'gm:editMap'; map: GameMap }
   | { t: 'gm:reveal'; cells: number[]; on: boolean }
@@ -236,6 +251,10 @@ export class HostCore {
   onChange: () => void = () => {};
   /** Private notices to one player (e.g. errors, "your turn"). */
   onNotice: (playerId: string, text: string) => void = () => {};
+  /** Profile pictures by id (data URLs), kept out of the game state. */
+  images = new Map<string, string>();
+  /** Called when a new picture arrives, so the host can keep it. */
+  onImage: (id: string, data: string) => void = () => {};
 
   constructor(state: GameState) {
     this.s = state;
@@ -382,6 +401,86 @@ export class HostCore {
         prev.state.slotsUsed = computeSheet(c.build).spell?.slots.map((_, i) => prev.state.slotsUsed[i] ?? 0) ?? [];
         this.syncToken(c.build.id);
         this.system(`${c.build.name} is now level ${c.build.level}!`);
+        break;
+      }
+      case 'profile:save': {
+        const id = it.profile?.id;
+        if (typeof id !== 'string') throw new GameError('Bad profile.');
+        const { kind, prev } = this.profileTarget(from, id);
+        const raw = { ...it.profile };
+        if (!gm) {
+          // players never see or change the GM's notes, or what the GM shares
+          raw.gmNotes = prev?.gmNotes;
+          raw.shared = prev?.shared;
+          raw.shareStats = prev?.shareStats;
+        }
+        const ch = this.s.characters[id];
+        const p = cleanProfile(raw, prev, id, kind, ch?.build.name ?? 'Unnamed');
+        if (ch) p.name = ch.build.name;
+        this.profiles()[id] = p;
+        break;
+      }
+      case 'profile:image': {
+        const { kind, prev } = this.profileTarget(from, it.profileId);
+        if (!validImageData(it.data)) throw new GameError('That picture is too big or not a picture. Try a JPEG or PNG.');
+        const p = prev ?? blankProfile(it.profileId, kind, this.s.characters[it.profileId]?.build.name ?? 'Unnamed');
+        if (it.slot === 'gallery' && p.gallery.length >= LIMITS.gallery) throw new GameError(`A gallery holds ${LIMITS.gallery} pictures.`);
+        const imgId = uid('im_');
+        this.images.set(imgId, it.data);
+        this.onImage(imgId, it.data);
+        if (it.slot === 'portrait') {
+          const old = p.portrait;
+          p.portrait = imgId;
+          // the old profile picture moves to the gallery rather than vanishing
+          if (old && !p.gallery.some((g) => g.id === old) && p.gallery.length < LIMITS.gallery) p.gallery.unshift({ id: old });
+        } else p.gallery.push({ id: imgId, caption: typeof it.caption === 'string' ? it.caption.slice(0, LIMITS.caption).trim() || undefined : undefined });
+        p.updated = Date.now();
+        this.profiles()[it.profileId] = p;
+        break;
+      }
+      case 'profile:dropImage': {
+        const { prev } = this.profileTarget(from, it.profileId);
+        if (!prev) throw new GameError('No such profile.');
+        if (prev.portrait === it.imageId) prev.portrait = undefined;
+        prev.gallery = prev.gallery.filter((g) => g.id !== it.imageId);
+        prev.updated = Date.now();
+        break;
+      }
+      case 'gm:linkProfile': {
+        const t = this.s.tokens.find((k) => k.id === it.tokenId);
+        if (!t) throw new GameError('No such token.');
+        if (t.charId) throw new GameError("A hero's profile goes with the hero.");
+        if (it.profileId) {
+          if (!this.profiles()[it.profileId] || this.profiles()[it.profileId].kind === 'pc') throw new GameError('No such profile.');
+          t.profileId = it.profileId;
+          break;
+        }
+        const id = uid('pf_');
+        const p = blankProfile(id, t.kind === 'monster' ? 'monster' : 'npc', t.name);
+        const mon = t.monsterId ? monsterById(t.monsterId) : undefined;
+        if (mon) {
+          p.stats = {
+            race: `${mon.size} ${mon.kind}`, level: `CR ${mon.cr} (${mon.xp} XP)`, ac: String(mon.ac), hp: `${mon.hp} (${mon.hpDice})`, speed: mon.speed,
+            abilities: [...mon.abilities], senses: mon.senses,
+            traits: mon.traits?.map((x) => `${x.name}. ${x.text}`).join('\n'),
+            actions: mon.actions.map((a) => `${a.name}. ${a.hit !== undefined ? `${a.hit >= 0 ? '+' : ''}${a.hit} to hit, ` : ''}${a.dmg ? `${a.dmg} ${a.type ?? ''}` : ''}${a.save ? ` ${a.save}` : ''}${a.text ? ` ${a.text}` : ''}`.trim()).join('\n'),
+          };
+        }
+        this.profiles()[id] = p;
+        t.profileId = id;
+        break;
+      }
+      case 'gm:newProfile': {
+        const id = it.id && /^pf_[a-z0-9]{4,32}$/.test(it.id) && !this.profiles()[it.id] ? it.id : uid('pf_');
+        this.profiles()[id] = blankProfile(id, it.kind === 'monster' ? 'monster' : 'npc', (it.name || 'New character').slice(0, LIMITS.name));
+        break;
+      }
+      case 'gm:deleteProfile': {
+        const p = this.profiles()[it.profileId];
+        if (!p) break;
+        if (p.kind === 'pc') throw new GameError("A hero's profile goes with the hero.");
+        delete this.profiles()[it.profileId];
+        for (const t of this.s.tokens) if (t.profileId === it.profileId) t.profileId = undefined;
         break;
       }
       case 'move': return this.move(from, it.tokenId, it.x, it.y);
@@ -1103,6 +1202,63 @@ export class HostCore {
         if (owner) this.onNotice(owner.id, 'your-turn');
       }
     }
+  }
+
+  // ---------- profiles ----------
+  profiles(): Record<string, Profile> {
+    return (this.s.profiles ??= {});
+  }
+  /** Who may edit profile id, and what kind it is. Throws when the caller may not. */
+  private profileTarget(from: string, id: string): { kind: ProfileKind; prev?: Profile } {
+    if (typeof id !== 'string' || !/^[\w-]{3,64}$/.test(id)) throw new GameError('Bad profile.');
+    const prev = this.profiles()[id];
+    if (this.s.characters[id]) {
+      if (!this.canEditChar(from, id)) throw new GameError("That isn't your character.");
+      return { kind: 'pc', prev };
+    }
+    if (from !== 'gm') throw new GameError('Only the GM can change that profile.');
+    if (!prev) throw new GameError('No such profile.');
+    return { kind: prev.kind, prev };
+  }
+  /** The profile a token shows, if any. */
+  profileIdFor(t: Token): string | undefined {
+    return t.charId ?? t.profileId;
+  }
+  /** The profiles one viewer may read, with private parts taken out. */
+  profilesFor(id: string): Profile[] {
+    const all = Object.values(this.s.profiles ?? {});
+    if (id === 'gm') return all;
+    const myChar = this.s.players[id]?.charId;
+    const out: Profile[] = [];
+    // every hero at the table has a profile to read, even before anyone writes in it
+    for (const ch of Object.values(this.s.characters)) {
+      if (!this.s.tokens.some((t) => t.charId === ch.build.id) && ch.build.id !== myChar) continue;
+      {
+        const p = this.s.profiles?.[ch.build.id] ?? blankProfile(ch.build.id, 'pc', ch.build.name);
+        const { gmNotes: _g, ...rest } = p;
+        const sh = computeSheet(ch.build);
+        const sheet = {
+          line: `${sh.speciesName} ${sh.cls.name} ${ch.build.level} · ${sh.backgroundName}`, level: ch.build.level,
+          abilities: ABILITIES.map((a) => sh.scores[a]), ac: sh.ac, maxHp: sh.maxHp, speed: sh.speed,
+          skills: sh.skills.filter((k) => k.prof).map((k) => `${k.name} ${k.total >= 0 ? '+' : ''}${k.total}`),
+          gear: [...sh.attacks.filter((a) => a.name !== 'Unarmed Strike').map((a) => a.name), ...ch.build.gear],
+        };
+        out.push(p.id === myChar ? { ...rest, name: ch.build.name, sheet } : { ...rest, name: ch.build.name, secrets: undefined, sheet });
+      }
+    }
+    for (const p of all) {
+      if (p.kind !== 'pc' && p.shared) {
+        const { gmNotes: _g, secrets: _s, ...rest } = p;
+        out.push(p.shareStats ? rest : { ...rest, stats: undefined });
+      }
+    }
+    return out;
+  }
+  /** May this viewer fetch this picture? Only pictures on profiles they can read. */
+  canSeeImage(id: string, imageId: string): boolean {
+    if (!isImageId(imageId) || !this.images.has(imageId)) return false;
+    if (id === 'gm') return true;
+    return this.profilesFor(id).some((p) => profileImageIds(p).includes(imageId));
   }
 
   // ---------- views ----------

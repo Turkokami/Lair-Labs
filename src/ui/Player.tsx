@@ -12,6 +12,9 @@ import { MapCanvas, lineToTemplate, type TemplateShape } from './MapCanvas';
 import { CharBuilder } from './CharBuilder';
 import { SheetPanel, ActionsPanel, BagPanel } from './Sheet';
 import { DiceTray, LogView, Modal, clientId, store, toast, vibrate, type RollFn } from './common';
+import { Avatar, ProfileModal, type ImgFn } from './Profile';
+import { getImages, putImage } from './imagestore';
+import { isEmptyProfile, type Profile } from '../engine/profile';
 
 const View3D = lazy(() => import('../view3d/View3D'));
 
@@ -36,6 +39,7 @@ export function PlayerApp({ initialCode, onExit }: { initialCode?: string; onExi
     setJoining(true);
     const s = new ClientSession(c, name.trim(), clientId(), peerClient());
     s.onUpdate = () => setTick((n) => n + 1);
+    s.onImage = (id, data) => void putImage(id, data);
     s.onNotice = (t) => {
       if (t === 'your-turn') {
         vibrate([120, 60, 120]);
@@ -101,7 +105,31 @@ function PlayerTable({ s, onLeave }: { s: ClientSession; onLeave: () => void }) 
   const [area, setArea] = useState<TemplateShape>({ shape: 'sphere', size: 20, color: '#4cc9f0' });
   const [safetyOpen, setSafetyOpen] = useState(false);
   const [target, setTarget] = useState<string | undefined>();
+  const [profileFor, setProfileFor] = useState<string | null>(null);
+  const [castOpen, setCastOpen] = useState(false);
+  const [, bump] = useState(0);
   const ch = v.myCharacter;
+  // profile pictures: from this phone's own store first, then from the GM
+  const loading = useRef(new Set<string>());
+  const img: ImgFn = (id) => {
+    if (!id) return undefined;
+    const have = s.images.get(id);
+    if (have) return have;
+    if (!loading.current.has(id)) {
+      loading.current.add(id);
+      getImages([id]).then((m) => {
+        const d = m.get(id);
+        if (d) {
+          s.images.set(id, d);
+          bump((n) => n + 1);
+        } else {
+          s.requestImages([id]);
+          setTimeout(() => !s.images.has(id) && loading.current.delete(id), 9000);
+        }
+      });
+    }
+    return undefined;
+  };
   const send = (i: Intent) => s.send(i);
   const safe = (p: Promise<void>) => p.catch((e: Error) => toast(e.message, 'error'));
   const roll: RollFn = (formula, label, opts) => safe(send({ t: 'roll', formula, label, ...opts })).then(() => tab !== 'log' && toast(`Rolled ${label || formula}`));
@@ -116,6 +144,42 @@ function PlayerTable({ s, onLeave }: { s: ClientSession; onLeave: () => void }) 
     heroes[ch.build.id] = ch;
     store.set('heroes', heroes);
   }, [ch]);
+
+  // keep my hero's profile on this phone too, and bring it back at a new table
+  const myProfile = ch ? s.profiles[ch.build.id] : undefined;
+  const restoring = useRef(false);
+  useEffect(() => {
+    if (!ch || !myProfile) return;
+    const kept = store.get<Record<string, Profile>>('heroProfiles', {});
+    if (!isEmptyProfile(myProfile)) {
+      const { sheet: _s, ...rest } = myProfile;
+      kept[ch.build.id] = rest;
+      store.set('heroProfiles', kept);
+      return;
+    }
+    const old = kept[ch.build.id];
+    const key = `restored.${v.code}.${ch.build.id}`;
+    if (!old || isEmptyProfile(old) || restoring.current || store.get(key, false)) return;
+    restoring.current = true;
+    store.set(key, true);
+    (async () => {
+      const { portrait, gallery, sheet: _s, ...words } = old;
+      await send({ t: 'profile:save', profile: { ...words, id: ch.build.id, gallery: [] } });
+      const pics = await getImages([...(portrait ? [portrait] : []), ...gallery.map((g) => g.id)]);
+      if (portrait && pics.get(portrait)) await send({ t: 'profile:image', profileId: ch.build.id, data: pics.get(portrait)!, slot: 'portrait' });
+      for (const g of gallery) if (pics.get(g.id)) await send({ t: 'profile:image', profileId: ch.build.id, data: pics.get(g.id)!, slot: 'gallery', caption: g.caption });
+      toast(`${ch.build.name}'s profile came along from this phone.`);
+    })().catch(() => {}).finally(() => (restoring.current = false));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [ch?.build.id, myProfile]);
+  const openFromToken = (tokenId: string) => {
+    const t = v.tokens.find((k) => k.id === tokenId);
+    if (!t) return false;
+    const pid = t.charId ?? (t.profileId && s.profiles[t.profileId] ? t.profileId : undefined);
+    if (!pid) return false;
+    setProfileFor(pid);
+    return true;
+  };
 
   const myTurn = !!v.myTokenId && v.combat.current === v.myTokenId;
   const prevTurn = useRef(false);
@@ -164,6 +228,7 @@ function PlayerTable({ s, onLeave }: { s: ClientSession; onLeave: () => void }) 
     <div className="screen phone">
       <header className="phone-head">
         <span className={'dot ' + statusClass(s.status)} title={s.status} />
+        <Avatar src={img(myProfile?.portrait)} name={ch.build.name} color={ch.build.color} size={34} onClick={() => setProfileFor(ch.build.id)} />
         <button className="plain head-name" onClick={() => setTab('sheet')}>
           <b style={{ color: ch.build.color }}>{ch.build.name}</b>
           <span className="muted small"> {ch.state.hp}/{sh.maxHp} HP · AC {sh.ac}</span>
@@ -245,6 +310,7 @@ function PlayerTable({ s, onLeave }: { s: ClientSession; onLeave: () => void }) 
                   }
                   if (v.map.doors[info.edge] && edgeNear(info.gx, info.gy, info.edge)) safe(send({ t: 'door', key: info.edge }));
                   else if (info.tokenId) {
+                    if (openFromToken(info.tokenId)) return;
                     const t = v.tokens.find((k) => k.id === info.tokenId);
                     if (t) toast(`${t.name}${t.hpLabel ? ` · ${t.hpLabel}` : ''}${t.conditions.length ? ` · ${t.conditions.map(conditionName).join(', ')}` : ''}`);
                   }
@@ -253,11 +319,11 @@ function PlayerTable({ s, onLeave }: { s: ClientSession; onLeave: () => void }) 
             )}
             <div className="party-strip">
               {v.party.map((p) => (
-                <div key={p.charId} className={'party-mini' + (p.dying ? ' dying' : '')}>
-                  <span className="dot" style={{ background: p.color }} />
+                <button key={p.charId} className={'party-mini plain' + (p.dying ? ' dying' : '')} onClick={() => setProfileFor(p.charId)} aria-label={`${p.name}'s profile`}>
+                  {s.profiles[p.charId]?.portrait ? <Avatar src={img(s.profiles[p.charId].portrait)} name={p.name} color={p.color} size={20} /> : <span className="dot" style={{ background: p.color }} />}
                   <span className="small">{p.name.split(' ')[0]}</span>
                   <span className="small muted">{p.hp}/{p.maxHp}</span>
-                </div>
+                </button>
               ))}
             </div>
             {!v.curtain && (
@@ -283,7 +349,16 @@ function PlayerTable({ s, onLeave }: { s: ClientSession; onLeave: () => void }) 
             {mapTool === 'measure' && <p className="hint">Drag to measure. Every square is 5 ft.</p>}
           </div>
         )}
-        {tab === 'sheet' && <div className="pad scroll"><SheetPanel ch={ch} roll={roll} send={send} canEdit /></div>}
+        {tab === 'sheet' && (
+          <div className="pad scroll">
+            <button className="profile-link card row gap" onClick={() => setProfileFor(ch.build.id)}>
+              <Avatar src={img(myProfile?.portrait)} name={ch.build.name} color={ch.build.color} size={44} />
+              <span className="grow left"><b>{myProfile?.title || 'My profile'}</b><br /><span className="muted small">{myProfile && !isEmptyProfile(myProfile) ? 'Picture, story, gallery and more' : 'Add a picture, background and history'}</span></span>
+              <span>›</span>
+            </button>
+            <SheetPanel ch={ch} roll={roll} send={send} canEdit />
+          </div>
+        )}
         {tab === 'actions' && <div className="pad scroll"><ActionsPanel ch={ch} roll={roll} send={send} canEdit combat={combat} /></div>}
         {tab === 'bag' && <div className="pad scroll"><BagPanel ch={ch} send={send} canEdit /></div>}
         {tab === 'log' && <LogView log={v.log} myId={v.you} onDamage={(f, l) => roll(f, l)} onChat={(text, to) => safe(send({ t: 'chat', text, to }))} />}
@@ -318,11 +393,49 @@ function PlayerTable({ s, onLeave }: { s: ClientSession; onLeave: () => void }) 
           </div>
         </Modal>
       )}
+      {castOpen && (
+        <Modal title="Characters at this table" onClose={() => setCastOpen(false)}>
+          <div className="stack">
+            {Object.values(s.profiles).sort((a, b) => (a.kind === 'pc' ? 0 : 1) - (b.kind === 'pc' ? 0 : 1) || a.name.localeCompare(b.name)).map((p) => {
+              const pm = v.party.find((x) => x.charId === p.id);
+              return (
+                <button key={p.id} className="pick row gap" onClick={() => { setCastOpen(false); setProfileFor(p.id); }}>
+                  <Avatar src={img(p.portrait)} name={p.name} color={pm?.color} size={40} />
+                  <span className="grow left"><b style={{ color: pm?.color }}>{p.name}</b>{p.title && <span className="muted small"> {p.title}</span>}<br /><span className="muted small">{p.sheet?.line ?? (p.kind === 'monster' ? 'Creature' : 'NPC')}{pm?.playerName ? ` · ${pm.playerName}` : ''}</span></span>
+                </button>
+              );
+            })}
+          </div>
+        </Modal>
+      )}
+      {profileFor && (() => {
+        const own = profileFor === ch.build.id;
+        const pm = v.party.find((p) => p.charId === profileFor);
+        const tok = v.tokens.find((t) => t.charId === profileFor || t.profileId === profileFor);
+        return (
+          <ProfileModal
+            id={profileFor}
+            profile={s.profiles[profileFor]}
+            ch={own ? ch : undefined}
+            name={pm?.name ?? tok?.name}
+            color={pm?.color ?? tok?.color}
+            kind={pm || tok?.charId ? 'pc' : undefined}
+            canEdit={own}
+            isGM={false}
+            isOwner={own}
+            img={img}
+            send={send}
+            onClose={() => setProfileFor(null)}
+          />
+        );
+      })()}
       {menu && (
         <Modal title="Table" onClose={() => setMenu(false)}>
           <div className="stack">
             <div>Room <b>{prettyCode(v.code)}</b> · {v.players.filter((p) => p.connected).length} connected</div>
             <ul className="small">{v.players.map((p) => <li key={p.id}>{p.name}{p.connected ? '' : ' (away)'}</li>)}</ul>
+            <button className="ghost" onClick={() => { setMenu(false); setProfileFor(ch.build.id); }}>My profile</button>
+            <button className="ghost" onClick={() => { setMenu(false); setCastOpen(true); }}>Characters at this table</button>
             <button className="ghost" onClick={() => { setMenu(false); setBuilding('new'); }}>Switch to a new hero</button>
             {v.handout && <button className="ghost" onClick={() => { setSeenHandout(0); setMenu(false); }}>Show the last handout</button>}
             <button className="ghost" onClick={() => { setMenu(false); setSafetyOpen(true); }}>Table safety: lines and veils</button>
