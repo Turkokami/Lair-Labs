@@ -1,5 +1,7 @@
-// A starter set of SRD spells (cantrips to 3rd level). Text is summarized; GM has final say.
+// SRD 5.2.1 spells (CC-BY-4.0), cantrips to 9th level. Text is summarized in our own words; GM has final say.
 import type { Ability } from './core';
+import { LOW_SPELLS } from './spells-low';
+import { HIGH_SPELLS } from './spells-high';
 
 export interface Spell {
   id: string;
@@ -31,7 +33,7 @@ export const SPELLS: Spell[] = [
   { id: 'acidSplash', name: 'Acid Splash', level: 0, school: 'Evocation', time: '1 action', range: '60 ft', classes: [S, W], save: 'dex', damage: '1d6', damage5: '2d6', dmgType: 'acid', text: 'Up to two creatures within 5 ft of each other make a Dex save or take acid damage.' },
   { id: 'chillTouch', name: 'Chill Touch', level: 0, school: 'Necromancy', time: '1 action', range: 'Touch', classes: [S, K, W], attack: 'melee', damage: '1d10', damage5: '2d10', dmgType: 'necrotic', text: "On a hit the target can't regain HP until your next turn." },
   { id: 'druidcraft', name: 'Druidcraft', level: 0, school: 'Transmutation', time: '1 action', range: '30 ft', classes: [D], text: 'Small nature effects: predict weather, bloom a flower, light or snuff a small flame.' },
-  { id: 'eldritchBlast', name: 'Eldritch Blast', level: 0, school: 'Evocation', time: '1 action', range: '120 ft', classes: [K], attack: 'ranged', damage: '1d10', dmgType: 'force', text: 'A beam of crackling energy. At level 5 you fire two beams (roll each separately).' },
+  { id: 'eldritchBlast', name: 'Eldritch Blast', level: 0, school: 'Evocation', time: '1 action', range: '120 ft', classes: [K], attack: 'ranged', damage: '1d10', dmgType: 'force', text: 'A beam of crackling energy. You fire two beams at level 5, three at 11 and four at 17 (roll each separately).' },
   { id: 'fireBolt', name: 'Fire Bolt', level: 0, school: 'Evocation', time: '1 action', range: '120 ft', classes: [S, W], attack: 'ranged', damage: '1d10', damage5: '2d10', dmgType: 'fire', text: 'Hurl a mote of fire; ignites flammable objects not worn or carried.' },
   { id: 'guidance', name: 'Guidance', level: 0, school: 'Divination', time: '1 action', range: 'Touch', conc: true, classes: [C, D], text: 'Choose a skill; the target adds 1d4 to one check with it within 1 minute.' },
   { id: 'light', name: 'Light', level: 0, school: 'Evocation', time: '1 action', range: 'Touch', classes: [B, C, S, W], text: 'An object sheds bright light in a 20-ft radius and dim light 20 ft beyond for 1 hour.' },
@@ -101,13 +103,24 @@ export const SPELLS: Spell[] = [
   { id: 'revivify', name: 'Revivify', level: 3, school: 'Necromancy', time: '1 action', range: 'Touch', classes: [C, D, P, R], text: 'A creature that died within the last minute returns with 1 HP (needs a 300 gp diamond).' },
   { id: 'spiritGuardians', name: 'Spirit Guardians', level: 3, school: 'Conjuration', time: '1 action', range: 'Self (15 ft)', conc: true, classes: [C], save: 'wis', damage: '3d8', upcast: '1d8', dmgType: 'radiant', text: 'Spirits around you halve enemy speed and damage enemies in the area (half on a save).' },
 ];
-export const spellById = (id: string) => SPELLS.find((s) => s.id === id);
+SPELLS.push(...LOW_SPELLS, ...HIGH_SPELLS);
+SPELLS.sort((a, b) => a.level - b.level || a.name.localeCompare(b.name));
+const BY_ID = new Map(SPELLS.map((s) => [s.id, s]));
+export const spellById = (id: string) => BY_ID.get(id);
 export const spellsFor = (classId: string, maxLevel: number) =>
   SPELLS.filter((s) => s.classes.includes(classId) && s.level <= maxLevel);
 
-/** Damage dice for a spell cast with a given slot (cantrips grow at level 5). */
+/** How many dice a cantrip rolls: 1, then 2 at level 5, 3 at 11, 4 at 17. */
+export const cantripTier = (charLevel: number) => (charLevel >= 17 ? 4 : charLevel >= 11 ? 3 : charLevel >= 5 ? 2 : 1);
+/** Damage dice for a spell cast with a given slot (cantrips grow at levels 5, 11 and 17). */
 export function spellDamage(sp: Spell, charLevel: number, slot: number) {
-  if (sp.level === 0) return charLevel >= 5 && sp.damage5 ? sp.damage5 : sp.damage;
+  if (sp.level === 0) {
+    if (!sp.damage) return undefined;
+    if (!sp.damage5) return sp.damage; // e.g. Eldritch Blast fires more beams instead
+    const m = /^(\d*)d(\d+)$/.exec(sp.damage);
+    if (!m) return charLevel >= 5 ? sp.damage5 : sp.damage;
+    return `${(m[1] ? parseInt(m[1], 10) : 1) * cantripTier(charLevel)}d${m[2]}`;
+  }
   if (!sp.damage) return undefined;
   if (!sp.upcast || slot <= sp.level) return sp.damage;
   const extra = sp.upcast.replace(/^(\d*)d(\d+)$/, (_, n, s) => `${(n ? parseInt(n, 10) : 1) * (slot - sp.level)}d${s}`);

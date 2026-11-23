@@ -1,4 +1,5 @@
 import { Suspense, lazy, useEffect, useMemo, useRef, useState } from 'react';
+import { MAX_LEVEL } from '../rules/classes';
 import QRCode from 'qrcode';
 import { HostSession } from '../net/session';
 import { peerHost } from '../net/transport';
@@ -787,7 +788,7 @@ function TableTab({ s, gm, joinUrl, onQr, onKick, onEnd }: { s: GameState; gm: (
       <label className="inline"><input type="checkbox" checked={s.settings.autoAttacks !== false} onChange={(e) => gm({ t: 'gm:settings', patch: { autoAttacks: e.target.checked } })} /> Aimed attacks check AC and roll damage for you</label>
       <label className="inline">New heroes start at level
         <select value={s.settings.startLevel ?? 1} onChange={(e) => gm({ t: 'gm:settings', patch: { startLevel: Number(e.target.value) } })}>
-          {[1, 2, 3, 4, 5].map((l) => <option key={l} value={l}>{l}</option>)}
+          {Array.from({ length: MAX_LEVEL }, (_, i) => i + 1).map((l) => <option key={l} value={l}>{l}</option>)}
         </select>
       </label>
       <label className="inline"><input type="checkbox" checked={s.settings.lockMoves} onChange={(e) => gm({ t: 'gm:settings', patch: { lockMoves: e.target.checked } })} /> In combat, players can only move on their turn</label>
@@ -1053,7 +1054,7 @@ function PartyTab({ s, gm, onSheet, onProfile, img }: { s: GameState; gm: (i: In
               {c.state.conditions.length > 0 && <span>{c.state.conditions.map(conditionName).join(', ')}</span>}
             </div>
             <div className="row gap">
-              {c.build.level < 5 && (c.levelCap ?? c.build.level) <= c.build.level && <button className="small" onClick={() => gm({ t: 'gm:grantLevel', charId: c.build.id })}>Allow level {c.build.level + 1}</button>}
+              {c.build.level < MAX_LEVEL && (c.levelCap ?? c.build.level) <= c.build.level && <button className="small" onClick={() => gm({ t: 'gm:grantLevel', charId: c.build.id })}>Allow level {c.build.level + 1}</button>}
               {(c.levelCap ?? 0) > c.build.level && <span className="muted small">Waiting for them to level up</span>}
             </div>
           </div>

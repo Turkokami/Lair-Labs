@@ -7,6 +7,7 @@ import { tokensInArea } from './areas';
 import { type Character, type CharacterBuild, type CharacterState, computeSheet, freshState, uid } from '../rules/character';
 import { monsterById, sizeSquares } from '../rules/monsters';
 import { speciesById } from '../rules/origins';
+import { MAX_LEVEL } from '../rules/classes';
 import { partyVision, type VisionResult } from './vision';
 import { creatureForMonster } from '../library/creatures';
 import { mod, ABILITIES, ABILITY_NAMES, type Ability } from '../rules/core';
@@ -806,7 +807,7 @@ export class HostCore {
       case 'gm:grantLevel': {
         const c = this.s.characters[it.charId];
         if (!c) throw new GameError('No such character.');
-        if (c.build.level >= 5) throw new GameError('Level 5 is the cap for now.');
+        if (c.build.level >= MAX_LEVEL) throw new GameError(`Level ${MAX_LEVEL} is as high as heroes go.`);
         c.levelCap = c.build.level + 1;
         this.system(`${c.build.name} can level up to ${c.levelCap}!`);
         break;
@@ -881,8 +882,16 @@ export class HostCore {
     if (!sh.spell) throw new GameError(`${c.build.name} doesn't cast spells.`);
     if (!gm && ![...sh.spell.cantrips, ...sh.spell.prepared].some((x) => x.id === sp.id)) throw new GameError(`${c.build.name} doesn't have ${sp.name} ready.`);
     if (c.state.dead || c.state.hp === 0) throw new GameError(`${c.build.name} can't cast right now.`);
-    const slot = sp.level ? Math.max(sp.level, Math.min(9, it.slot ?? sp.level)) : 0;
-    if (slot) {
+    const pact = sh.spell.pactLevel;
+    const arcanum = !!pact && sp.level > 5;
+    // warlock pact slots are always cast at the pact slot level
+    const slot = sp.level ? (pact && !arcanum ? Math.max(sp.level, pact) : Math.max(sp.level, Math.min(9, it.slot ?? sp.level))) : 0;
+    if (arcanum) {
+      const rid = `arcanum${sp.level}`;
+      const max = sh.resources.find((r) => r.id === rid)?.max ?? 0;
+      if ((c.state.resUsed[rid] ?? 0) >= max) throw new GameError(`Your level ${sp.level} Mystic Arcanum is used until a long rest.`);
+      c.state.resUsed = { ...c.state.resUsed, [rid]: (c.state.resUsed[rid] ?? 0) + 1 };
+    } else if (slot) {
       const used = sh.spell.slots.map((_, i) => c.state.slotsUsed[i] ?? 0);
       if ((sh.spell.slots[slot - 1] ?? 0) - used[slot - 1] <= 0) throw new GameError(`No level ${slot} spell slots left.`);
       used[slot - 1]++;

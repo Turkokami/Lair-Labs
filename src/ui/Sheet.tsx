@@ -219,7 +219,7 @@ export function ActionsPanel({ ch, roll, send, canEdit, combat }: SheetProps & {
                 onClick={() => {
                   // in a fight, swing at the nearest foe this weapon can reach
                   const aim = combat?.active ? combat.aim?.(weaponReach(ch, a.name).far) : undefined;
-                  roll(d20Formula(a.toHit, adv), `${a.name} attack${aim ? ` vs ${aim.name}` : ''}`, { attackDamage: a.dmg, critRange: ch.build.classId === 'fighter' && ch.build.level >= 3 ? 19 : 20, targetId: aim?.id });
+                  roll(d20Formula(a.toHit, adv), `${a.name} attack${aim ? ` vs ${aim.name}` : ''}`, { attackDamage: a.dmg, critRange: sh.critOn, targetId: aim?.id });
                 }}
               >
                 {fmtMod(a.toHit)}
@@ -243,16 +243,19 @@ export function ActionsPanel({ ch, roll, send, canEdit, combat }: SheetProps & {
           <h3>Spells <span className="muted small">· Save DC {sh.spell.dc} · Attack {fmtMod(sh.spell.attack)}</span></h3>
           {sh.spell.slots.length > 0 && (
             <div className="row wrap gap">
-              {sh.spell.slots.map((n, i) => (
+              {sh.spell.slots.map((n, i) => n > 0 && (
                 <span key={i} className="slot">
-                  {sh.cls.caster === 'pact' ? `Pact (lvl ${sh.spell!.slots.length > 0 ? sh.spell!.maxLevel : 1})` : `Level ${i + 1}`} <Pips max={n} used={st.slotsUsed[i] ?? 0} label={`Level ${i + 1} slots`} onChange={canEdit ? (used) => { const arr = sh.spell!.slots.map((_, j) => st.slotsUsed[j] ?? 0); arr[i] = Math.min(n, used); safe(send({ t: 'charState', charId: id, patch: { slotsUsed: arr } })); } : undefined} />
+                  {sh.cls.caster === 'pact' ? `Pact slots (level ${i + 1})` : `Level ${i + 1}`} <Pips max={n} used={st.slotsUsed[i] ?? 0} label={`Level ${i + 1} slots`} onChange={canEdit ? (used) => { const arr = sh.spell!.slots.map((_, j) => st.slotsUsed[j] ?? 0); arr[i] = Math.min(n, used); safe(send({ t: 'charState', charId: id, patch: { slotsUsed: arr } })); } : undefined} />
                 </span>
               ))}
             </div>
           )}
           {[...sh.spell.cantrips, ...sh.spell.prepared].map((sp) => {
             const minSlot = sp.level;
-            const options = sp.level === 0 ? [0] : sh.spell!.slots.map((_, i) => i + 1).filter((l) => l >= minSlot);
+            const pact = sh.spell!.pactLevel;
+            const arcanum = !!pact && sp.level > 5;
+            const options = sp.level === 0 ? [0] : arcanum ? [sp.level] : pact ? [Math.max(pact, sp.level)] : sh.spell!.slots.map((_, i) => i + 1).filter((l) => l >= minSlot && (sh.spell!.slots[l - 1] ?? 0) > 0);
+            const arcanumLeft = arcanum ? (sh.resources.find((r) => r.id === `arcanum${sp.level}`)?.max ?? 0) - (st.resUsed[`arcanum${sp.level}`] ?? 0) : 0;
             return (
               <div key={sp.id} className="card action">
                 <button className="row between plain" onClick={() => setOpen(open === sp.id ? null : sp.id)}>
@@ -263,8 +266,8 @@ export function ActionsPanel({ ch, roll, send, canEdit, combat }: SheetProps & {
                 {canEdit && (
                   <div className="row gap wrap">
                     {options.map((l) => (
-                      <button key={l} className={l === minSlot ? 'primary small' : 'ghost small'} disabled={l > 0 && slotsLeft(l) <= 0} onClick={() => cast(sp, l)}>
-                        {l === 0 ? 'Cast' : l === minSlot ? `Cast (level ${l})` : `Upcast ${l}`}
+                      <button key={l} className={l === minSlot ? 'primary small' : 'ghost small'} disabled={arcanum ? arcanumLeft <= 0 : l > 0 && slotsLeft(l) <= 0} onClick={() => cast(sp, l)}>
+                        {l === 0 ? 'Cast' : arcanum ? 'Cast (Mystic Arcanum)' : l === minSlot || pact ? `Cast (level ${l})` : `Upcast ${l}`}
                       </button>
                     ))}
                     {sp.damage && <span className="muted small">{spellDamage(sp, ch.build.level, Math.max(1, sp.level))} {sp.dmgType}</span>}

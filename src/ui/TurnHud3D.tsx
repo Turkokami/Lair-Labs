@@ -31,6 +31,8 @@ export function TurnHud3D({ v, ch, target, setTarget, roll, endTurn, rollInit, c
   const slotsLeft = (l: number) => (sh.spell?.slots[l - 1] ?? 0) - (ch.state.slotsUsed[l - 1] ?? 0);
   const lowestSlot = (sp: Spell) => {
     if (!sp.level) return 0;
+    const pact = sh.spell?.pactLevel ?? 0;
+    if (pact && sp.level > 5) return (sh.resources.find((r) => r.id === `arcanum${sp.level}`)?.max ?? 0) - (ch.state.resUsed[`arcanum${sp.level}`] ?? 0) > 0 ? sp.level : -1;
     for (let l = sp.level; l <= 9; l++) if (slotsLeft(l) > 0) return l;
     return -1;
   };

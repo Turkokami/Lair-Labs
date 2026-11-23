@@ -1,15 +1,16 @@
 import { useMemo, useState } from 'react';
-import { CLASSES, classById, maxSpellLevel } from '../rules/classes';
+import { CLASSES, classById, learnableSpellLevel, MAX_LEVEL, featLevels, expertiseCount } from '../rules/classes';
+import { featById, ASI_FEATS, EPIC_FEATS, STYLE_FEATS } from '../rules/feats';
 import { SPECIES, BACKGROUNDS, speciesById, backgroundById } from '../rules/origins';
 import { ABILITIES, ABILITY_NAMES, ABILITY_SHORT, type Ability, type Skill, skillName, fmtMod, mod } from '../rules/core';
 import { spellsFor } from '../rules/spells';
-import { type Character, type CharacterBuild, type Scores, computeSheet, defaultBuild, freshState, premade, PREMADE_NAMES, STANDARD_ARRAY, POINT_COST, pointsSpent, finalScores } from '../rules/character';
+import { type Character, type CharacterBuild, type Scores, computeSheet, defaultBuild, defaultAsis, freshState, premade, PREMADE_NAMES, STANDARD_ARRAY, POINT_COST, pointsSpent, finalScores, asiChoice } from '../rules/character';
 
 const COLORS = ['#e4572e', '#29a3a3', '#f3a712', '#7d5ba6', '#4caf50', '#e83f6f', '#2e86de', '#c0763b', '#94a3b8', '#f472b6'];
 const STEPS = ['Class', 'Origin', 'Abilities', 'Skills', 'Spells', 'Details', 'Review'];
 
 export function CharBuilder({ initial, maxLevel = 1, onSave, onCancel, levelUp }: { initial?: CharacterBuild; maxLevel?: number; onSave: (c: Character) => void; onCancel: () => void; levelUp?: boolean }) {
-  const [b, setB] = useState<CharacterBuild | null>(initial ? { ...initial, level: levelUp ? Math.min(5, initial.level + 1) : initial.level } : null);
+  const [b, setB] = useState<CharacterBuild | null>(initial ? { ...initial, level: levelUp ? Math.min(MAX_LEVEL, initial.level + 1) : initial.level } : null);
   const [step, setStep] = useState(levelUp ? 6 : 0);
   const [method, setMethod] = useState<'array' | 'points'>('array');
 
@@ -18,12 +19,12 @@ export function CharBuilder({ initial, maxLevel = 1, onSave, onCancel, levelUp }
       <div className="builder">
         <h2>Make a hero</h2>
         <p className="muted">Pick a ready-made hero to play right now, or build your own step by step.</p>
-        <button className="primary block" onClick={() => setB(defaultBuild('fighter', 'human', undefined, Math.min(maxLevel, 5), ''))}>Build my own</button>
+        <button className="primary block" onClick={() => setB(defaultBuild('fighter', 'human', undefined, Math.min(maxLevel, MAX_LEVEL), ''))}>Build my own</button>
         {maxLevel > 1 && <p className="muted small">Your GM is starting heroes at level {maxLevel}.</p>}
         <h3>Ready-made heroes</h3>
         <div className="cards">
           {CLASSES.map((c) => (
-            <button key={c.id} className="pick" onClick={() => { const pb = premade(c.id, Math.min(maxLevel, 5)); setB(pb); setStep(6); }}>
+            <button key={c.id} className="pick" onClick={() => { const pb = premade(c.id, Math.min(maxLevel, MAX_LEVEL)); setB(pb); setStep(6); }}>
               <b>{PREMADE_NAMES[c.id][0]}</b>
               <span className="muted small">{speciesById(PREMADE_NAMES[c.id][1]).name} {c.name}</span>
               <span className="small">{c.playsLike}</span>
@@ -79,11 +80,12 @@ export function CharBuilder({ initial, maxLevel = 1, onSave, onCancel, levelUp }
           <label>
             Level
             <select value={b.level} onChange={(e) => setB(relevel(b, Number(e.target.value)))}>
-              {[1, 2, 3, 4, 5].filter((l) => l <= Math.max(maxLevel, initial?.level ?? 1, levelUp ? (initial?.level ?? 0) + 1 : 0)).map((l) => <option key={l} value={l}>{l}</option>)}
+              {Array.from({ length: MAX_LEVEL }, (_, i) => i + 1).filter((l) => l <= Math.max(maxLevel, initial?.level ?? 1, levelUp ? (initial?.level ?? 0) + 1 : 0)).map((l) => <option key={l} value={l}>{l}</option>)}
             </select>
             <span className="muted small">Your GM decides when you level up.</span>
           </label>
-          {b.level >= 4 && <AsiPicker b={b} set={setB} />}
+          {cls.fightingStyleAt && b.level >= cls.fightingStyleAt && <StylePicker b={b} set={setB} />}
+          {featLevels(cls).filter((l) => l <= b.level).map((l) => <AsiPicker key={l} lvl={l} b={b} set={setB} />)}
           <label>Notes<textarea value={b.notes} onChange={(e) => set({ notes: e.target.value.slice(0, 2000) })} placeholder="Backstory, personality, anything you want to remember" rows={4} /></label>
           <p className="muted small">You start with the {cls.name}'s standard gear: {[cls.kit.armor ? 'armor' : null, ...cls.kit.weapons, ...cls.kit.gear].filter(Boolean).length} items. You can see it in the Bag tab.</p>
         </div>
@@ -109,7 +111,7 @@ export function CharBuilder({ initial, maxLevel = 1, onSave, onCancel, levelUp }
 
 function relevel(b: CharacterBuild, level: number): CharacterBuild {
   const cls = classById(b.classId);
-  const pool = spellsFor(cls.id, maxSpellLevel(cls, level)).map((s) => s.id);
+  const pool = spellsFor(cls.id, learnableSpellLevel(cls, level)).map((s) => s.id);
   const cMax = cls.cantrips?.[level - 1] ?? 0;
   const pMax = cls.prepared?.[level - 1] ?? 0;
   const next = { ...b, level, cantrips: b.cantrips.slice(0, cMax), spells: b.spells.filter((s) => pool.includes(s)).slice(0, pMax) };
@@ -117,7 +119,17 @@ function relevel(b: CharacterBuild, level: number): CharacterBuild {
   const d = defaultBuild(b.classId, b.speciesId, b.backgroundId, level);
   for (const s of d.cantrips) if (next.cantrips.length < cMax && !next.cantrips.includes(s)) next.cantrips.push(s);
   for (const s of d.spells) if (next.spells.length < pMax && !next.spells.includes(s)) next.spells.push(s);
-  if (level >= 2 && b.classId === 'bard' && next.expertise.length < 2) next.expertise = next.skills.slice(0, 2);
+  const eMax = expertiseCount(cls, level);
+  const prof = [...next.skills, ...backgroundById(b.backgroundId).skills];
+  for (const s of prof) if (next.expertise.length < eMax && !next.expertise.includes(s)) next.expertise = [...next.expertise, s];
+  next.expertise = next.expertise.slice(0, eMax);
+  // fill in ASI / Epic Boon choices for levels that don't have one yet
+  const defaults = defaultAsis(cls, b.base, b.bgBonus);
+  const asis = { ...(b.asis ?? {}) };
+  if (!asis[4] && b.asi && Object.keys(b.asi).length) asis[4] = { scores: b.asi };
+  for (const l of featLevels(cls)) if (l <= level && !asis[l]) asis[l] = defaults[l];
+  next.asis = asis;
+  if (cls.fightingStyleAt && !next.fightingStyle) next.fightingStyle = 'defense';
   return next;
 }
 
@@ -225,7 +237,7 @@ function AbilityStep({ b, set, method, setMethod }: { b: CharacterBuild; set: (b
                 <button disabled={b.base[a] >= 15 || spent - POINT_COST[b.base[a]] + POINT_COST[b.base[a] + 1] > 27} onClick={() => set({ ...b, base: { ...b.base, [a]: b.base[a] + 1 } })} aria-label={`Raise ${ABILITY_NAMES[a]}`}>+</button>
               </span>
             )}
-            <span className="muted small">{b.bgBonus[a] ? `+${b.bgBonus[a]}` : ''}{b.level >= 4 && b.asi[a] ? ` +${b.asi[a]}` : ''}</span>
+            <span className="muted small">{b.bgBonus[a] ? `+${b.bgBonus[a]}` : ''}{final[a] - b.base[a] - (b.bgBonus[a] ?? 0) > 0 ? ` +${final[a] - b.base[a] - (b.bgBonus[a] ?? 0)} later` : ''}</span>
             <b>{final[a]} ({fmtMod(mod(final[a]))})</b>
           </div>
         ))}
@@ -234,16 +246,58 @@ function AbilityStep({ b, set, method, setMethod }: { b: CharacterBuild; set: (b
   );
 }
 
-function AsiPicker({ b, set }: { b: CharacterBuild; set: (b: CharacterBuild) => void }) {
-  const entries = Object.entries(b.asi).filter(([, v]) => v);
-  const two = entries.length === 1;
+function StylePicker({ b, set }: { b: CharacterBuild; set: (b: CharacterBuild) => void }) {
+  const cur = b.fightingStyle ?? 'defense';
+  return (
+    <label>
+      Fighting Style
+      <select value={cur} onChange={(e) => set({ ...b, fightingStyle: e.target.value })}>
+        {STYLE_FEATS.map((f) => <option key={f.id} value={f.id}>{f.name}</option>)}
+      </select>
+      <span className="muted small">{featById(cur)?.text}</span>
+    </label>
+  );
+}
+
+function AsiPicker({ lvl, b, set }: { lvl: number; b: CharacterBuild; set: (b: CharacterBuild) => void }) {
+  const cls = classById(b.classId);
+  const epic = lvl === 19;
+  const choice = asiChoice(b, lvl);
+  const feat = choice.feat ? featById(choice.feat) : undefined;
+  const put = (c: { scores?: Partial<Scores>; feat?: string }) => set({ ...b, asis: { ...(b.asis ?? {}), [lvl]: c }, ...(lvl === 4 && !c.feat && c.scores ? { asi: c.scores } : {}) });
+  const entries = Object.entries(choice.scores ?? {}).filter(([, v]) => v) as [Ability, number][];
+  const [a1, a2] = cls.standardArray;
+  const raiseFrom: Ability[] = feat ? feat.raise ?? [] : ABILITIES;
+  const options = epic ? EPIC_FEATS : ASI_FEATS.filter((f) => f.id !== 'asiFeat');
+  const mode = feat ? feat.id : 'asi';
   return (
     <div className="card">
-      <b>Level 4: Ability Score Improvement</b>
-      <div className="seg small">
-        <button className={two ? 'on' : ''} onClick={() => set({ ...b, asi: { [classById(b.classId).standardArray[0]]: 2 } })}>+2 to one</button>
-        <button className={!two ? 'on' : ''} onClick={() => { const [a1, a2] = classById(b.classId).standardArray; set({ ...b, asi: { [a1]: 1, [a2]: 1 } }); }}>+1 to two</button>
-      </div>
+      <b>Level {lvl}: {epic ? 'Epic Boon' : 'Ability Score Improvement or feat'}</b>
+      <label>
+        Choice
+        <select
+          value={mode}
+          onChange={(e) => {
+            const v = e.target.value;
+            if (v === 'asi') put({ scores: { [a1]: 2 } });
+            else {
+              const f = featById(v)!;
+              const r = f.raise?.find((x) => cls.standardArray.indexOf(x) >= 0 && finalScores(b)[x] < (epic ? 30 : 20)) ?? f.raise?.[0];
+              put({ feat: v, scores: r ? { [r]: 1 } : undefined });
+            }
+          }}
+        >
+          {!epic && <option value="asi">Raise ability scores</option>}
+          {options.map((f) => <option key={f.id} value={f.id}>{f.name}</option>)}
+        </select>
+      </label>
+      {feat && <p className="small muted">{feat.text}</p>}
+      {mode === 'asi' && (
+        <div className="seg small">
+          <button className={entries.length === 1 ? 'on' : ''} onClick={() => put({ scores: { [a1]: 2 } })}>+2 to one</button>
+          <button className={entries.length !== 1 ? 'on' : ''} onClick={() => put({ scores: { [a1]: 1, [a2]: 1 } })}>+1 to two</button>
+        </div>
+      )}
       <div className="row gap wrap">
         {entries.map(([a, v], i) => (
           <label key={i}>
@@ -251,12 +305,15 @@ function AsiPicker({ b, set }: { b: CharacterBuild; set: (b: CharacterBuild) => 
             <select
               value={a}
               onChange={(e) => {
-                const asi: Partial<Scores> = {};
-                entries.forEach(([k, val], j) => (asi[(j === i ? e.target.value : k) as Ability] = (asi[(j === i ? e.target.value : k) as Ability] ?? 0) + (val as number)));
-                set({ ...b, asi });
+                const scores: Partial<Scores> = {};
+                entries.forEach(([k, val], j) => {
+                  const key = (j === i ? e.target.value : k) as Ability;
+                  scores[key] = (scores[key] ?? 0) + val;
+                });
+                put({ ...choice, scores });
               }}
             >
-              {ABILITIES.map((x) => <option key={x} value={x}>{ABILITY_NAMES[x]}</option>)}
+              {raiseFrom.map((x) => <option key={x} value={x}>{ABILITY_NAMES[x]}</option>)}
             </select>
           </label>
         ))}
@@ -271,7 +328,7 @@ function SkillStep({ b, set }: { b: CharacterBuild; set: (b: CharacterBuild) => 
   const sp = speciesById(b.speciesId);
   const count = cls.skillCount + (sp.extraSkill ? 1 : 0) + (cls.id === 'bard' ? 0 : 0);
   const from = sp.extraSkill ? [...new Set([...cls.skillFrom, ...(['acrobatics', 'animalHandling', 'arcana', 'athletics', 'deception', 'history', 'insight', 'intimidation', 'investigation', 'medicine', 'nature', 'perception', 'performance', 'persuasion', 'religion', 'sleightOfHand', 'stealth', 'survival'] as Skill[])])] : cls.skillFrom;
-  const expertMax = cls.id === 'rogue' ? 2 : cls.id === 'bard' && b.level >= 2 ? 2 : 0;
+  const expertMax = expertiseCount(cls, b.level);
   const toggle = (s: Skill) => {
     if (b.skills.includes(s)) set({ ...b, skills: b.skills.filter((x) => x !== s), expertise: b.expertise.filter((x) => x !== s) });
     else if (b.skills.length < count) set({ ...b, skills: [...b.skills, s] });
@@ -311,7 +368,9 @@ function SkillStep({ b, set }: { b: CharacterBuild; set: (b: CharacterBuild) => 
 
 function SpellStep({ b, set }: { b: CharacterBuild; set: (b: CharacterBuild) => void }) {
   const cls = classById(b.classId);
-  const pool = spellsFor(cls.id, maxSpellLevel(cls, b.level));
+  const learnMax = learnableSpellLevel(cls, b.level);
+  const pool = spellsFor(cls.id, learnMax);
+  const [lvlTab, setLvlTab] = useState(0);
   const cMax = cls.cantrips?.[b.level - 1] ?? 0;
   const pMax = cls.prepared?.[b.level - 1] ?? 0;
   const [open, setOpen] = useState<string | null>(null);
@@ -340,7 +399,18 @@ function SpellStep({ b, set }: { b: CharacterBuild; set: (b: CharacterBuild) => 
   return (
     <div className="stack">
       {section('Cantrips', 'cantrips', cMax, pool.filter((s) => s.level === 0))}
-      {section(cls.caster === 'pact' || cls.id === 'sorcerer' || cls.id === 'bard' || cls.id === 'ranger' ? 'Spells known' : 'Prepared spells', 'spells', pMax, pool.filter((s) => s.level > 0))}
+      {pMax > 0 && learnMax > 1 && (
+        <div className="seg small wrap">
+          <button className={lvlTab === 0 ? 'on' : ''} onClick={() => setLvlTab(0)}>All</button>
+          {Array.from({ length: learnMax }, (_, i) => i + 1).map((l) => (
+            <button key={l} className={lvlTab === l ? 'on' : ''} onClick={() => setLvlTab(l)}>
+              {l}{b.spells.some((id) => pool.find((s) => s.id === id)?.level === l) ? ' ✓' : ''}
+            </button>
+          ))}
+        </div>
+      )}
+      {section(cls.caster === 'pact' || cls.id === 'sorcerer' || cls.id === 'bard' || cls.id === 'ranger' ? 'Spells known' : 'Prepared spells', 'spells', pMax, pool.filter((s) => s.level > 0 && (!lvlTab || s.level === lvlTab)))}
+      {cls.caster === 'pact' && b.level >= 11 && <p className="muted small">Spells of 6th level and up are your Mystic Arcanum: one of each level, cast once per long rest without a slot.</p>}
     </div>
   );
 }
