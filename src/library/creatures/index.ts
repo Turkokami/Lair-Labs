@@ -4,12 +4,13 @@ import { PEOPLE_CREATURES } from './people';
 import { UNDEAD_FEY_CREATURES } from './undead-fey';
 import { BEAST_CREATURES } from './beasts';
 import { PLANAR_CREATURES } from './planar';
+import { STAPLE_CREATURES } from './staples';
 
 // Left out on purpose: names that come from a game book rather than the free rules or folklore.
 const NOT_FREE = new Set(['twigBlight', 'needleBlight', 'vineBlight', 'myconid', 'grick']);
 const seen = new Set<string>(NOT_FREE);
 /** Every creature and hero token. Ids are stable: tokens refer to them. When two sets draw the same id, the first wins. */
-export const CREATURES: CreatureDef[] = [...CORE_CREATURES, ...PEOPLE_CREATURES, ...UNDEAD_FEY_CREATURES, ...BEAST_CREATURES, ...PLANAR_CREATURES].filter((c) => !seen.has(c.id) && !!seen.add(c.id));
+export const CREATURES: CreatureDef[] = [...CORE_CREATURES, ...PEOPLE_CREATURES, ...UNDEAD_FEY_CREATURES, ...BEAST_CREATURES, ...PLANAR_CREATURES, ...STAPLE_CREATURES].filter((c) => !seen.has(c.id) && !!seen.add(c.id));
 
 const byId = new Map(CREATURES.map((c) => [c.id, c]));
 export const creatureById = (id: string): CreatureDef | undefined => byId.get(id);
