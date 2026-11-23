@@ -4,10 +4,11 @@ import { DUNGEON_OBJECTS } from './dungeon';
 import { FURNISHING_OBJECTS } from './furnishings';
 import { OUTDOOR_OBJECTS } from './outdoors';
 import { EXTRA_OBJECTS } from './extra';
+import { ITEM_OBJECTS } from './items';
 
 const seen = new Set<string>();
 /** Every map object, in browser order. Ids are stable: saved maps refer to them. When two sets draw the same id, the first wins. */
-export const OBJECTS: ObjDef[] = [...CORE_OBJECTS, ...DUNGEON_OBJECTS, ...FURNISHING_OBJECTS, ...OUTDOOR_OBJECTS, ...EXTRA_OBJECTS].filter((o) => !seen.has(o.id) && !!seen.add(o.id));
+export const OBJECTS: ObjDef[] = [...CORE_OBJECTS, ...DUNGEON_OBJECTS, ...FURNISHING_OBJECTS, ...OUTDOOR_OBJECTS, ...EXTRA_OBJECTS, ...ITEM_OBJECTS].filter((o) => !seen.has(o.id) && !!seen.add(o.id));
 
 const byId = new Map(OBJECTS.map((o) => [o.id, o]));
 /** Old prop kinds from before the library, and library aliases. */

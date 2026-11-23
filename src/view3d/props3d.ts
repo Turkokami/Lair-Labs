@@ -18,6 +18,7 @@ import { type Model, WOOD, DARKWOOD, IRON, STONE, GOLD, CLOTH, barrel, crate, le
 import { MORE_MODELS } from './models-more';
 import { EXTRA_MODELS } from './models-extra';
 import { MORE_MODELS2 } from './models-more2';
+import { ITEM_MODELS } from './models-items';
 
 const MODELS: Record<string, Model> = {
   barrel: (k, O) => barrel(k, O),
@@ -441,7 +442,7 @@ const MODELS: Record<string, Model> = {
   rug: () => {},
 };
 // more models live in their own files; an id already modelled above wins
-for (const [k, v] of Object.entries({ ...MORE_MODELS, ...MORE_MODELS2, ...EXTRA_MODELS })) if (!MODELS[k]) MODELS[k] = v;
+for (const [k, v] of Object.entries({ ...MORE_MODELS, ...MORE_MODELS2, ...EXTRA_MODELS, ...ITEM_MODELS })) if (!MODELS[k]) MODELS[k] = v;
 
 /** A sprite card laid flat: the object's own overhead art, on the floor or on top of a stand-in body. */
 const spriteTexCache = new Map<string, THREE.Texture>();
