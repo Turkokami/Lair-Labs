@@ -258,6 +258,7 @@ function PlayerTable({ s, onLeave }: { s: ClientSession; onLeave: () => void }) 
             ) : view3d ? (
               <Suspense fallback={<div className="curtain">Building the dungeon in 3D…</div>}>
                 <View3D
+                  weather={v.weather}
                   map={v.map}
                   role="player"
                   tokens={v.tokens}
@@ -288,6 +289,7 @@ function PlayerTable({ s, onLeave }: { s: ClientSession; onLeave: () => void }) 
               </Suspense>
             ) : (
               <MapCanvas
+                weather={v.weather}
                 map={v.map}
                 log={v.log}
                 role="player"

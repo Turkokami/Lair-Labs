@@ -2,6 +2,8 @@
 // move the overhead map sends, so initiative, movement left and the GM's controls all work the same way.
 // Cameras: first person, over the shoulder, and a tilted table view. Drag to look around, tap a square to walk there,
 // tap a door to open it, tap a figure to see who it is. The arrow pad steps one square at a time.
+import type { Weather } from '../engine/weather';
+import { WeatherChip } from '../ui/WeatherLayer';
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import * as THREE from 'three';
 import type { GameMap } from '../engine/map';
@@ -49,6 +51,8 @@ export interface View3DProps {
   hud?: ReactNode;
   /** The token this player is aiming at: marked with a red ring under its feet. */
   targetId?: string;
+  /** Rain, fog, wind and the like. */
+  weather?: Weather;
 }
 
 const ANG = Math.PI / 4;
@@ -85,6 +89,11 @@ export default function View3D(p: View3DProps) {
   useEffect(() => {
     eng.current?.setLook(work, cam === 'table');
   }, [work, cam, ready]);
+  const weatherKey = JSON.stringify(p.weather ?? null);
+  useEffect(() => {
+    eng.current?.setWeather(p.weather);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [weatherKey, ready, quality]);
   const view = useRef({ yaw: Math.PI, pitch: -0.25, dist: p.myTokenId ? 3.2 : p.startDist ?? 15, tyaw: Math.PI, focus: startSpot(p.map) });
   const props = useRef(p);
   props.current = p;
@@ -775,6 +784,7 @@ export default function View3D(p: View3DProps) {
       </div>
       {p.hud ? <div className="v3d-hud">{p.hud}</div> : steerTok && p.combatActive && p.currentTokenId === steerTok.id && p.speedLeft !== undefined && <div className="v3d-feet">{p.speedLeft} ft left</div>}
       {hint && <div className="v3d-hint">{hint}</div>}
+      {p.role === 'player' && <div className="v3d-weather"><WeatherChip weather={p.weather} /></div>}
       <div className="v3d-pad">
         <button onClick={() => turn(ANG)} aria-label="Turn left">⟲</button>
         <button onClick={() => step('f')} aria-label="Step forward">▲</button>

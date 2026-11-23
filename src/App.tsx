@@ -2,6 +2,7 @@ import { Suspense, lazy, useState } from 'react';
 
 const Demo3D = lazy(() => import('./view3d/Demo3D'));
 const Showroom3D = lazy(() => import('./view3d/Showroom3D'));
+const Figures3D = lazy(() => import('./view3d/Figures3D'));
 import { GMApp } from './ui/GM';
 import { PlayerApp } from './ui/Player';
 import { About } from './ui/About';
@@ -18,6 +19,15 @@ export function App() {
       <>
         <Suspense fallback={<div className="curtain">Setting out the showroom…</div>}>
           <Showroom3D />
+        </Suspense>
+        <Toasts />
+      </>
+    );
+  if (q.has('figures3d'))
+    return (
+      <>
+        <Suspense fallback={<div className="curtain">Lining up the figures…</div>}>
+          <Figures3D />
         </Suspense>
         <Toasts />
       </>

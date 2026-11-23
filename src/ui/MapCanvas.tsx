@@ -5,6 +5,8 @@ const camMemo = new Map<string, { x: number; y: number; s: number }>();
 import { type GameMap, nearestEdge, moveCost } from '../engine/map';
 import type { Token, AreaTemplate, LogEntry } from '../engine/game';
 import { SHIELD_MARK } from '../engine/game';
+import { WeatherLayer, WeatherChip } from './WeatherLayer';
+import type { Weather } from '../engine/weather';
 import { drawMapFx, mapFxAlive, mapFxFrom, type MapFx } from './mapfx';
 import { drawScene, CELL } from '../render/scene';
 import { browserFloors, onFloorsLoaded } from '../render/floors';
@@ -54,6 +56,8 @@ export interface MapCanvasProps {
   backdrop?: string;
   /** The table log: new spell casts in it play their effect on the map. */
   log?: LogEntry[];
+  /** Rain, fog and the like, drawn over the map. */
+  weather?: Weather;
 }
 
 export function MapCanvas(p: MapCanvasProps) {
@@ -422,6 +426,8 @@ export function MapCanvas(p: MapCanvasProps) {
         onContextMenu={(e) => e.preventDefault()}
         aria-label="Battle map"
       />
+      <WeatherLayer weather={p.weather} soft={p.role === 'gm'} />
+      {p.role === 'player' && <WeatherChip weather={p.weather} />}
       <div className="map-zoom">
         <button onClick={() => zoom(1.25)} aria-label="Zoom in">+</button>
         <button onClick={() => zoom(0.8)} aria-label="Zoom out">−</button>

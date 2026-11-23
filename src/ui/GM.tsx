@@ -1,3 +1,4 @@
+import { WeatherPanel } from './WeatherPanel';
 import { Suspense, lazy, useEffect, useMemo, useRef, useState } from 'react';
 import { MAX_LEVEL } from '../rules/classes';
 import QRCode from 'qrcode';
@@ -401,6 +402,7 @@ function GMTable({ host, onEnd }: { host: HostSession; onEnd: () => void }) {
           {view3d ? (
             <Suspense fallback={<div className="curtain">Building the dungeon in 3D…</div>}>
               <View3D
+                weather={s.weather}
                 map={map}
                 role="gm"
                 preview={mode === 'build'}
@@ -429,6 +431,7 @@ function GMTable({ host, onEnd }: { host: HostSession; onEnd: () => void }) {
             </Suspense>
           ) : (
           <MapCanvas
+            weather={s.weather}
             map={map}
             log={v.log}
             role="gm"
@@ -547,7 +550,7 @@ function GMTable({ host, onEnd }: { host: HostSession; onEnd: () => void }) {
               <nav className="subtabs">
                 {(['table', 'combat', 'monsters', 'party', 'fog', 'log'] as PlayTab[]).map((t) => (
                   <button key={t} className={playTab === t ? 'on' : ''} onClick={() => { setPlayTab(t); if (t !== 'fog' && t !== 'monsters') setTool('select'); }}>
-                    {{ table: 'Table', combat: 'Combat', monsters: 'Monsters', party: 'Party', fog: 'Fog', log: 'Log' }[t]}
+                    {{ table: 'Table', combat: 'Combat', monsters: 'Monsters', party: 'Party', fog: 'Fog & weather', log: 'Log' }[t]}
                   </button>
                 ))}
               </nav>
@@ -621,6 +624,7 @@ function GMTable({ host, onEnd }: { host: HostSession; onEnd: () => void }) {
                         <option value="dark">Dark</option>
                       </select>
                     </label>
+                    <WeatherPanel weather={s.weather} set={(w) => gm({ t: 'gm:weather', weather: w })} />
                     {(s.settings.vision ?? 'auto') === 'auto' && <p className="muted small">Heroes see what their eyes reach: walls and shut doors block sight, torches and braziers light the way, darkvision sees in the dark. Places they've been stay on their map, dimmed.</p>}
                     <div className="toolgrid">
                       {([['select', '✋', 'Move'], ['revealRoom', '💡', 'Show room'], ['revealBrush', '🖌️', 'Show brush'], ['hideBrush', '🌑', 'Hide brush']] as [Tool, string, string][]).map(([t, ico, label]) => (

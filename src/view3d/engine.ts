@@ -2,6 +2,8 @@
 // Modelled on how the Alienmon 3D game keeps phones fast (capped pixel ratio, a small pool of point lights handed to the
 // nearest flames each frame, shadows only on High and redrawn every few frames, fog to hide the far end), but this is
 // Lair Labs' own code and shares nothing with that project.
+import { Weather3D } from './weather3d';
+import type { Weather } from '../engine/weather';
 import * as THREE from 'three';
 import type { GameMap } from '../engine/map';
 import { makeVisUniforms, type VisUniforms } from './shaders';
@@ -59,7 +61,8 @@ export class Engine3D {
   private lightTimer = 0;
   private assigned: (LightSpot | null)[] = [];
   private outdoor = false;
-  private base = { amb: 0.5, fog: 0.07, sky: '#888', ground: '#222' };
+  private base = { amb: 0.5, fog: 0.07, sky: '#888', ground: '#222', sun: 0, fogCol: '#000', bg: '#000' };
+  weather: Weather3D;
   private work = false;
   private far = false;
 
@@ -95,7 +98,14 @@ export class Engine3D {
       this.pool.push(l);
       this.scene.add(l);
     }
+    this.weather = new Weather3D(this.scene);
     this.resize();
+  }
+
+  /** Rain, snow, fog, wind, gloom and lightning for the whole view. */
+  setWeather(w: Weather | undefined) {
+    this.weather.set(w, this.quality);
+    this.applyLook();
   }
 
   setMap(m: GameMap, role: 'gm' | 'player') {
@@ -122,7 +132,7 @@ export class Engine3D {
     this.sun.target.position.set(m.cols / 2, 0, m.rows / 2);
     this.scene.background = new THREE.Color(this.outdoor ? '#8fb3d0' : a.fog);
     this.scene.fog = new THREE.FogExp2(this.outdoor ? '#a9c0d0' : a.fog, this.outdoor ? 0.02 : QUALITY[this.quality].fogFar);
-    this.base = { amb: a.amb, fog: (this.scene.fog as THREE.FogExp2).density, sky: a.sky, ground: a.ground };
+    this.base = { amb: a.amb, fog: (this.scene.fog as THREE.FogExp2).density, sky: a.sky, ground: a.ground, sun: this.sun.intensity, fogCol: (this.scene.fog as THREE.FogExp2).color.getHexString(), bg: (this.scene.background as THREE.Color).getHexString() };
     this.applyLook();
     this.vis.uVisSize.value.set(m.cols, m.rows);
     this.assigned = [];
@@ -262,6 +272,10 @@ export class Engine3D {
         }
       }
       this.driftDust(dt, focus);
+      if (this.weather.w) {
+        const flash = this.weather.step(dt, focus, this.clock.elapsedTime);
+        this.hemi.intensity = this.lookAmb + flash * 3.5;
+      }
       if (QUALITY[this.quality].shadows && this.frame % 4 === 0) this.renderer.shadowMap.needsUpdate = true;
       this.renderer.render(this.scene, this.camera);
     };
@@ -307,13 +321,27 @@ export class Engine3D {
     this.far = far;
     this.applyLook();
   }
+  private lookAmb = 0.5;
   private applyLook() {
-    this.hemi.intensity = this.work ? Math.max(this.base.amb, 1.5) : this.base.amb;
+    const W = this.weather;
+    // the GM's work light keeps the map readable through the gloom, at half the effect
+    const sky = this.work ? 1 - (1 - W.skyMul) * 0.5 : W.skyMul;
+    this.lookAmb = (this.work ? Math.max(this.base.amb, 1.5) : this.base.amb) * sky;
+    this.hemi.intensity = this.lookAmb;
+    this.sun.intensity = this.base.sun * sky;
     const lit = this.work && !this.outdoor;
     this.hemi.color.set(lit ? '#e8e0d0' : this.base.sky);
     this.hemi.groundColor.set(lit ? '#6a6058' : this.base.ground);
     const f = this.scene.fog as THREE.FogExp2 | null;
-    if (f) f.density = this.base.fog * (this.far ? 0.25 : 1) * (this.work ? 0.6 : 1);
+    const fogMul = this.work ? 1 + (W.fogMul - 1) * 0.5 : W.fogMul;
+    if (f) {
+      f.density = this.base.fog * (this.far ? 0.25 : 1) * (this.work ? 0.6 : 1) * fogMul;
+      f.color.set(W.fogColor ? new THREE.Color(W.fogColor).multiplyScalar(sky) : '#' + this.base.fogCol);
+    }
+    if (this.scene.background instanceof THREE.Color) {
+      const bg = new THREE.Color(W.fogColor && this.outdoor ? W.fogColor : '#' + this.base.bg);
+      this.scene.background = bg.multiplyScalar(this.outdoor ? sky : 1);
+    }
   }
 
   showCeiling(on: boolean) {
@@ -322,6 +350,7 @@ export class Engine3D {
 
   dispose() {
     cancelAnimationFrame(this.raf);
+    this.weather.dispose();
     this.built?.dispose();
     for (const m of Object.values(this.kitMats)) m.dispose();
     this.vis.uVis.value.dispose();

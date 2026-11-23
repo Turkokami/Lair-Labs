@@ -1,6 +1,7 @@
 // The turn controls drawn over the 3D view on a player's phone: your HP and AC, feet left to move, who you're
 // aiming at and how far away they are, your weapon attacks (with reach and long-range disadvantage worked out), and
 // End turn. They send the same intents as the character sheet, so the GM's screen and the log see ordinary rolls.
+import { windSpoilsRanged } from '../engine/weather';
 import type { PlayerView } from '../engine/game';
 import type { Character } from '../rules/character';
 import { computeSheet } from '../rules/character';
@@ -91,7 +92,8 @@ export function TurnHud3D({ v, ch, target, setTarget, roll, endTurn, rollInit, c
             const r = reachOf(a.name);
             const far = tgtFt !== undefined && tgtFt > r.near;
             const out = tgtFt !== undefined && tgtFt > r.far;
-            const adv = far && !out && r.far > 5 ? 'dis' : 'none';
+            const windy = windSpoilsRanged(v.weather) && r.far > 10;
+            const adv = (far && !out && r.far > 5) || windy ? 'dis' : 'none';
             return (
               <button
                 key={a.name}
@@ -101,10 +103,11 @@ export function TurnHud3D({ v, ch, target, setTarget, roll, endTurn, rollInit, c
                   const aim = tgt ?? nearestFoe(v.tokens, myToken, r.far);
                   if (aim && !tgt) setTarget(aim.id);
                   const aimFt = aim && myToken ? gapFt(myToken, aim) : undefined;
-                  const dis = aimFt !== undefined && aimFt > r.near && r.far > 5 ? 'dis' : 'none';
-                  roll(d20Formula(a.toHit, dis), `${a.name} attack${aim ? ` vs ${aim.name}` : ''}${dis === 'dis' ? ' (long range)' : ''}`, {
+                  const long = aimFt !== undefined && aimFt > r.near && r.far > 5;
+                  const dis = long || windy ? 'dis' : 'none';
+                  roll(d20Formula(a.toHit, dis), `${a.name} attack${aim ? ` vs ${aim.name}` : ''}${long ? ' (long range)' : windy ? ' (strong wind)' : ''}`, {
                     attackDamage: a.dmg,
-                    critRange: ch.build.classId === 'fighter' && ch.build.level >= 3 ? 19 : 20,
+                    critRange: sh.critOn,
                     targetId: aim?.id,
                   });
                 }}

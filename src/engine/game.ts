@@ -12,6 +12,7 @@ import { partyVision, type VisionResult } from './vision';
 import { creatureForMonster } from '../library/creatures';
 import { mod, ABILITIES, ABILITY_NAMES, type Ability } from '../rules/core';
 import { type Profile, type ProfileKind, blankProfile, cleanProfile, validImageData, isImageId, profileImageIds, LIMITS } from './profile';
+import { type Weather, cleanWeather, isClear, weatherName, weatherRules } from './weather';
 
 export type Visibility = 'public' | 'gm' | 'self' | 'blind';
 
@@ -133,6 +134,8 @@ export interface GameState {
   effects?: Effect[];
   /** Character profiles by id: a hero's id is its character id. Pictures are kept apart, by id. */
   profiles?: Record<string, Profile>;
+  /** Rain, fog, wind, gloom and temperature for the whole table. Missing means clear. */
+  weather?: Weather;
 }
 
 export type Intent =
@@ -190,6 +193,7 @@ export type Intent =
   | { t: 'gm:handout'; title: string; text: string }
   | { t: 'gm:clearHandout' }
   | { t: 'gm:curtain'; on: boolean }
+  | { t: 'gm:weather'; weather: Weather | null }
   | { t: 'gm:grantLevel'; charId: string }
   | { t: 'gm:kick'; playerId: string }
   | { t: 'gm:clearLog' }
@@ -223,6 +227,7 @@ export interface PlayerView {
   templates: AreaTemplate[];
   safety: Safety;
   xcardAt?: number;
+  weather?: Weather;
 }
 
 export const CODE_ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
@@ -828,6 +833,14 @@ export class HostCore {
       case 'gm:handout': this.s.handout = { title: it.title.slice(0, 80), text: it.text.slice(0, 4000), ts: Date.now() }; this.system(`The GM shares: ${it.title}`); break;
       case 'gm:clearHandout': this.s.handout = undefined; break;
       case 'gm:curtain': this.s.curtain = it.on; break;
+      case 'gm:weather': {
+        const w = it.weather ? cleanWeather(it.weather) : undefined;
+        const was = weatherName(this.s.weather);
+        this.s.weather = w && !isClear(w) ? w : undefined;
+        const now = weatherName(this.s.weather);
+        if (now !== was) this.system(this.s.weather ? `The weather turns: ${now}. ${weatherRules(this.s.weather).join(' ')}` : 'The weather clears.');
+        break;
+      }
       case 'gm:grantLevel': {
         const c = this.s.characters[it.charId];
         if (!c) throw new GameError('No such character.');
@@ -1370,6 +1383,7 @@ export class HostCore {
       lit: vis && !s.curtain ? Array.from(vis.light, (v) => v).join('') : undefined,
       templates: s.curtain && !gm ? [] : s.templates ?? [],
       safety: s.settings.safety ?? DEFAULT_SAFETY,
+      weather: s.weather,
       xcardAt: gm ? s.xcardAt : undefined,
     };
   }

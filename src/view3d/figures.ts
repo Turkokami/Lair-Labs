@@ -42,7 +42,7 @@ function sizeScale(t: Token, size?: string) {
   return { Tiny: 0.45, Small: 0.75, Medium: 1, Large: 1.65, Huge: 2.5, Gargantuan: 3.4 }[s] ?? 1;
 }
 
-function mats(vis: VisUniforms, main: string, accent: string, skin: string, glow = false) {
+function mats(vis: VisUniforms, main: string, accent: string, skin: string, glow = false, hair = '#4a3020', eyeGlow?: string) {
   const m = (col: string, rough = 0.7, metal = 0) => shade(new THREE.MeshStandardMaterial({ color: col, roughness: rough, metalness: metal }), vis);
   return {
     main: m(main),
@@ -50,7 +50,11 @@ function mats(vis: VisUniforms, main: string, accent: string, skin: string, glow
     skin: glow ? shade(new THREE.MeshStandardMaterial({ color: skin, emissive: skin, emissiveIntensity: 0.6, roughness: 0.4 }), vis) : m(skin, 0.8),
     metal: m('#b8bcc4', 0.35, 0.8),
     dark: m('#2a2420', 0.9),
-    eye: shade(new THREE.MeshStandardMaterial({ color: '#000', emissive: glow ? '#ffffff' : '#ffe9a8', emissiveIntensity: glow ? 1.5 : 0.25 }), vis),
+    eye: shade(new THREE.MeshStandardMaterial({ color: '#000', emissive: eyeGlow ?? (glow ? '#ffffff' : '#ffe9a8'), emissiveIntensity: eyeGlow ? 1.6 : glow ? 1.5 : 0.25 }), vis),
+    hair: m(hair, 0.9),
+    skin2: m('#efe6cf', 0.6),
+    wood: m('#5a3d24', 0.85),
+    straw: m('#c9a85a', 0.9),
   };
 }
 
@@ -78,40 +82,167 @@ function joint(parent: THREE.Object3D, name: string, x: number, y: number, z: nu
   return j;
 }
 
-function biped(M: ReturnType<typeof mats>, fam: CreatureFamily, armed: boolean): Rig {
+/**
+ * What a figure looks like beyond its family: a skeleton is bones, a wizard has a robe, pointed hat and staff, a witch
+ * a wide-brimmed hat and broom, a knight plate and helm, a ghost floats with no legs, a zombie shambles arms out,
+ * a dragon has horns, spines and wide wings, a spider eight legs. Picked from the token's art id, tags and name.
+ */
+export type Look = 'plain' | 'skeleton' | 'wizard' | 'witch' | 'lich' | 'robed' | 'knight' | 'ghost' | 'zombie' | 'goblin' | 'orc' | 'dragon' | 'spider' | 'bones4';
+export function lookFor(t: Pick<Token, 'art' | 'monsterId' | 'name'>, def?: { id: string; family: string; tags?: string[]; name: string }): Look {
+  const s = [def?.id, def?.name, ...(def?.tags ?? []), t.art, t.monsterId, t.name].filter(Boolean).join(' ').toLowerCase();
+  const has = (...w: string[]) => w.some((x) => s.includes(x));
+  if (def?.family === 'dragon' || has('dragon', 'wyvern', 'drake', 'wyrm')) return has('skelet', 'bone dragon', 'bone-dragon') ? 'bones4' : 'dragon';
+  if (has('spider', 'ettercap')) return has('ettercap') ? 'plain' : 'spider';
+  if (has('skeleton', 'skeletal')) return has('horse', 'minotaur', 'warhorse') ? 'bones4' : 'skeleton';
+  if (has('lich')) return 'lich';
+  if (has('witch', 'hag', 'coven')) return 'witch';
+  if (has('ghost', 'specter', 'spectre', 'wraith', 'banshee', 'poltergeist', 'spirit', 'phantom', 'shadow')) return 'ghost';
+  if (has('zombie', 'ghoul', 'ghast', 'mummy', 'flesh golem')) return 'zombie';
+  if (has('wizard', 'mage', 'archmage', 'sorcer', 'warlock', 'necromancer', 'illusionist', 'enchant', 'apprentice', 'magus', 'conjurer')) return 'wizard';
+  if (has('priest', 'acolyte', 'cultist', 'cult', 'druid', 'monk', 'cleric', 'sage', 'scholar', 'hermit')) return 'robed';
+  if (has('knight', 'paladin', 'guard', 'veteran', 'soldier', 'gladiator', 'animated armor', 'animatedarmor', 'warlord', 'champion', 'fighter')) return 'knight';
+  if (has('goblin', 'kobold', 'hobgoblin', 'bugbear', 'imp', 'redcap', 'quasit')) return 'goblin';
+  if (has('orc', 'ogre', 'troll', 'gnoll', 'oni')) return 'orc';
+  return 'plain';
+}
+
+const RIB = new THREE.TorusGeometry(0.5, 0.07, 4, 14, Math.PI * 1.5);
+RIB.rotateX(Math.PI / 2);
+RIB.rotateY(Math.PI * 0.75);
+const ROBE = new THREE.CylinderGeometry(0.42, 1, 1, 14, 1, true);
+const BRIM = new THREE.CylinderGeometry(0.5, 0.5, 1, 18);
+/** A wing: a membrane spread from the shoulder out along +x, fingers fanned back. */
+const WING = (() => {
+  const g = new THREE.BufferGeometry();
+  const v = [0, 0, 0.15, 1, 0.1, 0.2, 0.85, 0, -0.35, 0, 0, 0.15, 0.85, 0, -0.35, 0.45, 0, -0.55, 0, 0, 0.15, 0.45, 0, -0.55, 0, 0, -0.35];
+  g.setAttribute('position', new THREE.Float32BufferAttribute(v, 3));
+  g.computeVertexNormals();
+  return g;
+})();
+
+function biped(M: ReturnType<typeof mats>, fam: CreatureFamily, armed: boolean, look: Look = 'plain'): Rig {
   const root = new THREE.Group();
-  const body = joint(root, 'hips', 0, 0.82, 0);
+  const bony = look === 'skeleton' || look === 'lich';
+  const robe = look === 'wizard' || look === 'witch' || look === 'robed' || look === 'lich';
+  const ghost = look === 'ghost';
+  const hy = ghost ? 0.98 : 0.82;
+  const body = joint(root, 'hips', 0, hy, 0);
   const spine = joint(body, 'spine', 0, 0.08, 0);
-  part(body, G.box, M.main, 0, 0, 0, 0.36, 0.2, 0.22);
-  part(spine, G.cap, M.main, 0, 0.27, 0, 0.42, 0.28, 0.26);
-  part(spine, G.box, M.accent, 0, 0.12, 0.0, 0.4, 0.06, 0.27);
-  const neck = joint(spine, 'neck', 0, 0.56, 0);
+  if (look === 'skeleton') {
+    part(body, G.box, M.skin, 0, 0, 0, 0.3, 0.1, 0.16);
+    part(spine, G.cyl, M.skin, 0, 0.26, -0.04, 0.06, 0.52, 0.06);
+    for (let i = 0; i < 4; i++) part(spine, RIB, M.skin, 0, 0.2 + i * 0.085, 0.0, 0.36 - Math.abs(i - 1.5) * 0.03, 1, 0.24);
+    part(spine, G.box, M.skin, 0, 0.5, 0, 0.42, 0.05, 0.12);
+  } else {
+    part(body, G.box, M.main, 0, 0, 0, 0.36, 0.2, 0.22);
+    part(spine, G.cap, M.main, 0, 0.27, 0, 0.42, 0.28, 0.26);
+    part(spine, G.box, look === 'knight' ? M.metal : M.accent, 0, look === 'knight' ? 0.3 : 0.12, 0.0, look === 'knight' ? 0.44 : 0.4, look === 'knight' ? 0.34 : 0.06, 0.29);
+  }
+  if (robe) {
+    // a long robe from the waist to the floor (the legs walk inside it; the boots peek out)
+    part(body, ROBE, M.main, 0, -(hy - 0.06) / 2, 0, 0.5, hy - 0.06, 0.42);
+    if (look !== 'witch') part(body, G.box, M.accent, 0, 0.02, 0, 0.4, 0.06, 0.3);
+  }
+  if (ghost) {
+    // no legs: the body trails off into a wisp
+    part(body, G.cone, M.main, 0, -0.42, 0, 0.42, 0.85, 0.34, Math.PI, 0, 0);
+  }
+  const neck = joint(spine, 'neck', 0, 0.56, look === 'zombie' ? 0.06 : 0);
+  if (look === 'zombie') neck.rotation.x = 0.35;
   const head = joint(neck, 'head', 0, 0.06, 0);
-  part(head, G.sph, M.skin, 0, 0.13, 0, 0.27, 0.3, 0.28);
-  part(head, G.sph, M.eye, -0.06, 0.16, 0.12, 0.05, 0.05, 0.03);
-  part(head, G.sph, M.eye, 0.06, 0.16, 0.12, 0.05, 0.05, 0.03);
+  if (bony) {
+    part(head, G.sph, M.skin, 0, 0.15, 0, 0.26, 0.27, 0.27);
+    part(head, G.box, M.skin, 0, 0.02, 0.05, 0.16, 0.07, 0.15);
+    part(head, G.sph, M.eye, -0.06, 0.15, 0.12, 0.06, 0.06, 0.03);
+    part(head, G.sph, M.eye, 0.06, 0.15, 0.12, 0.06, 0.06, 0.03);
+  } else {
+    part(head, G.sph, M.skin, 0, 0.13, 0, 0.27, 0.3, 0.28);
+    part(head, G.sph, M.eye, -0.06, 0.16, 0.12, 0.05, 0.05, 0.03);
+    part(head, G.sph, M.eye, 0.06, 0.16, 0.12, 0.05, 0.05, 0.03);
+  }
   if (fam === 'fiend') for (const s of [-1, 1]) part(head, G.cone, M.dark, s * 0.1, 0.32, -0.02, 0.06, 0.18, 0.06, 0, 0, -s * 0.4);
-  if (fam === 'hero' || fam === 'humanoid') part(head, G.sph, M.accent, 0, 0.2, -0.03, 0.29, 0.22, 0.3);
+  if (look === 'goblin') {
+    for (const s of [-1, 1]) part(head, G.cone, M.skin, s * 0.2, 0.18, -0.02, 0.07, 0.24, 0.05, 0, 0, -s * 1.25);
+    part(head, G.cone, M.skin, 0, 0.1, 0.17, 0.06, 0.12, 0.06, Math.PI / 2, 0, 0);
+  }
+  if (look === 'orc') for (const s of [-1, 1]) part(head, G.cone, M.skin2, s * 0.05, 0.05, 0.13, 0.03, 0.08, 0.03, 0, 0, 0);
+  if (look === 'wizard' || look === 'witch' || look === 'lich') {
+    const w = look === 'witch';
+    const hat = look === 'lich' ? M.metal : w ? M.dark : M.main;
+    if (look === 'lich') {
+      for (let i = 0; i < 6; i++) { const a = (i / 6) * Math.PI * 2; part(head, G.cone, M.metal, Math.cos(a) * 0.11, 0.33, Math.sin(a) * 0.11, 0.04, 0.12, 0.04); }
+      part(head, BRIM, M.metal, 0, 0.27, 0, 0.27, 0.05, 0.27);
+    } else {
+      part(head, BRIM, hat, 0, 0.26, 0, w ? 0.66 : 0.46, 0.025, w ? 0.66 : 0.46);
+      const tip = joint(head, 'hatTip', 0, 0.27, 0);
+      tip.rotation.x = -0.18;
+      part(tip, G.cone, hat, 0, w ? 0.2 : 0.26, 0, 0.27, w ? 0.4 : 0.52, 0.27);
+      if (w) part(tip, G.cone, hat, 0.02, 0.43, -0.08, 0.1, 0.18, 0.1, -0.9, 0, 0);
+      else part(tip, G.sph, M.eye, 0.06, 0.2, 0.1, 0.04, 0.04, 0.04);
+      if (w) part(head, G.sph, M.hair, 0, 0.08, -0.1, 0.32, 0.36, 0.22);
+      else part(head, G.cone, M.hair, 0, -0.06, 0.1, 0.18, 0.34, 0.12, Math.PI, 0, 0);
+    }
+  } else if (look === 'robed') {
+    part(head, G.sph, M.main, 0, 0.16, -0.04, 0.33, 0.36, 0.33);
+  } else if (look === 'knight') {
+    part(head, G.cyl, M.metal, 0, 0.15, 0, 0.3, 0.32, 0.31);
+    part(head, G.box, M.dark, 0, 0.17, 0.15, 0.2, 0.03, 0.02);
+    part(head, G.box, M.accent, 0, 0.36, -0.02, 0.04, 0.1, 0.24);
+  } else if ((fam === 'hero' || fam === 'humanoid') && look !== 'skeleton') part(head, G.sph, M.hair, 0, 0.2, -0.03, 0.29, 0.22, 0.3);
   if (fam === 'celestial') part(head, new THREE.TorusGeometry(0.16, 0.015, 6, 20), M.skin, 0, 0.36, 0, 1, 1, 1, Math.PI / 2, 0, 0);
   for (const s of [-1, 1]) {
     const side = s < 0 ? 'L' : 'R';
     const sh = joint(spine, 'arm' + side, s * 0.25, 0.48, 0);
-    part(sh, G.sph, M.accent, 0, 0, 0, 0.16, 0.14, 0.16);
-    part(sh, G.cap, M.main, 0, -0.16, 0, 0.11, 0.2, 0.11);
-    const el = joint(sh, 'fore' + side, 0, -0.32, 0);
-    part(el, G.cap, M.skin, 0, -0.14, 0, 0.09, 0.18, 0.09);
-    part(el, G.sph, M.skin, 0, -0.3, 0, 0.1, 0.1, 0.1);
-    if (armed && s > 0) {
-      const w = joint(el, 'weapon', 0, -0.3, 0.02);
-      part(w, G.box, M.metal, 0, 0, 0.32, 0.04, 0.03, 0.6);
-      part(w, G.box, M.accent, 0, 0, 0.0, 0.16, 0.04, 0.04);
+    // the zombie's arms reach forward; the clips turn the shoulder on top of this pose
+    const pose = joint(sh, 'pose' + side, 0, 0, 0);
+    if (look === 'zombie') pose.rotation.x = -1.25;
+    const sleeve = robe ? M.main : look === 'knight' ? M.metal : M.main;
+    if (look === 'skeleton') {
+      part(pose, G.sph, M.skin, 0, 0, 0, 0.09, 0.09, 0.09);
+      part(pose, G.cyl, M.skin, 0, -0.16, 0, 0.045, 0.32, 0.045);
+    } else {
+      part(pose, G.sph, look === 'knight' ? M.metal : M.accent, 0, 0, 0, look === 'knight' ? 0.2 : 0.16, 0.14, look === 'knight' ? 0.2 : 0.16);
+      part(pose, G.cap, sleeve, 0, -0.16, 0, robe ? 0.15 : 0.11, 0.2, robe ? 0.15 : 0.11);
     }
-    if (armed && s < 0 && (fam === 'hero' || fam === 'humanoid')) part(el, G.cyl, M.accent, -0.06, -0.2, 0.05, 0.36, 0.04, 0.36, 0, 0, Math.PI / 2);
+    const el = joint(pose, 'fore' + side, 0, -0.32, 0);
+    if (look === 'skeleton') {
+      part(el, G.cyl, M.skin, 0, -0.14, 0, 0.04, 0.28, 0.04);
+      part(el, G.sph, M.skin, 0, -0.3, 0, 0.08, 0.08, 0.08);
+    } else {
+      if (robe) part(el, ROBE, M.main, 0, -0.1, 0, 0.18, 0.22, 0.18);
+      part(el, G.cap, M.skin, 0, -0.14, 0, 0.09, 0.18, 0.09);
+      part(el, G.sph, M.skin, 0, -0.3, 0, 0.1, 0.1, 0.1);
+    }
+    if (armed && s > 0 && look !== 'zombie' && look !== 'ghost') {
+      const w = joint(el, 'weapon', 0, -0.3, 0.02);
+      if (look === 'wizard' || look === 'lich') {
+        part(w, G.cyl, M.wood, 0, 0.12, 0.08, 0.05, 1.5, 0.05, 0.25, 0, 0);
+        part(w, G.sph, M.eye, 0, 0.84, 0.27, 0.13, 0.13, 0.13);
+      } else if (look === 'witch') {
+        part(w, G.cyl, M.wood, 0, 0.1, 0.06, 0.045, 1.4, 0.045, 0.25, 0, 0);
+        part(w, G.cone, M.straw, 0, -0.62, -0.12, 0.22, 0.38, 0.22, 0.25, 0, 0);
+      } else if (look === 'robed') {
+        part(w, G.cyl, M.wood, 0, 0, 0.25, 0.04, 0.5, 0.04, Math.PI / 2, 0, 0);
+        part(w, G.sph, M.metal, 0, 0, 0.52, 0.12, 0.12, 0.12);
+      } else {
+        part(w, G.box, M.metal, 0, 0, 0.32, 0.04, 0.03, 0.6);
+        part(w, G.box, M.accent, 0, 0, 0.0, 0.16, 0.04, 0.04);
+      }
+    }
+    if (armed && s < 0 && (fam === 'hero' || fam === 'humanoid' || look === 'skeleton' || look === 'knight') && !robe)
+      part(el, G.cyl, look === 'knight' ? M.metal : M.accent, -0.06, -0.2, 0.05, look === 'knight' ? 0.46 : 0.36, 0.04, look === 'knight' ? 0.5 : 0.36, 0, 0, Math.PI / 2);
     const hip = joint(body, 'leg' + side, s * 0.11, -0.08, 0);
-    part(hip, G.cap, M.main, 0, -0.2, 0, 0.14, 0.24, 0.14);
     const kn = joint(hip, 'shin' + side, 0, -0.4, 0);
-    part(kn, G.cap, M.dark, 0, -0.17, 0, 0.12, 0.22, 0.12);
-    part(kn, G.box, M.dark, 0, -0.33, 0.05, 0.12, 0.08, 0.22);
+    if (ghost) continue;
+    if (look === 'skeleton') {
+      part(hip, G.cyl, M.skin, 0, -0.2, 0, 0.05, 0.4, 0.05);
+      part(kn, G.cyl, M.skin, 0, -0.17, 0, 0.045, 0.34, 0.045);
+      part(kn, G.box, M.skin, 0, -0.35, 0.05, 0.08, 0.04, 0.18);
+    } else {
+      part(hip, G.cap, look === 'knight' ? M.metal : M.main, 0, -0.2, 0, 0.14, 0.24, 0.14);
+      part(kn, G.cap, M.dark, 0, -0.17, 0, 0.12, 0.22, 0.12);
+      part(kn, G.box, M.dark, 0, -0.33, 0.05, 0.12, 0.08, 0.22);
+    }
   }
   if (fam === 'fey' || fam === 'celestial' || fam === 'fiend') {
     for (const s of [-1, 1]) {
@@ -120,6 +251,7 @@ function biped(M: ReturnType<typeof mats>, fam: CreatureFamily, armed: boolean):
     }
   }
   const t = [0, 1, 2];
+  const H = (d: number) => [0, hy + d, 0] as [number, number, number];
   const clips: Record<ClipName, THREE.AnimationClip> = {
     idle: new THREE.AnimationClip('idle', 2, [
       qTrack('spine', t, [[0.02, 0, 0], [-0.02, 0, 0], [0.02, 0, 0]]),
@@ -127,9 +259,14 @@ function biped(M: ReturnType<typeof mats>, fam: CreatureFamily, armed: boolean):
       qTrack('armR', t, [[0, 0, 0.08], [0.05, 0, 0.12], [0, 0, 0.08]]),
       qTrack('foreR', t, [[-0.5, 0, 0], [-0.55, 0, 0], [-0.5, 0, 0]]),
       qTrack('head', t, [[0, -0.1, 0], [0.04, 0.1, 0], [0, -0.1, 0]]),
-      pTrack('hips', t, [[0, 0.82, 0], [0, 0.805, 0], [0, 0.82, 0]]),
+      pTrack('hips', t, ghost ? [H(0), H(0.06), H(0)] : [H(0), H(-0.015), H(0)]),
     ]),
-    walk: new THREE.AnimationClip('walk', 0.7, [
+    walk: new THREE.AnimationClip('walk', look === 'zombie' ? 1.1 : 0.7, look === 'zombie' ? [
+      qTrack('legL', [0, 0.55, 1.1], [[0.35, 0, 0], [-0.35, 0, 0], [0.35, 0, 0]]),
+      qTrack('legR', [0, 0.55, 1.1], [[-0.35, 0, 0], [0.35, 0, 0], [-0.35, 0, 0]]),
+      qTrack('spine', [0, 0.55, 1.1], [[0.15, 0.12, 0.1], [0.15, -0.12, -0.1], [0.15, 0.12, 0.1]]),
+      pTrack('hips', [0, 0.275, 0.55, 0.825, 1.1], [H(0), H(0.02), H(0), H(0.02), H(0)]),
+    ] : [
       qTrack('legL', [0, 0.35, 0.7], [[0.55, 0, 0], [-0.55, 0, 0], [0.55, 0, 0]]),
       qTrack('legR', [0, 0.35, 0.7], [[-0.55, 0, 0], [0.55, 0, 0], [-0.55, 0, 0]]),
       qTrack('shinL', [0, 0.175, 0.35, 0.525, 0.7], [[0, 0, 0], [0, 0, 0], [0.9, 0, 0], [0.3, 0, 0], [0, 0, 0]]),
@@ -137,9 +274,14 @@ function biped(M: ReturnType<typeof mats>, fam: CreatureFamily, armed: boolean):
       qTrack('armL', [0, 0.35, 0.7], [[-0.45, 0, -0.08], [0.45, 0, -0.08], [-0.45, 0, -0.08]]),
       qTrack('armR', [0, 0.35, 0.7], [[0.45, 0, 0.08], [-0.45, 0, 0.08], [0.45, 0, 0.08]]),
       qTrack('spine', [0, 0.35, 0.7], [[0.06, 0.08, 0], [0.06, -0.08, 0], [0.06, 0.08, 0]]),
-      pTrack('hips', [0, 0.175, 0.35, 0.525, 0.7], [[0, 0.82, 0], [0, 0.86, 0], [0, 0.82, 0], [0, 0.86, 0], [0, 0.82, 0]]),
+      pTrack('hips', [0, 0.175, 0.35, 0.525, 0.7], ghost ? [H(0), H(0.05), H(0.08), H(0.05), H(0)] : [H(0), H(0.04), H(0), H(0.04), H(0)]),
     ]),
-    attack: new THREE.AnimationClip('attack', 0.8, [
+    attack: new THREE.AnimationClip('attack', 0.8, robe && look !== 'robed' ? [
+      // casters thrust the staff and lean into the spell
+      qTrack('armR', [0, 0.25, 0.45, 0.8], [[0, 0, 0.1], [-1.9, 0, 0.2], [-1.3, 0, 0], [0, 0, 0.1]]),
+      qTrack('armL', [0, 0.25, 0.45, 0.8], [[0, 0, -0.1], [-1.4, 0, -0.3], [-1.2, 0, -0.1], [0, 0, -0.1]]),
+      qTrack('spine', [0, 0.25, 0.45, 0.8], [[0, 0, 0], [-0.12, 0, 0], [0.2, 0, 0], [0, 0, 0]]),
+    ] : [
       qTrack('armR', [0, 0.25, 0.4, 0.8], [[0, 0, 0.1], [-2.6, 0, 0.3], [-0.2, 0, -0.1], [0, 0, 0.1]]),
       qTrack('foreR', [0, 0.25, 0.4, 0.8], [[-0.5, 0, 0], [-0.8, 0, 0], [-0.1, 0, 0], [-0.5, 0, 0]]),
       qTrack('spine', [0, 0.25, 0.4, 0.8], [[0, 0, 0], [-0.15, 0.4, 0], [0.3, -0.3, 0], [0, 0, 0]]),
@@ -152,44 +294,81 @@ function biped(M: ReturnType<typeof mats>, fam: CreatureFamily, armed: boolean):
       qTrack('armL', [0, 0.12, 0.5], [[0, 0, 0], [-0.6, 0, -0.5], [0, 0, 0]]),
       qTrack('armR', [0, 0.12, 0.5], [[0, 0, 0], [-0.6, 0, 0.5], [0, 0, 0]]),
     ]),
-    die: new THREE.AnimationClip('die', 1.2, [
+    die: new THREE.AnimationClip('die', 1.2, look === 'skeleton' || ghost ? [
+      // bones clatter into a heap; a ghost fades down into the floor
+      pTrack('hips', [0, 0.4, 1.2], [H(0), H(-0.3), [0, 0.12, 0]]),
+      sTrack('hips', [0, 0.4, 1.2], [[1, 1, 1], [1.05, 0.7, 1.05], [1.3, 0.12, 1.3]]),
+    ] : [
       qTrack('hips', [0, 0.4, 1.2], [[0, 0, 0], [-0.4, 0, 0.1], [-1.5, 0, 0.1]]),
-      pTrack('hips', [0, 0.4, 1.2], [[0, 0.82, 0], [0, 0.5, -0.1], [0, 0.18, -0.35]]),
+      pTrack('hips', [0, 0.4, 1.2], [H(0), [0, 0.5, -0.1], [0, 0.18, -0.35]]),
       qTrack('legL', [0, 0.4, 1.2], [[0, 0, 0], [0.8, 0, 0], [0.2, 0, 0]]),
       qTrack('legR', [0, 0.4, 1.2], [[0, 0, 0], [0.8, 0, 0], [0.1, 0, 0]]),
       qTrack('armL', [0, 1.2], [[0, 0, 0], [-2.2, 0, -0.4]]),
       qTrack('armR', [0, 1.2], [[0, 0, 0], [-2.2, 0, 0.4]]),
     ]),
   };
-  return { root, body, clips, height: 1.6 };
+  return { root, body, clips, height: look === 'wizard' || look === 'witch' ? 1.95 : ghost ? 1.75 : 1.6 };
 }
 
-function quad(M: ReturnType<typeof mats>, fam: CreatureFamily, winged: boolean): Rig {
+function quad(M: ReturnType<typeof mats>, fam: CreatureFamily, winged: boolean, look: Look = 'plain'): Rig {
+  const dragon = look === 'dragon' || look === 'bones4' && winged, spider = look === 'spider';
   const root = new THREE.Group();
   const body = joint(root, 'hips', 0, 0.55, 0);
-  part(body, G.cap, M.main, 0, 0.05, 0, 0.42, 0.55, 0.42, Math.PI / 2, 0, 0);
-  part(body, G.box, M.accent, 0, 0.24, 0, 0.12, 0.06, 0.7);
-  const neck = joint(body, 'neck', 0, 0.12, 0.42);
-  part(neck, G.cap, M.main, 0, 0.12, 0.08, 0.2, 0.2, 0.2, -0.8, 0, 0);
-  const head = joint(neck, 'head', 0, 0.26, 0.2);
+  if (spider) {
+    part(body, G.sph, M.main, 0, 0.0, 0.05, 0.46, 0.34, 0.5);
+    part(body, G.sph, M.main, 0, 0.12, -0.5, 0.75, 0.62, 0.85);
+    part(body, G.sph, M.accent, 0, 0.32, -0.55, 0.3, 0.12, 0.4);
+  } else {
+    part(body, G.cap, M.main, 0, 0.05, 0, 0.42, 0.55, 0.42, Math.PI / 2, 0, 0);
+    part(body, G.box, M.accent, 0, 0.24, 0, 0.12, 0.06, 0.7);
+  }
+  if (dragon) for (let i = 0; i < 5; i++) part(body, G.cone, M.dark, 0, 0.27, 0.3 - i * 0.18, 0.07, 0.16, 0.1);
+  const neck = joint(body, 'neck', 0, spider ? -0.02 : 0.12, spider ? 0.32 : 0.42);
+  if (!spider) part(neck, G.cap, M.main, 0, 0.12, 0.08, 0.2, dragon ? 0.42 : 0.2, 0.2, -0.8, 0, 0);
+  if (dragon) for (let i = 0; i < 3; i++) part(neck, G.cone, M.dark, 0, 0.2 + i * 0.12, -0.02 + i * 0.1, 0.05, 0.12, 0.07, -0.5, 0, 0);
+  const head = joint(neck, 'head', 0, spider ? 0 : dragon ? 0.42 : 0.26, spider ? 0.05 : dragon ? 0.36 : 0.2);
   part(head, G.box, M.skin, 0, 0, 0.1, 0.24, 0.2, 0.36);
   part(head, G.box, M.dark, 0, -0.07, 0.24, 0.18, 0.06, 0.16);
   part(head, G.sph, M.eye, -0.09, 0.05, 0.2, 0.05, 0.05, 0.04);
   part(head, G.sph, M.eye, 0.09, 0.05, 0.2, 0.05, 0.05, 0.04);
-  if (fam === 'dragon' || fam === 'monstrosity') for (const s of [-1, 1]) part(head, G.cone, M.dark, s * 0.08, 0.16, -0.05, 0.05, 0.22, 0.05, -0.8, 0, 0);
+  if (dragon) {
+    // long horns swept back, a snout ridge and a crest of small spines
+    for (const s of [-1, 1]) part(head, G.cone, M.dark, s * 0.09, 0.15, -0.14, 0.06, 0.36, 0.06, -1.9, 0, s * 0.25);
+    for (const s of [-1, 1]) part(head, G.cone, M.dark, s * 0.06, 0.06, 0.32, 0.03, 0.08, 0.03, 0, 0, 0);
+    part(head, G.box, M.main, 0, 0.06, 0.2, 0.16, 0.08, 0.3);
+  } else if (spider) {
+    for (let i = 0; i < 4; i++) part(head, G.sph, M.eye, (i - 1.5) * 0.05, 0.1, 0.2, 0.04, 0.04, 0.03);
+    for (const s of [-1, 1]) part(head, G.cone, M.dark, s * 0.05, -0.1, 0.24, 0.04, 0.14, 0.04, Math.PI * 0.8, 0, 0);
+  } else if (fam === 'dragon' || fam === 'monstrosity') for (const s of [-1, 1]) part(head, G.cone, M.dark, s * 0.08, 0.16, -0.05, 0.05, 0.22, 0.05, -0.8, 0, 0);
   else for (const s of [-1, 1]) part(head, G.cone, M.main, s * 0.08, 0.13, -0.04, 0.07, 0.12, 0.04);
   const legs: [string, number, number][] = [['legFL', -0.16, 0.3], ['legFR', 0.16, 0.3], ['legBL', -0.16, -0.3], ['legBR', 0.16, -0.3]];
   for (const [n, x, z] of legs) {
     const j = joint(body, n, x, -0.08, z);
+    if (spider) {
+      // two jointed legs from each hip, bent up then down to the floor
+      const side = x < 0 ? -1 : 1;
+      for (const dz of [-0.06, 0.06]) {
+        const sp = (z > 0 ? 1 : -1) * (dz > 0 ? 0.55 : 0.2);
+        part(j, G.cyl, M.dark, side * 0.28, 0.12, z * 0.2 + dz + sp * 0.3, 0.04, 0.62, 0.04, sp * 0.4, 0, -side * 0.95);
+        part(j, G.cyl, M.dark, side * 0.58, -0.22, z * 0.2 + dz + sp * 0.55, 0.035, 0.62, 0.035, sp * 0.3, 0, side * 0.35);
+      }
+      continue;
+    }
     part(j, G.cap, M.main, 0, -0.2, 0, 0.12, 0.26, 0.12);
     part(j, G.box, M.dark, 0, -0.44, 0.03, 0.12, 0.06, 0.16);
   }
   const tail = joint(body, 'tail', 0, 0.08, -0.48);
-  part(tail, G.cone, M.main, 0, 0, -0.25, 0.12, 0.55, 0.12, -Math.PI / 2 - 0.3, 0, 0);
+  if (!spider) part(tail, G.cone, M.main, 0, 0, dragon ? -0.5 : -0.25, dragon ? 0.16 : 0.12, dragon ? 1.05 : 0.55, dragon ? 0.16 : 0.12, -Math.PI / 2 - (dragon ? 0.15 : 0.3), 0, 0);
+  if (dragon) part(tail, G.cone, M.dark, 0, 0.02, -1.0, 0.14, 0.16, 0.03, -Math.PI / 2, 0, 0);
   if (winged)
     for (const s of [-1, 1]) {
       const wj = joint(body, s < 0 ? 'wingL' : 'wingR', s * 0.15, 0.22, 0.05);
-      part(wj, G.box, M.accent, s * 0.5, 0.05, 0, 1.0, 0.03, 0.55, 0, 0, s * 0.15);
+      if (dragon) {
+        // a bat-like membrane with a bony leading edge
+        (M.accent as THREE.MeshStandardMaterial).side = THREE.DoubleSide;
+        part(wj, WING, M.accent, 0, 0.04, 0, s * 1.35, 1, 1.25);
+        part(wj, G.cyl, M.dark, s * 0.65, 0.07, 0.22, 0.04, 1.35, 0.04, 0, 0.0, Math.PI / 2 - s * 0.08);
+      } else part(wj, G.box, M.accent, s * 0.5, 0.05, 0, 1.0, 0.03, 0.55, 0, 0, s * 0.15);
     }
   const t = [0, 1, 2];
   const leg = (a: number) => [[a, 0, 0], [-a, 0, 0], [a, 0, 0]] as [number, number, number][];
@@ -404,11 +583,24 @@ export class Figure {
     const firstHex = (o?: Record<string, string>) => Object.values(o ?? {}).find((v) => /^#[0-9a-f]{6}$/i.test(v));
     const main = def ? firstHex(def.c) ?? token.color : token.kind === 'pc' ? '#3d4a5c' : '#5a4a3a';
     const accent = token.color || FAMILY_RING[fam];
-    const skin = fam === 'undead' ? '#c8cdb8' : fam === 'elemental' ? accent : fam === 'ooze' ? '#7fbf5a' : fam === 'hero' || fam === 'humanoid' ? '#d9a77c' : main;
-    const M = mats(vis, main, accent, skin, fam === 'elemental' || fam === 'ooze');
+    const look = lookFor(token, def);
+    const bone = look === 'skeleton' || look === 'lich' || look === 'bones4';
+    const skin = bone ? '#e6dfc8' : look === 'ghost' ? '#cfe6ee' : fam === 'undead' ? '#c8cdb8' : fam === 'elemental' ? accent : fam === 'ooze' ? '#7fbf5a' : fam === 'hero' || fam === 'humanoid' ? '#d9a77c' : main;
+    const hair = look === 'wizard' ? '#dcd6ca' : look === 'witch' ? '#2b2622' : '#4a3020';
+    const eyeGlow = bone ? '#7fe0ff' : look === 'ghost' ? '#bff4ff' : undefined;
+    const M = mats(vis, look === 'bones4' ? '#e6dfc8' : main, accent, skin, fam === 'elemental' || fam === 'ooze', hair, eyeGlow);
+    if (look === 'ghost')
+      for (const k of ['main', 'accent', 'skin', 'hair', 'dark'] as const) {
+        const mm = M[k] as THREE.MeshStandardMaterial;
+        mm.transparent = true; mm.opacity = 0.5; mm.depthWrite = false; mm.emissive.set(skin); mm.emissiveIntensity = 0.35;
+      }
     this.materials = Object.values(M);
     const plan = PLAN[fam];
-    const rig = plan === 'biped' ? biped(M, fam, true) : plan === 'blob' ? blob(M, fam) : quad(M, fam, plan === 'flyer');
+    // a few looks change the body plan: a ghostly dragon is still a dragon, a skeleton is always on two legs
+    const useBiped = look === 'skeleton' || look === 'ghost' || look === 'zombie' || look === 'lich' || look === 'witch' || look === 'wizard' ? plan === 'biped' || fam === 'undead' || fam === 'humanoid' : plan === 'biped';
+    const rig = (look === 'dragon' || look === 'spider' || look === 'bones4') && plan !== 'blob'
+      ? quad(M, fam, look === 'dragon' || (look === 'bones4' && fam === 'dragon') || plan === 'flyer', look)
+      : useBiped ? biped(M, fam, true, look) : plan === 'blob' ? blob(M, fam) : quad(M, fam, plan === 'flyer', look);
     // FIG: a medium creature stands about 1.2 squares (6 ft) tall against 12 ft walls
     this.scale = sizeScale(token, def?.size) * (plan === 'quad' || plan === 'flyer' ? 1.1 : 1) * FIG;
     rig.root.scale.setScalar(this.scale);
