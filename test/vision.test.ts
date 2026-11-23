@@ -42,11 +42,12 @@ describe('line of sight', () => {
   });
   it('is fast enough on the biggest library map', () => {
     const m = JSON.parse(readFileSync('public/library/maps/goblin-warren.json', 'utf8')) as GameMap;
+    const [sx, sy] = m.playerStart!;
     const t0 = performance.now();
-    for (let i = 0; i < 5; i++) partyVision(m, [{ x: 5, y: 12, size: 1, darkvision: 60 }, { x: 6, y: 12, size: 1, darkvision: 0, light: { bright: 20, dim: 20 } }]);
+    for (let i = 0; i < 5; i++) partyVision(m, [{ x: sx, y: sy, size: 1, darkvision: 60 }, { x: sx + 1, y: sy, size: 1, darkvision: 0, light: { bright: 20, dim: 20 } }]);
     const ms = (performance.now() - t0) / 5;
     expect(ms).toBeLessThan(150);
-    expect(sightFrom(m, 5.5, 12.5, 40).size).toBeGreaterThan(5);
+    expect(sightFrom(m, sx + 0.5, sy + 0.5, 40).size).toBeGreaterThan(5);
   });
 });
 

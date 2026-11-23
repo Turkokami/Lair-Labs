@@ -4,74 +4,73 @@
   {
    "id": "crypt-of-the-ashen-saint",
    "name": "Crypt of the Ashen Saint",
-   "cols": 30,
-   "rows": 24,
+   "cols": 64,
+   "rows": 50,
    "ambient": "dark",
-   "description": "A small crypt beneath a ruined chapel: an entry hall, a hall of burial niches, a collapsed guardroom and, behind a locked iron door and a secret passage, the saint's warded tomb.",
+   "description": "A sprawling crypt under a ruined chapel: catacombs, ossuary, flooded gallery, trapped processional, hidden reliquary and the saint's warded tomb.",
    "setting": "dungeon",
    "tags": [
     "dungeon",
     "crypt",
     "undead",
-    "starter",
-    "one-shot"
+    "one-shot",
+    "large"
    ],
-   "rooms": 5,
-   "encounters": 3
+   "rooms": 21,
+   "encounters": 13
   },
   {
    "id": "flooded-chapel",
    "name": "The Flooded Chapel",
-   "cols": 26,
-   "rows": 22,
+   "cols": 56,
+   "rows": 46,
    "ambient": "dim",
-   "description": "A sunken chapel half full of black water. Pews break the surface, the altar stands dry on its dais, and stairs in the east chapel descend into a drowned crypt.",
+   "description": "A whole temple complex swallowed by the sea: wade the flooded nave, search the scriptorium, cloister and drowned garden, brave the whirlpool cistern or the smugglers' tunnel, and go down into the drowned crypt where the abbot waits.",
    "setting": "dungeon",
    "tags": [
     "dungeon",
     "temple",
     "water",
     "undead",
-    "starter"
+    "large"
    ],
-   "rooms": 4,
-   "encounters": 2
+   "rooms": 22,
+   "encounters": 12
   },
   {
    "id": "forest-road-ambush",
    "name": "Forest Road Ambush",
-   "cols": 32,
-   "rows": 22,
+   "cols": 68,
+   "rows": 48,
    "ambient": "bright",
-   "description": "A wagon lies overturned where the road narrows between oaks and pines. Bandits wait in the brush on both sides, and their camp sits in a ruined watch hut.",
+   "description": "A long stretch of forest road: the wagon ambush at the narrows, a cut bridge and a ford, the bandits' palisade camp, a hunter's lodge, a marsh, standing stones with a hidden barrow, and the bandit captain's hideout in the cliffs behind the waterfall.",
    "setting": "wilderness",
    "tags": [
     "wilderness",
     "road",
     "bandits",
     "ambush",
-    "starter"
+    "large"
    ],
-   "rooms": 2,
-   "encounters": 2
+   "rooms": 21,
+   "encounters": 13
   },
   {
    "id": "goblin-warren",
    "name": "Goblin Warren",
-   "cols": 34,
-   "rows": 26,
+   "cols": 72,
+   "rows": 56,
    "ambient": "dark",
-   "description": "A goblin lair in a hillside cave: a ravine approach, a watch post by a fire, a den cut by an underground stream, a wolf pen, a glowing mushroom grotto and the chief's hall.",
+   "description": "A goblin tribe's whole hillside cave system: a ravine approach and watch post, a bat roost, the sleeping den on an underground stream, the feasting cave, a shaman's hollow, a smithy, worg kennels, a wolf pen, the prisoners' hole, an underground river, an old dwarven mine and the chief's hall with a hidden hoard. Three routes lead to the chief.",
    "setting": "cave",
    "tags": [
     "cave",
-    "goblin",
-    "lair",
+    "goblins",
     "starter",
-    "one-shot"
+    "large"
    ],
-   "rooms": 7,
-   "encounters": 5
+   "rooms": 18,
+   "encounters": 14
   },
   {
    "id": "rusty-flagon-ground",
@@ -110,21 +109,21 @@
   },
   {
    "id": "wizards-tower-floor",
-   "name": "Wizard's Tower (middle floor)",
-   "cols": 23,
-   "rows": 23,
+   "name": "The Wizard's Tower",
+   "cols": 52,
+   "rows": 50,
    "ambient": "dim",
-   "description": "One round floor of a mage's tower: an outer ring split into a library-study and an alchemy lab, wrapped around a warded sanctum with a summoning circle behind a portcullis.",
+   "description": "A wizard's whole walled estate: gate and courtyard, hedge garden with a rotating-statue puzzle, greenhouse, observatory, stables and roost, apprentices' quarters, the round tower with its library, alchemy lab and summoning sanctum, a secret study behind a hinged bookcase, and a trapped cellar of runes, a vault and a portal room where the master waits.",
    "setting": "dungeon",
    "tags": [
     "dungeon",
-    "wizard",
     "tower",
-    "magic",
-    "starter"
+    "wizard",
+    "arcane",
+    "large"
    ],
-   "rooms": 5,
-   "encounters": 2
+   "rooms": 20,
+   "encounters": 14
   }
  ],
  "rooms": [

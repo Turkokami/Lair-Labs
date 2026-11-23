@@ -78,3 +78,24 @@ describe('library contents', () => {
     for (const f of fs.readdirSync('public/library/maps')) for (const p of load('maps/' + f.replace('.json', '')).props) expect(objectById(p.kind), p.kind).toBeTruthy();
   });
 });
+
+describe('ready-made maps', () => {
+  const idx = JSON.parse(fs.readFileSync('public/library/index.json', 'utf8'));
+  // the town buildings stay small; every dungeon, cave and wilderness map is a big one to explore
+  const towns = new Set(['rusty-flagon-ground', 'rusty-flagon-upstairs']);
+  for (const e of idx.maps as { id: string }[]) {
+    it(`${e.id} is playable`, async () => {
+      const { monsterById } = await import('../src/rules/monsters');
+      const { normMonsterId } = await import('../src/library/creatures');
+      const m = load('maps/' + e.id);
+      expect(m.cells.length).toBe(m.cols * m.rows);
+      if (!towns.has(e.id)) {
+        expect(m.cols * m.rows, 'big enough to explore').toBeGreaterThanOrEqual(2400);
+        expect((m.rooms ?? []).length, 'rooms').toBeGreaterThanOrEqual(12);
+      }
+      if (m.playerStart) expect(isFloor(m, m.playerStart[0], m.playerStart[1])).toBe(true);
+      for (const p of m.props) expect(isFloor(m, p.x, p.y), `${p.kind} at ${p.x},${p.y}`).toBe(true);
+      for (const enc of m.encounters ?? []) for (const g of enc.monsters) expect(monsterById(normMonsterId(g.srd)) ?? monsterById(g.srd), g.srd).toBeTruthy();
+    });
+  }
+});

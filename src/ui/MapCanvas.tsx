@@ -11,6 +11,8 @@ import { drawMapFx, mapFxAlive, mapFxFrom, type MapFx } from './mapfx';
 import { drawScene, CELL } from '../render/scene';
 import { browserFloors, onFloorsLoaded } from '../render/floors';
 import { gridFeet } from '../engine/areas';
+/** How far out a GM can zoom: low enough to see a whole 120-square map on a phone. */
+const MIN_ZOOM = 0.05;
 
 export { CELL };
 export type ViewToken = Token & { hpLabel?: string };
@@ -328,7 +330,7 @@ export function MapCanvas(p: MapCanvasProps) {
       const [a, b] = [...pointers.current.values()];
       const r = canvas.current!.getBoundingClientRect();
       const d = Math.hypot(a.x - b.x, a.y - b.y);
-      const s = Math.max(0.2, Math.min(3, (ge.s0 * d) / Math.max(1, ge.d0)));
+      const s = Math.max(MIN_ZOOM, Math.min(3, (ge.s0 * d) / Math.max(1, ge.d0)));
       const mx = (a.x + b.x) / 2 - r.left, my = (a.y + b.y) / 2 - r.top;
       // keep the world point under the original midpoint under the new midpoint
       const wx = (ge.mx - ge.cx) / ge.s0, wy = (ge.my - ge.cy) / ge.s0;
@@ -401,13 +403,13 @@ export function MapCanvas(p: MapCanvasProps) {
     const r = canvas.current!.getBoundingClientRect();
     const mx = e.clientX - r.left, my = e.clientY - r.top;
     const { x, y, s } = cam.current;
-    const ns = Math.max(0.2, Math.min(3, s * Math.exp(-e.deltaY * 0.0015)));
+    const ns = Math.max(MIN_ZOOM, Math.min(3, s * Math.exp(-e.deltaY * 0.0015)));
     cam.current = { s: ns, x: mx - ((mx - x) / s) * ns, y: my - ((my - y) / s) * ns };
     redraw();
   };
   const zoom = (f: number) => {
     const { x, y, s } = cam.current;
-    const ns = Math.max(0.2, Math.min(3, s * f));
+    const ns = Math.max(MIN_ZOOM, Math.min(3, s * f));
     const mx = size.w / 2, my = size.h / 2;
     cam.current = { s: ns, x: mx - ((mx - x) / s) * ns, y: my - ((my - y) / s) * ns };
     redraw();

@@ -1099,11 +1099,16 @@ function MapSettings({ map, onChange, onLoad }: { map: GameMap; onChange: (m: Ga
   const [lib, setLib] = useState(() => store.get<GameMap[]>('maps', []));
   const file = useRef<HTMLInputElement>(null);
   const resize = (cols: number, rows: number) => {
-    cols = Math.max(10, Math.min(80, cols));
-    rows = Math.max(10, Math.min(80, rows));
+    cols = Math.max(10, Math.min(120, cols));
+    rows = Math.max(10, Math.min(120, rows));
     const cells = new Array(cols * rows).fill(0);
-    for (let y = 0; y < Math.min(rows, map.rows); y++) for (let x = 0; x < Math.min(cols, map.cols); x++) cells[y * cols + x] = map.cells[y * map.cols + x];
-    onChange({ ...map, cols, rows, cells, props: map.props.filter((p) => p.x < cols && p.y < rows), notes: map.notes.filter((n) => n.x < cols && n.y < rows) });
+    // floor materials are kept per square too, so they move with their squares
+    const mats: string[] | undefined = map.mats ? new Array(cols * rows).fill('') : undefined;
+    for (let y = 0; y < Math.min(rows, map.rows); y++) for (let x = 0; x < Math.min(cols, map.cols); x++) {
+      cells[y * cols + x] = map.cells[y * map.cols + x];
+      if (mats) mats[y * cols + x] = map.mats![y * map.cols + x] ?? '';
+    }
+    onChange({ ...map, cols, rows, cells, mats, props: map.props.filter((p) => p.x < cols && p.y < rows), notes: map.notes.filter((n) => n.x < cols && n.y < rows) });
   };
   const saveToLib = () => {
     const next = [{ ...map }, ...lib.filter((m) => m.id !== map.id)].slice(0, 20);
@@ -1141,8 +1146,8 @@ function MapSettings({ map, onChange, onLoad }: { map: GameMap; onChange: (m: Ga
         </label>
         <label className="inline">Size
           <select value={`${map.cols}x${map.rows}`} onChange={(e) => { const [c, r] = e.target.value.split('x').map(Number); resize(c, r); }}>
-            {[[24, 18], [30, 22], [34, 24], [40, 30], [50, 36], [60, 44]].map(([c, r]) => <option key={c} value={`${c}x${r}`}>{c * 5} × {r * 5} ft</option>)}
-            {![[24, 18], [30, 22], [34, 24], [40, 30], [50, 36], [60, 44]].some(([c, r]) => c === map.cols && r === map.rows) && <option value={`${map.cols}x${map.rows}`}>{map.cols * 5} × {map.rows * 5} ft</option>}
+            {[[24, 18], [30, 22], [34, 24], [40, 30], [50, 36], [60, 44], [80, 60], [100, 75], [120, 90]].map(([c, r]) => <option key={c} value={`${c}x${r}`}>{c * 5} × {r * 5} ft</option>)}
+            {![[24, 18], [30, 22], [34, 24], [40, 30], [50, 36], [60, 44], [80, 60], [100, 75], [120, 90]].some(([c, r]) => c === map.cols && r === map.rows) && <option value={`${map.cols}x${map.rows}`}>{map.cols * 5} × {map.rows * 5} ft</option>}
           </select>
         </label>
       </div>
