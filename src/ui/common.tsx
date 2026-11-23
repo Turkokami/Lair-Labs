@@ -106,7 +106,7 @@ export function RollLine({ e, onDamage, gm }: { e: LogEntry; onDamage?: (formula
     return (
       <div className={'log-chat' + (e.to ? ' whisper' : '')}>
         <b>{e.from}</b>
-        {e.to && <span className="tag">{e.to === 'gm' ? 'to GM' : 'whisper'}</span>} {e.text}
+        {e.to && <span className="tag">{e.to === 'gm' ? 'to GM' : 'whisper'}</span>} {chatText(e)}
       </div>
     );
   const r = e.roll;
@@ -146,6 +146,16 @@ export function RollLine({ e, onDamage, gm }: { e: LogEntry; onDamage?: (formula
   );
 }
 
+/** Chat text with inline roll results shown as chips you can tap to see the dice. */
+function chatText(e: LogEntry) {
+  if (!e.inline?.length || !e.text) return e.text;
+  return e.text.split(/(\[\[\d+\]\])/).map((part, i) => {
+    const m = /^\[\[(\d+)\]\]$/.exec(part);
+    const r = m ? e.inline![Number(m[1])] : undefined;
+    return r ? <span key={i} className="inline-roll" title={`${r.formula} = ${r.detail}`} tabIndex={0}>{r.total}<small> {r.formula}</small></span> : part;
+  });
+}
+
 export function LogView({ log, myId, onDamage, onChat, gm, players }: { log: LogEntry[]; myId: string; onDamage?: (f: string, l: string) => void; onChat?: (text: string, to?: string) => void; gm?: boolean; players?: { id: string; name: string }[] }) {
   const end = useRef<HTMLDivElement>(null);
   const [text, setText] = useState('');
@@ -178,7 +188,7 @@ export function LogView({ log, myId, onDamage, onChat, gm, players }: { log: Log
             {!gm && <option value="gm">GM only</option>}
             {gm && players?.map((p) => <option key={p.id} value={p.id}>Whisper {p.name}</option>)}
           </select>
-          <input value={text} onChange={(e) => setText(e.target.value)} placeholder="Say something…" maxLength={500} />
+          <input value={text} onChange={(e) => setText(e.target.value)} placeholder="Say something… [[1d20+5]] rolls inline, /r 2d6 rolls" maxLength={500} />
           <button type="submit">Send</button>
         </form>
       )}
@@ -206,8 +216,21 @@ export function DiceTray({ onRoll, gm, onClose }: { onRoll: RollFn; gm?: boolean
     return f;
   };
   const f = custom.trim() || formula();
+  const [macros, setMacros] = useState<{ name: string; formula: string }[]>(() => store.get('macros', [] as { name: string; formula: string }[]));
+  const saveMacros = (m: { name: string; formula: string }[]) => { setMacros(m); store.set('macros', m); };
+  const fire = (formula: string, name: string) => { onRoll(formula, name, { visibility: vis }); onClose?.(); };
   return (
     <div className="tray">
+      {macros.length > 0 && (
+        <div className="row wrap gap macros">
+          {macros.map((m, i) => (
+            <span key={i} className="macro">
+              <button className="small" onClick={() => fire(m.formula, m.name)} title={m.formula}>{m.name}</button>
+              <button className="ghost icon small" aria-label={`Remove ${m.name}`} onClick={() => saveMacros(macros.filter((_, j) => j !== i))}>×</button>
+            </span>
+          ))}
+        </div>
+      )}
       <div className="tray-dice">
         {DIE.map((d) => (
           <button key={d} className={'die' + (pool[d] ? ' sel' : '')} onClick={() => setPool({ ...pool, [d]: (pool[d] ?? 0) + 1 })} onContextMenu={(e) => { e.preventDefault(); setPool({ ...pool, [d]: Math.max(0, (pool[d] ?? 0) - 1) }); }}>
@@ -239,6 +262,19 @@ export function DiceTray({ onRoll, gm, onClose }: { onRoll: RollFn; gm?: boolean
       <div className="row gap">
         <button className="ghost" onClick={() => { setPool({}); setBonus(0); setAdv('none'); setCustom(''); }}>Clear</button>
         <button
+          className="ghost"
+          disabled={!f || macros.length >= 12}
+          title="Keep this roll as a one-tap button on this device"
+          onClick={() => {
+            const [expr, ...lab] = f.split('#');
+            const name = (lab.join('#').trim() || window.prompt('Name this button (like "Longsword" or "Sneak Attack")', expr.trim()) || '').slice(0, 24);
+            if (!name) return;
+            saveMacros([...macros, { name, formula: expr.trim() }]);
+          }}
+        >
+          Save button
+        </button>
+        <button
           className="primary grow"
           disabled={!f}
           onClick={() => {
@@ -254,9 +290,18 @@ export function DiceTray({ onRoll, gm, onClose }: { onRoll: RollFn; gm?: boolean
           Roll {f || '…'}
         </button>
       </div>
-      <p className="muted small">Tap a die to add it. Long-press (or right-click) to remove one.</p>
+      <p className="muted small">Tap a die to add it. Long-press (or right-click) to remove one. "Save button" keeps a roll you use a lot.</p>
     </div>
   );
+}
+
+/** Save text as a file on the phone or computer. */
+export function download(name: string, text: string) {
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([text], { type: 'application/json' }));
+  a.download = name;
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(a.href), 1000);
 }
 
 export function useInterval(fn: () => void, ms: number) {

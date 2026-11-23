@@ -231,6 +231,10 @@ input.num.small { width: 52px; min-height: 34px; padding: 2px; }
 .log-sys.log-cast { color: #e7c8ff; font-style: normal; font-weight: 600; }
 .log-chat { background: var(--card); border-radius: 10px; padding: 6px 10px; }
 .log-chat.whisper { border: 1px dashed var(--purple); }
+.inline-roll { display: inline-block; background: var(--gold); color: #111; font-weight: 700; border-radius: 6px; padding: 0 6px; margin: 0 2px; }
+.inline-roll small { font-weight: 400; opacity: 0.75; }
+.macros { margin-bottom: 6px; }
+.macro { display: inline-flex; align-items: center; }
 .log-roll { background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 6px 10px; display: flex; flex-direction: column; gap: 4px; }
 .log-roll.crit { border-color: #4ade80; box-shadow: 0 0 12px rgba(74, 222, 128, 0.25); }
 .log-roll.fumble { border-color: var(--red); }

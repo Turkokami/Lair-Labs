@@ -1,7 +1,7 @@
 // The live game. The GM's device runs HostCore as the single source of truth: it checks every
 // intent, rolls every die, and sends each phone only what that player is allowed to see.
 import { type GameMap, type DoorState, blankMap, cell, edgeCells, isFloor, moveCost, revealAround, floodRoom, blocks, edgeBetween } from './map';
-import { roll, critFormula, d20Formula, type RollResult } from './dice';
+import { roll, critFormula, d20Formula, describe as describeDice, type RollResult } from './dice';
 import { spellById, spellDamage, spellHeal } from '../rules/spells';
 import { tokensInArea } from './areas';
 import { type Character, type CharacterBuild, type CharacterState, computeSheet, freshState, uid } from '../rules/character';
@@ -69,6 +69,8 @@ export interface LogEntry {
   hit?: boolean;
   /** A damage roll the table rolled for you after a hit, already taken off the target. */
   appliedTo?: string;
+  /** Inline rolls in a chat line: the text holds [[0]], [[1]]... where each result goes. */
+  inline?: { formula: string; total: number; detail: string }[];
   /** Part of a spell: the spell's id (the 3D view and the map draw its effect from the cast entry's fx). */
   spell?: string;
   /** A saving throw the table rolled for a creature caught by a spell: the DC and whether it made it. */
@@ -511,9 +513,31 @@ export class HostCore {
         break;
       }
       case 'chat': {
-        const text = it.text.trim().slice(0, 500);
+        let text = it.text.trim().slice(0, 500);
         if (!text) return;
-        this.add({ kind: 'chat', from: this.playerName(from), fromId: from, text, visibility: it.to ? 'self' : 'public', to: it.to });
+        // "/r 1d20+5 # Stealth" rolls for everyone, "/gr ..." rolls for the GM's eyes only
+        const cmd = /^\/(r|roll|gr|gmroll)\s+(.+)$/i.exec(text);
+        if (cmd) {
+          const [expr, ...lab] = cmd[2].split('#');
+          const vis: Visibility = /^g/i.test(cmd[1]) ? 'gm' : 'public';
+          let r: RollResult;
+          try { r = roll(expr.trim() + (lab.length ? ` # ${lab.join('#').trim().slice(0, 60)}` : '')); } catch { throw new GameError(`I can't read "${expr.trim()}" as dice. Try 1d20+5 or 2d6.`); }
+          this.add({ kind: 'roll', from: this.playerName(from), fromId: from, roll: r, visibility: vis, crit: r.isD20 && r.natural === 20, fumble: r.isD20 && r.natural === 1 });
+          break;
+        }
+        // inline rolls: "I hit for [[2d6+3]]!"
+        const inline: NonNullable<LogEntry['inline']> = [];
+        text = text.replace(/\[\[([^\]]{1,40})\]\]/g, (whole, f: string) => {
+          if (inline.length >= 6) return whole;
+          try {
+            const r = roll(f.trim());
+            inline.push({ formula: r.formula, total: r.total, detail: describeDice(r) });
+            return `[[${inline.length - 1}]]`;
+          } catch {
+            return whole;
+          }
+        });
+        this.add({ kind: 'chat', from: this.playerName(from), fromId: from, text, visibility: it.to ? 'self' : 'public', to: it.to, ...(inline.length ? { inline } : {}) });
         break;
       }
       case 'door': {

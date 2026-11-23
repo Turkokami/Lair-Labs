@@ -21,7 +21,7 @@ import { MapCanvas, lineToTemplate, type MapCanvasProps, type TemplateShape } fr
 
 const View3D = lazy(() => import('../view3d/View3D'));
 import { SheetPanel, ActionsPanel, BagPanel } from './Sheet';
-import { DiceTray, LogView, Modal, store, toast, type RollFn } from './common';
+import { DiceTray, LogView, Modal, store, toast, download, type RollFn } from './common';
 import { Avatar, ProfileModal, type ImgFn } from './Profile';
 import { getImages, putImage } from './imagestore';
 import { profileImageIds, type Profile } from '../engine/profile';
@@ -751,6 +751,8 @@ function TableTab({ s, gm, joinUrl, onQr, onKick, onEnd }: { s: GameState; gm: (
   const [discord, setDiscord] = useState(s.settings.discord);
   const [hTitle, setHTitle] = useState('');
   const [hText, setHText] = useState('');
+  const [journal, setJournal] = useState<{ id: string; title: string; text: string }[]>(() => store.get('handouts', [] as { id: string; title: string; text: string }[]));
+  const saveJournal = (j: typeof journal) => { setJournal(j); store.set('handouts', j); };
   const players = Object.values(s.players);
   return (
     <div className="stack">
@@ -798,8 +800,22 @@ function TableTab({ s, gm, joinUrl, onQr, onKick, onEnd }: { s: GameState; gm: (
       <textarea value={hText} onChange={(e) => setHText(e.target.value)} rows={3} placeholder="Text every player sees in a pop-up" />
       <div className="row gap">
         <button disabled={!hTitle.trim()} onClick={() => { gm({ t: 'gm:handout', title: hTitle, text: hText }); setHTitle(''); setHText(''); }}>Show to players</button>
+        <button className="ghost" disabled={!hTitle.trim()} onClick={() => { const i = journal.findIndex((h) => h.title === hTitle.trim()); const h = { id: i >= 0 ? journal[i].id : Math.random().toString(36).slice(2), title: hTitle.trim().slice(0, 80), text: hText.slice(0, 4000) }; saveJournal(i >= 0 ? journal.map((x, j) => (j === i ? h : x)) : [...journal, h]); toast('Saved to your journal'); }}>Save to journal</button>
         {s.handout && <button className="ghost" onClick={() => gm({ t: 'gm:clearHandout' })}>Clear</button>}
       </div>
+      {journal.length > 0 && (
+        <details className="card" open>
+          <summary>Journal ({journal.length}) <span className="muted small">kept on this device for every game</span></summary>
+          {journal.map((h) => (
+            <div key={h.id} className="row between gap">
+              <span className="grow"><b>{h.title}</b>{s.handout?.title === h.title ? <span className="tag">showing</span> : null}</span>
+              <button className="small" onClick={() => gm({ t: 'gm:handout', title: h.title, text: h.text })}>Show</button>
+              <button className="ghost small" onClick={() => { setHTitle(h.title); setHText(h.text); }}>Edit</button>
+              <button className="ghost small" aria-label={`Delete ${h.title}`} onClick={() => confirm(`Delete "${h.title}" from your journal?`) && saveJournal(journal.filter((x) => x.id !== h.id))}>×</button>
+            </div>
+          ))}
+        </details>
+      )}
       <h3>Session</h3>
       <div className="row gap wrap">
         <button className="ghost" onClick={() => download(`lair-labs-session-${s.code}.json`, JSON.stringify(s))}>Download a backup</button>
@@ -1213,10 +1229,4 @@ function shrinkPicture(src: string, cols: number, rows: number): Promise<string>
   });
 }
 
-function download(name: string, text: string) {
-  const a = document.createElement('a');
-  a.href = URL.createObjectURL(new Blob([text], { type: 'application/json' }));
-  a.download = name;
-  a.click();
-  setTimeout(() => URL.revokeObjectURL(a.href), 1000);
-}
+

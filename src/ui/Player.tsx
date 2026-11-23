@@ -11,7 +11,9 @@ import type { Spell } from '../rules/spells';
 import { MapCanvas, lineToTemplate, type TemplateShape } from './MapCanvas';
 import { CharBuilder } from './CharBuilder';
 import { SheetPanel, ActionsPanel, BagPanel } from './Sheet';
-import { DiceTray, LogView, Modal, clientId, store, toast, vibrate, type RollFn } from './common';
+import { DiceTray, LogView, Modal, clientId, store, toast, vibrate, download, type RollFn } from './common';
+import { freshState } from '../rules/character';
+import { CLASSES } from '../rules/classes';
 import { Avatar, ProfileModal, type ImgFn } from './Profile';
 import { getImages, putImage } from './imagestore';
 import { isEmptyProfile, type Profile } from '../engine/profile';
@@ -451,6 +453,8 @@ function PlayerTable({ s, onLeave }: { s: ClientSession; onLeave: () => void }) 
 }
 
 function HeroPicker({ v, send, onNew, onLeave }: { v: PlayerView; send: (i: Intent) => Promise<void>; onNew: () => void; onLeave: () => void }) {
+  const [, setTick] = useState(0);
+  const onImported = () => setTick((t) => t + 1);
   const mine = Object.values(store.get<Record<string, Character>>('heroes', {}));
   const atTable = v.party.filter((p) => !p.playerName);
   const ids = useMemo(() => new Set(v.party.map((p) => p.charId)), [v.party]);
@@ -477,9 +481,36 @@ function HeroPicker({ v, send, onNew, onLeave }: { v: PlayerView; send: (i: Inte
           <span>Take over</span>
         </button>
       ))}
+      <div className="row gap">
+        {mine.length > 0 && <button className="ghost grow" onClick={() => download(`lair-labs-heroes.json`, JSON.stringify({ lairLabsHeroes: 1, heroes: mine }, null, 1))}>Save heroes to a file</button>}
+        <label className="btn ghost grow">
+          Load heroes from a file
+          <input type="file" accept="application/json,.json" hidden onChange={(e) => { const f = e.target.files?.[0]; if (f) importHeroes(f).then(onImported); e.target.value = ''; }} />
+        </label>
+      </div>
       <button className="ghost block" onClick={onLeave}>Leave table</button>
     </div>
   );
+}
+
+/** Read a hero file (from "Save heroes to a file") and add the heroes to this phone. */
+async function importHeroes(f: File) {
+  try {
+    if (f.size > 2_000_000) throw new Error('That file is too big to be a hero file.');
+    const data = JSON.parse(await f.text());
+    const list: Character[] = Array.isArray(data?.heroes) ? data.heroes : data?.build ? [data] : [];
+    const ok = list.filter((c) => c?.build && typeof c.build.id === 'string' && typeof c.build.name === 'string' && CLASSES.some((k) => k.id === c.build.classId) && Number.isFinite(c.build.level) && c.build.base);
+    if (!ok.length) throw new Error("I couldn't find any heroes in that file.");
+    const heroes = store.get<Record<string, Character>>('heroes', {});
+    for (const c of ok) {
+      const build = { ...c.build, level: Math.max(1, Math.min(20, Math.floor(c.build.level))), name: c.build.name.slice(0, 40) };
+      heroes[build.id] = { build, state: { ...freshState(build), ...(c.state ?? {}) } };
+    }
+    store.set('heroes', heroes);
+    toast(`Loaded ${ok.length} hero${ok.length > 1 ? 'es' : ''}.`);
+  } catch (err) {
+    toast((err as Error).message || "That file didn't work.", 'error');
+  }
 }
 
 const statusClass = (s: ClientStatus) => (s === 'connected' ? 'ok' : s === 'reconnecting' || s === 'connecting' ? 'warn' : 'bad');
