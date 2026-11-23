@@ -27,20 +27,24 @@ import { Avatar, ProfileModal, type ImgFn } from './Profile';
 import { getImages, putImage } from './imagestore';
 import { profileImageIds, type Profile } from '../engine/profile';
 import { peerParams, safeDiscord } from './Player';
+import { AdventurePicker, StoryPanel, getProgress, useAdventure } from './Adventures';
+import type { AdventureProgress } from '../adventures/start';
 
 type Tool =
   | 'select' | 'room' | 'corridor' | 'erase' | 'water' | 'rubble' | 'pit' | 'door' | 'wall' | 'prop' | 'note'
   | 'stamp' | 'furnish'
   | 'revealRoom' | 'revealBrush' | 'hideBrush' | 'place' | 'creature' | 'measure' | 'area';
-type PlayTab = 'combat' | 'monsters' | 'party' | 'fog' | 'log' | 'table';
+type PlayTab = 'story' | 'combat' | 'monsters' | 'party' | 'fog' | 'log' | 'table';
 
 export function GMApp({ onExit }: { onExit: () => void }) {
   const saved = store.get<GameState | null>('gm.game', null);
   const [host, setHost] = useState<HostSession | null>(null);
+  const [pickAdventure, setPickAdventure] = useState(false);
   const [status, setStatus] = useState<'idle' | 'starting' | 'error'>('idle');
   const [err, setErr] = useState('');
 
-  const start = async (resume: boolean) => {
+  const start = async (resume: boolean, adventure = false) => {
+    setPickAdventure(adventure);
     setStatus('starting');
     setErr('');
     let state: GameState;
@@ -48,6 +52,8 @@ export function GMApp({ onExit }: { onExit: () => void }) {
       state = saved;
       for (const p of Object.values(state.players)) p.connected = false;
     } else {
+      // a fresh table is not part of the last adventure (a new one is picked next, if any)
+      store.set('gm.adventure', null);
       state = newGame(makeCode(), TEMPLATES[0].make());
       // the GM's NPCs and monsters with profiles carry over to every new session
       const cast = store.get<Record<string, Profile> | null>('gm.cast', null);
@@ -102,6 +108,9 @@ export function GMApp({ onExit }: { onExit: () => void }) {
           <button className={saved ? 'ghost block' : 'primary block'} disabled={status === 'starting'} onClick={() => start(false)}>
             {status === 'starting' ? 'Opening the table…' : 'Start a new session'}
           </button>
+          <button className="ghost block" disabled={status === 'starting'} onClick={() => start(false, true)}>
+            Play a ready-made adventure
+          </button>
           {err && <p className="error">{err}</p>}
           <p className="muted small">Keep this screen open while you play. It's the table: if it closes, players wait until you open it again.</p>
           <button className="ghost block" onClick={onExit}>Back</button>
@@ -109,11 +118,14 @@ export function GMApp({ onExit }: { onExit: () => void }) {
       </div>
     );
 
-  return <GMTable host={host} onEnd={() => { host.stop(); setHost(null); onExit(); }} />;
+  return <GMTable host={host} pickFirst={pickAdventure} onEnd={() => { host.stop(); setHost(null); onExit(); }} />;
 }
 
-function GMTable({ host, onEnd }: { host: HostSession; onEnd: () => void }) {
+function GMTable({ host, onEnd, pickFirst }: { host: HostSession; onEnd: () => void; pickFirst?: boolean }) {
   const [, setTick] = useState(0);
+  const [picker, setPicker] = useState(!!pickFirst);
+  const [progress, setProgress] = useState<AdventureProgress | null>(getProgress);
+  const adventure = useAdventure(progress);
   const [mode, setMode] = useState<'build' | 'play'>('build');
   const [view3d, setView3d] = useState(false);
   const [tool, setTool] = useState<Tool>('select');
@@ -543,14 +555,15 @@ function GMTable({ host, onEnd }: { host: HostSession; onEnd: () => void }) {
                   setSelected(undefined);
                 }}
               />
+              <button className="ghost block" onClick={() => setPicker(true)}>Start a ready-made adventure</button>
               <button className="primary block" onClick={() => { setMode('play'); setTool('select'); setPlayTab(players.length ? 'combat' : 'table'); }}>Done building: start playing</button>
             </div>
           ) : (
             <div className="play-panel">
               <nav className="subtabs">
-                {(['table', 'combat', 'monsters', 'party', 'fog', 'log'] as PlayTab[]).map((t) => (
+                {((progress ? ['story'] : []).concat(['table', 'combat', 'monsters', 'party', 'fog', 'log']) as PlayTab[]).map((t) => (
                   <button key={t} className={playTab === t ? 'on' : ''} onClick={() => { setPlayTab(t); if (t !== 'fog' && t !== 'monsters') setTool('select'); }}>
-                    {{ table: 'Table', combat: 'Combat', monsters: 'Monsters', party: 'Party', fog: 'Fog & weather', log: 'Log' }[t]}
+                    {{ story: 'Story', table: 'Table', combat: 'Combat', monsters: 'Monsters', party: 'Party', fog: 'Fog & weather', log: 'Log' }[t]}
                   </button>
                 ))}
               </nav>
@@ -566,6 +579,9 @@ function GMTable({ host, onEnd }: { host: HostSession; onEnd: () => void }) {
                     onEnd={() => { if (confirm('End the session? Players will be disconnected. Your map and heroes stay saved on this device.')) onEnd(); }}
                   />
                 )}
+                {playTab === 'story' && progress && (adventure ? (
+                  <StoryPanel adv={adventure} progress={progress} gm={gm} state={() => core.s} onProgress={(p) => { setProgress(p); if (!p) setPlayTab('table'); }} onProfile={setProfileFor} onPick={() => setPicker(true)} />
+                ) : <p className="muted">Loading the story…</p>)}
                 {playTab === 'combat' && <CombatTab s={s} gm={gm} core={core} selected={selected} setSelected={setSelected} />}
                 {playTab === 'monsters' && (
                   <div className="stack">
@@ -667,6 +683,15 @@ function GMTable({ host, onEnd }: { host: HostSession; onEnd: () => void }) {
         />
       )}
       {qr && <JoinModal code={s.code} url={joinUrl} onClose={() => setQr(false)} />}
+      {picker && (
+        <AdventurePicker
+          gm={gm}
+          state={() => core.s}
+          hasMap={!pickFirst || s.tokens.some((t) => t.kind !== 'pc')}
+          onStarted={(p) => { setProgress(p); setPicker(false); setMode('play'); setTool('select'); setPlayTab('story'); }}
+          onClose={() => setPicker(false)}
+        />
+      )}
       {sheetFor && s.characters[sheetFor] && (
         <Modal title={s.characters[sheetFor].build.name} onClose={() => setSheetFor(null)} wide>
           <GMSheet ch={s.characters[sheetFor]} gm={gm} roll={roll} />

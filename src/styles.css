@@ -417,3 +417,4 @@ button.avatar { cursor: pointer; }
 button.party-mini { min-height: 0; padding: 3px 10px; border: 0; background: var(--card); color: var(--text); }
 .pick .avatar { margin-right: 4px; }
 .v3d-weather .weather-chip { top: 62px; }
+.read-aloud { border-left: 3px solid var(--gold); padding: 4px 10px; margin: 0; background: rgba(255, 210, 120, 0.06); border-radius: 0 6px 6px 0; }
