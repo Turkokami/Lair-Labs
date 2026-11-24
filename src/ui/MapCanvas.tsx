@@ -10,6 +10,7 @@ import type { Weather } from '../engine/weather';
 import { drawMapFx, mapFxAlive, mapFxFrom, type MapFx } from './mapfx';
 import { drawScene, CELL } from '../render/scene';
 import { browserFloors, onFloorsLoaded } from '../render/floors';
+import { onPortraitsLoaded } from '../library/art/sprites';
 import { gridFeet } from '../engine/areas';
 /** How far out a GM can zoom: low enough to see a whole 120-square map on a phone. */
 const MIN_ZOOM = 0.05;
@@ -113,6 +114,7 @@ export function MapCanvas(p: MapCanvasProps) {
   const revealedSet = useMemo(() => new Set(p.revealed ?? []), [p.revealed]);
   const visibleSet = useMemo(() => (p.visible ? new Set(p.visible) : undefined), [p.visible]);
   useEffect(() => onFloorsLoaded(() => redraw()) as () => void, []);
+  useEffect(() => onPortraitsLoaded(() => redraw()) as () => void, []);
   const [bgImg, setBgImg] = useState<HTMLImageElement | undefined>();
   useEffect(() => {
     if (!p.backdrop) return setBgImg(undefined);

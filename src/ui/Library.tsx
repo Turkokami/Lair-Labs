@@ -4,7 +4,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { OBJECTS, objectById } from '../library/objects';
 import { CREATURES } from '../library/creatures';
-import { objectSprite, tokenSprite } from '../library/art/sprites';
+import { objectSprite, tokenSprite, portraitFor, onPortraitsLoaded } from '../library/art/sprites';
 import { CATEGORY_LABELS, FAMILY_LABELS, SETS, SET_LABELS, type CreatureDef, type ObjCategory, type ObjDef, type SetId, type CreatureFamily } from '../library/art/types';
 import { libraryIndex, type LibraryIndex } from '../render/floors';
 import type { GameMap } from '../engine/map';
@@ -43,12 +43,14 @@ export function ObjectThumb({ def, v = 0, rot = 0, size = 64 }: { def: ObjDef; v
 }
 
 export function CreatureThumb({ def, v = 0, size = 64 }: { def: CreatureDef; v?: number; size?: number }) {
+  const [pics, setPics] = useState(0);
+  useEffect(() => (portraitFor(def, v) ? (onPortraitsLoaded(() => setPics((n) => n + 1)) as () => void) : undefined), [def, v]);
   const draw = useMemo(
     () => (g: CanvasRenderingContext2D, px: number) => {
       const s = tokenSprite(def, v, Math.round(px * 0.84), undefined);
       g.drawImage(s.canvas, (px - s.canvas.width) / 2, (px - s.canvas.height) / 2);
     },
-    [def, v],
+    [def, v, pics],
   );
   return <Thumb draw={draw} size={size} />;
 }

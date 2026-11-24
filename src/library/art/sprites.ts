@@ -29,6 +29,33 @@ const cache = new Map<string, Sprite>();
 let cacheBytes = 0;
 const MAX_BYTES = 64 * 1024 * 1024;
 
+// Picture portraits (a creature or variant with `portrait`): loaded once, then drawn in place of the code art. Until
+// the picture arrives the drawing stands in and that sprite is not kept, so the next draw picks up the picture.
+const pictures = new Map<string, HTMLImageElement | null>();
+const pictureListeners = new Set<() => void>();
+/** Call `f` whenever a portrait picture finishes loading (redraw the map or thumbnail). Returns an unsubscribe. */
+export function onPortraitsLoaded(f: () => void) {
+  pictureListeners.add(f);
+  return () => pictureListeners.delete(f);
+}
+function picture(url: string): HTMLImageElement | null {
+  if (typeof Image === 'undefined') return null;
+  const have = pictures.get(url);
+  if (have !== undefined) return have;
+  pictures.set(url, null);
+  const im = new Image();
+  im.decoding = 'async';
+  im.onload = () => {
+    pictures.set(url, im);
+    for (const k of [...cache.keys()]) if (k.startsWith('t|')) cache.delete(k);
+    for (const f of pictureListeners) f();
+  };
+  im.src = url;
+  return null;
+}
+/** The portrait picture a token uses, if any (a variant's own wins over the creature's). */
+export const portraitFor = (def: CreatureDef, variant: number): string | undefined => def.variants?.[variant]?.portrait ?? def.portrait;
+
 function remember(k: string, s: Sprite) {
   cacheBytes += s.canvas.width * s.canvas.height * 4;
   if (cacheBytes > MAX_BYTES) {
@@ -115,8 +142,11 @@ export function tokenSprite(def: CreatureDef, variant: number, diam: number, rin
   // portrait
   g.translate(cx - r * 0.9, cy - r * 0.9);
   g.scale((r * 1.8) / 100, (r * 1.8) / 100);
+  const purl = portraitFor(def, variant);
+  const pic = purl ? picture(purl) : null;
   try {
-    def.draw(args(g, 100, 100, def, variant, 4242));
+    if (pic) g.drawImage(pic, 0, 0, 100, 100);
+    else def.draw(args(g, 100, 100, def, variant, 4242));
   } catch (e) {
     console.warn('token art failed', def.id, e);
   }
@@ -147,7 +177,8 @@ export function tokenSprite(def: CreatureDef, variant: number, diam: number, rin
   g.strokeStyle = alpha('#000000', 0.7);
   g.lineWidth = Math.max(1, r * 0.03);
   g.stroke();
-  return remember(k, { canvas: out, ox: -size / 2, oy: -size / 2, px: diam });
+  const sprite = { canvas: out, ox: -size / 2, oy: -size / 2, px: diam };
+  return purl && !pic ? sprite : remember(k, sprite);
 }
 
 export function clearSpriteCache() {

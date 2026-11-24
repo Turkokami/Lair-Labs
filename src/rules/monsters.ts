@@ -19,11 +19,14 @@ export interface Monster {
   traits?: { name: string; text: string }[];
   actions: MonsterAction[];
   notes?: string;
-  source: 'srd-5.1' | 'srd-5.2';
+  /** srd-5.1 / srd-5.2: numbers follow that document. lair-labs: our own monster, built with SRD 5.2 rules. */
+  source: 'srd-5.1' | 'srd-5.2' | 'lair-labs';
 }
 
 const m = (x: Omit<Monster, 'source'>): Monster => ({ ...x, source: 'srd-5.1' });
 const m2 = (x: Omit<Monster, 'source'>): Monster => ({ ...x, source: 'srd-5.2' });
+/** Lair Labs' own monsters: original stat blocks written with the SRD 5.2 rules. */
+const own = (x: Omit<Monster, 'source'>): Monster => ({ ...x, source: 'lair-labs' });
 
 const CR_ORDER = (cr: string) => (cr.includes('/') ? 1 / Number(cr.split('/')[1]) : Number(cr));
 
@@ -397,6 +400,20 @@ const LIST: Monster[] = [
   m({ id: 'hellHound', name: 'Hell Hound', size: 'Medium', kind: 'Fiend', ac: 15, hp: 45, hpDice: '7d8+14', speed: '50 ft', abilities: [17, 12, 14, 6, 13, 6], cr: '3', xp: 700, senses: 'Darkvision 60 ft, passive Perception 15',
     traits: [{ name: 'Pack Tactics', text: 'Advantage on attacks if an ally is within 5 ft of the target. Immune to fire.' }],
     actions: [{ name: 'Bite', hit: 5, dmg: '1d8+3', type: 'piercing', text: '+2d6 fire.' }, { name: 'Fire Breath (Recharge 5-6)', dmg: '6d6', type: 'fire', save: 'DC 12 Dex', text: '15-ft cone; half on a success.' }] }),
+  own({ id: 'skeletonKnight', name: 'Skeleton Knight', size: 'Medium', kind: 'Undead', ac: 18, hp: 52, hpDice: '8d8+16', speed: '30 ft', abilities: [16, 10, 15, 8, 11, 9], cr: '3', xp: 700, senses: 'Darkvision 60 ft, passive Perception 10',
+    traits: [
+      { name: 'Grave-Bound', text: "Immune to poison; can't be poisoned, frightened or exhausted. Resists necrotic." },
+      { name: 'Oath Unbroken (1/day)', text: 'When it drops to 0 HP, it stays standing at 1 HP instead, unless the damage was radiant or from a critical hit.' },
+      { name: 'Rusted Bulwark', text: 'Allies within 5 ft of it have half cover (+2 AC) against ranged attacks while it holds its shield.' },
+    ],
+    actions: [
+      { name: 'Multiattack', text: 'Two Grave Blade attacks, or one Grave Blade and one Shield Bash.' },
+      { name: 'Grave Blade', hit: 5, dmg: '1d8+3', type: 'slashing', text: '+1d6 necrotic.' },
+      { name: 'Shield Bash', hit: 5, dmg: '1d6+3', type: 'bludgeoning', save: 'DC 13 Str', text: 'A Medium or smaller target is knocked prone on a failed save.' },
+      { name: 'Call of the Fallen (Recharge 5-6)', text: 'Each undead ally within 30 ft that can hear it may use its reaction to move up to half its speed and make one weapon attack.' },
+      { name: 'Shield Wall (reaction)', text: '+2 AC against one melee attack that would hit it.' },
+    ],
+    notes: 'Original Lair Labs monster: a crusader who swore to guard a tomb and kept the oath past death. Rusted plate, a torn red tabard and a cross-marked kite shield.' }),
   m({ id: 'knight', name: 'Knight', size: 'Medium', kind: 'Humanoid', ac: 18, hp: 52, hpDice: '8d8+16', speed: '30 ft', abilities: [16, 11, 14, 11, 11, 15], cr: '3', xp: 700, senses: 'Passive Perception 10',
     traits: [{ name: 'Brave', text: 'Advantage on saves against being frightened.' }],
     actions: [{ name: 'Multiattack', text: 'Two melee attacks.' }, { name: 'Greatsword', hit: 5, dmg: '2d6+3', type: 'slashing' }, { name: 'Heavy Crossbow', hit: 2, dmg: '1d10', type: 'piercing', text: 'Range 100/400 ft.' }, { name: 'Parry (reaction)', text: '+2 AC against one melee attack that would hit.' }] }),

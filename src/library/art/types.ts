@@ -14,6 +14,8 @@ export interface Variant {
   c: Colors;
   /** Optional free flags the draw function can read, e.g. { open: 1 }. */
   f?: Record<string, number>;
+  /** Creature tokens only: a picture (under public/) used as the portrait instead of the drawing, e.g. art from the 3D model's concept sheet. */
+  portrait?: string;
 }
 
 export interface DrawArgs {
@@ -115,4 +117,6 @@ export interface CreatureDef {
    * the circle and let shoulders or wings run off the edge.
    */
   draw: (d: DrawArgs) => void;
+  /** A picture (under public/) used as the portrait instead of the drawing; a variant's own portrait wins. Same 100 x 100 framing. */
+  portrait?: string;
 }

@@ -1033,10 +1033,12 @@ const UNDEAD: Spec[] = [
     ],
   },
   {
-    id: 'skeleton-knight', name: 'Skeleton Knight', family: 'undead', tags: ['undead', 'skeleton', 'bones', 'knight', 'armor', 'death knight', 'crypt', 'boss'],
+    id: 'skeleton-knight', name: 'Skeleton Knight', family: 'undead', cr: '3', tags: ['undead', 'skeleton', 'bones', 'knight', 'armor', 'death knight', 'crypt', 'boss', 'crusader', 'rusted', '3d'],
     o: { skull: true, outfit: 'plate', helmet: 'spiked', cloak: '#3a1416', eyeStyle: 'hollow', glowColor: '#ff4a3a', held: 'sword', held2: 'shield', heldColor: '#3a1416' },
     c: { skin: BONE, metal: '#4a4e54', cloak: '#3a1416', held: '#3a1416', glow: '#ff4a3a' },
     variants: [
+      // The owner's own concept art (the same art the 3D figure was built from); the drawing stands in until it loads.
+      { name: 'Rusted crusader', c: { metal: '#7a5a44', cloak: '#7a1e22', held: '#7a1e22', glow: '#ffb070' }, portrait: '/library/portraits/skeleton-knight.webp' },
       { name: 'Black and red', c: {} },
       { name: 'Tarnished gold', c: { metal: '#9a8a4a', cloak: '#2a2a3a', held: '#2a2a3a', glow: '#ffd166' } },
       { name: 'Pale steel', c: { metal: '#a8aeb5', cloak: '#1e2a3a', held: '#1e2a3a', glow: '#7fd8ff' } },
