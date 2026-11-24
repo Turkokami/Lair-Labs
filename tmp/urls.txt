@@ -19,3 +19,4 @@ troll-rig https://ocejqvdipitcrjfy.public.blob.vercel-storage.com/models/mwv4h7p
 troll-ape https://ocejqvdipitcrjfy.public.blob.vercel-storage.com/models/mwv4j3f9-battle-rig-rnd_f35d46df817a4ba4-mwv4j1wl-toW09h6Pm20VEbKSagKt60PLOOhT9j.glb
 dragon-rig https://ocejqvdipitcrjfy.public.blob.vercel-storage.com/models/mwv4mtmo-battle-rig-rnd_7ef68b4f9db64cd1-mwv4mqt4-vgbBLlnTR84Mlxkc9v6gUTziAeGpVW.glb
 dragon-rig2 https://ocejqvdipitcrjfy.public.blob.vercel-storage.com/models/mwv4qbez-battle-rig-rnd_7ef68b4f9db64cd1-mwv4q9g3-975XZ592buzl4C3m0XDIMZluAfbaz9.glb
+wolf-raw https://ocejqvdipitcrjfy.public.blob.vercel-storage.com/models/rnd_78e2c5fabc2c4352-hunyuan-hhvwtjwDmuEZ9NI5VUGRW9i8fnKeAU.glb
