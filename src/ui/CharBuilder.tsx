@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { CLASSES, classById, learnableSpellLevel, MAX_LEVEL, featLevels, expertiseCount } from '../rules/classes';
 import { featById, ASI_FEATS, EPIC_FEATS, STYLE_FEATS } from '../rules/feats';
 import { SPECIES, BACKGROUNDS, speciesById, backgroundById } from '../rules/origins';
@@ -9,10 +9,14 @@ import { type Character, type CharacterBuild, type Scores, computeSheet, default
 const COLORS = ['#e4572e', '#29a3a3', '#f3a712', '#7d5ba6', '#4caf50', '#e83f6f', '#2e86de', '#c0763b', '#94a3b8', '#f472b6'];
 const STEPS = ['Class', 'Origin', 'Abilities', 'Skills', 'Spells', 'Details', 'Review'];
 
-export function CharBuilder({ initial, maxLevel = 1, onSave, onCancel, levelUp }: { initial?: CharacterBuild; maxLevel?: number; onSave: (c: Character) => void; onCancel: () => void; levelUp?: boolean }) {
+type Method = 'array' | 'points' | 'roll';
+/** The table's rules for rolling ability scores, and this player's rolls so far. */
+export interface StatRolling { mode: 'allow' | 'require' | 'off'; sets?: number[]; canReroll?: boolean; roll: () => void }
+
+export function CharBuilder({ initial, maxLevel = 1, onSave, onCancel, levelUp, rolling }: { initial?: CharacterBuild; maxLevel?: number; onSave: (c: Character) => void; onCancel: () => void; levelUp?: boolean; rolling?: StatRolling }) {
   const [b, setB] = useState<CharacterBuild | null>(initial ? { ...initial, level: levelUp ? Math.min(MAX_LEVEL, initial.level + 1) : initial.level } : null);
   const [step, setStep] = useState(levelUp ? 6 : 0);
-  const [method, setMethod] = useState<'array' | 'points'>('array');
+  const [method, setMethod] = useState<Method>(rolling?.mode === 'require' ? 'roll' : initial?.statMethod ?? 'array');
 
   if (!b)
     return (
@@ -21,10 +25,11 @@ export function CharBuilder({ initial, maxLevel = 1, onSave, onCancel, levelUp }
         <p className="muted">Pick a ready-made hero to play right now, or build your own step by step.</p>
         <button className="primary block" onClick={() => setB(defaultBuild('fighter', 'human', undefined, Math.min(maxLevel, MAX_LEVEL), ''))}>Build my own</button>
         {maxLevel > 1 && <p className="muted small">Your GM is starting heroes at level {maxLevel}.</p>}
+        {rolling?.mode === 'require' && <p className="muted small">Your GM wants every hero's ability scores rolled at the table (4d6, drop the lowest). A ready-made hero takes you to the Abilities step to roll.</p>}
         <h3>Ready-made heroes</h3>
         <div className="cards">
           {CLASSES.map((c) => (
-            <button key={c.id} className="pick" onClick={() => { const pb = premade(c.id, Math.min(maxLevel, MAX_LEVEL)); setB(pb); setStep(6); }}>
+            <button key={c.id} className="pick" onClick={() => { const pb = premade(c.id, Math.min(maxLevel, MAX_LEVEL)); setB(pb); setStep(rolling?.mode === 'require' ? 2 : 6); }}>
               <b>{PREMADE_NAMES[c.id][0]}</b>
               <span className="muted small">{speciesById(PREMADE_NAMES[c.id][1]).name} {c.name}</span>
               <span className="small">{c.playsLike}</span>
@@ -64,7 +69,7 @@ export function CharBuilder({ initial, maxLevel = 1, onSave, onCancel, levelUp }
         </div>
       )}
       {cur === 'Origin' && <OriginStep b={b} set={setB} />}
-      {cur === 'Abilities' && <AbilityStep b={b} set={setB} method={method} setMethod={setMethod} />}
+      {cur === 'Abilities' && <AbilityStep b={b} set={setB} method={method} setMethod={setMethod} rolling={levelUp ? undefined : rolling} />}
       {cur === 'Skills' && <SkillStep b={b} set={setB} />}
       {cur === 'Spells' && <SpellStep b={b} set={setB} />}
       {cur === 'Details' && (
@@ -204,10 +209,27 @@ function OriginStep({ b, set }: { b: CharacterBuild; set: (b: CharacterBuild) =>
   );
 }
 
-function AbilityStep({ b, set, method, setMethod }: { b: CharacterBuild; set: (b: CharacterBuild) => void; method: 'array' | 'points'; setMethod: (m: 'array' | 'points') => void }) {
+/** Hand out numbers (the standard array or the rolled six) best first, in the order the class cares about. */
+function byPriority(order: Ability[], values: number[]): Scores {
+  const v = [...values].sort((x, y) => y - x);
+  const base = {} as Scores;
+  order.forEach((a, i) => (base[a] = v[i]));
+  return base;
+}
+
+function AbilityStep({ b, set, method, setMethod, rolling }: { b: CharacterBuild; set: (b: CharacterBuild) => void; method: Method; setMethod: (m: Method) => void; rolling?: StatRolling }) {
   const final = finalScores(b);
   const cls = classById(b.classId);
   const spent = pointsSpent(b.base);
+  const sets = rolling?.sets;
+  const mode = rolling?.mode ?? 'off';
+  const rolledKey = sets?.join(',') ?? '';
+  const matchesRolls = !!sets && [...sets].sort().join(',') === Object.values(b.base).sort().join(',');
+  // when new rolls come back from the table, put them straight onto the hero, best number on the class's main ability
+  useEffect(() => {
+    if (method === 'roll' && sets && (!matchesRolls || b.statMethod !== 'roll')) set({ ...b, base: matchesRolls ? b.base : byPriority(cls.standardArray, sets), statMethod: 'roll' });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [rolledKey, method, b.classId]);
   const assign = (a: Ability, v: number) => {
     const base = { ...b.base };
     const holder = ABILITIES.find((x) => x !== a && base[x] === v);
@@ -215,33 +237,64 @@ function AbilityStep({ b, set, method, setMethod }: { b: CharacterBuild; set: (b
     base[a] = v;
     set({ ...b, base });
   };
+  const pick = (m: Method) => {
+    setMethod(m);
+    if (m === 'array') set({ ...b, statMethod: 'array', base: byPriority(cls.standardArray, STANDARD_ARRAY) });
+    else if (m === 'points') set({ ...b, statMethod: 'points', base: { str: 8, dex: 8, con: 8, int: 8, wis: 8, cha: 8 } });
+    else set({ ...b, statMethod: 'roll', ...(sets ? { base: byPriority(cls.standardArray, sets) } : {}) });
+  };
+  const values = method === 'roll' ? [...(sets ?? [])].sort((x, y) => y - x) : STANDARD_ARRAY;
+  const waiting = method === 'roll' && !sets;
   return (
     <div className="stack">
-      <div className="seg">
-        <button className={method === 'array' ? 'on' : ''} onClick={() => { setMethod('array'); const base = {} as Scores; cls.standardArray.forEach((a, i) => (base[a] = STANDARD_ARRAY[i])); set({ ...b, base }); }}>Standard array</button>
-        <button className={method === 'points' ? 'on' : ''} onClick={() => { setMethod('points'); set({ ...b, base: { str: 8, dex: 8, con: 8, int: 8, wis: 8, cha: 8 } }); }}>Point buy</button>
-      </div>
-      <p className="muted small">{cls.name}s care most about {cls.primary.map((a) => ABILITY_NAMES[a]).join(' and ')}.{method === 'array' ? ' Each number goes to one ability; picking a used number swaps them.' : ` Spend 27 points. ${27 - spent} left.`}</p>
-      <div className="ab-table">
-        {ABILITIES.map((a) => (
-          <div key={a} className="ab-row">
-            <span className="ab-label">{ABILITY_NAMES[a]}</span>
-            {method === 'array' ? (
-              <select value={b.base[a]} onChange={(e) => assign(a, Number(e.target.value))}>
-                {STANDARD_ARRAY.map((v) => <option key={v} value={v}>{v}</option>)}
-              </select>
-            ) : (
-              <span className="stepper">
-                <button disabled={b.base[a] <= 8} onClick={() => set({ ...b, base: { ...b.base, [a]: b.base[a] - 1 } })} aria-label={`Lower ${ABILITY_NAMES[a]}`}>−</button>
-                <span>{b.base[a]}</span>
-                <button disabled={b.base[a] >= 15 || spent - POINT_COST[b.base[a]] + POINT_COST[b.base[a] + 1] > 27} onClick={() => set({ ...b, base: { ...b.base, [a]: b.base[a] + 1 } })} aria-label={`Raise ${ABILITY_NAMES[a]}`}>+</button>
-              </span>
-            )}
-            <span className="muted small">{b.bgBonus[a] ? `+${b.bgBonus[a]}` : ''}{final[a] - b.base[a] - (b.bgBonus[a] ?? 0) > 0 ? ` +${final[a] - b.base[a] - (b.bgBonus[a] ?? 0)} later` : ''}</span>
-            <b>{final[a]} ({fmtMod(mod(final[a]))})</b>
-          </div>
-        ))}
-      </div>
+      {mode !== 'require' && (
+        <div className="seg">
+          <button className={method === 'array' ? 'on' : ''} onClick={() => pick('array')}>Standard array</button>
+          <button className={method === 'points' ? 'on' : ''} onClick={() => pick('points')}>Point buy</button>
+          {mode !== 'off' && <button className={method === 'roll' ? 'on' : ''} onClick={() => pick('roll')}>Roll for stats</button>}
+        </div>
+      )}
+      <p className="muted small">
+        {cls.name}s care most about {cls.primary.map((a) => ABILITY_NAMES[a]).join(' and ')}.
+        {method === 'array' && ' Each number goes to one ability; picking a used number swaps them.'}
+        {method === 'points' && ` Spend 27 points. ${27 - spent} left.`}
+        {method === 'roll' && (sets ? ' Each rolled number goes to one ability; picking a used number swaps them.' : ' Roll 4d6 six times and drop the lowest die each time. Everyone at the table sees your rolls, and you keep what you get.')}
+      </p>
+      {method === 'roll' && (
+        <div className="card">
+          {sets ? (
+            <>
+              <b>You rolled {[...sets].sort((x, y) => y - x).join(', ')}</b>
+              <span className="muted small">Total {sets.reduce((n, x) => n + x, 0)}. The rolls are in the table's log.</span>
+              {rolling?.canReroll && <button className="ghost" onClick={() => confirm('Throw these six away and roll again? You only get one reroll.') && rolling.roll()}>Reroll (once)</button>}
+            </>
+          ) : (
+            <button className="primary" onClick={() => rolling?.roll()}>Roll 4d6 six times</button>
+          )}
+        </div>
+      )}
+      {!waiting && (
+        <div className="ab-table">
+          {ABILITIES.map((a) => (
+            <div key={a} className="ab-row">
+              <span className="ab-label">{ABILITY_NAMES[a]}</span>
+              {method !== 'points' ? (
+                <select value={b.base[a]} onChange={(e) => assign(a, Number(e.target.value))}>
+                  {values.map((v, i) => <option key={i} value={v}>{v}</option>)}
+                </select>
+              ) : (
+                <span className="stepper">
+                  <button disabled={b.base[a] <= 8} onClick={() => set({ ...b, base: { ...b.base, [a]: b.base[a] - 1 } })} aria-label={`Lower ${ABILITY_NAMES[a]}`}>−</button>
+                  <span>{b.base[a]}</span>
+                  <button disabled={b.base[a] >= 15 || spent - POINT_COST[b.base[a]] + POINT_COST[b.base[a] + 1] > 27} onClick={() => set({ ...b, base: { ...b.base, [a]: b.base[a] + 1 } })} aria-label={`Raise ${ABILITY_NAMES[a]}`}>+</button>
+                </span>
+              )}
+              <span className="muted small">{b.bgBonus[a] ? `+${b.bgBonus[a]}` : ''}{final[a] - b.base[a] - (b.bgBonus[a] ?? 0) > 0 ? ` +${final[a] - b.base[a] - (b.bgBonus[a] ?? 0)} later` : ''}</span>
+              <b>{final[a]} ({fmtMod(mod(final[a]))})</b>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

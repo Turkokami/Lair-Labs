@@ -111,6 +111,10 @@ export interface Settings {
   safety?: Safety;
   /** Aimed attacks are checked against the target's AC and a hit rolls and applies damage. Missing means on. */
   autoAttacks?: boolean;
+  /** Rolling for ability scores (4d6, drop the lowest): allowed beside the standard array and point buy, required, or off. Missing means allowed. */
+  statRoll?: 'allow' | 'require' | 'off';
+  /** A player may throw away their six rolls and roll once more. Missing means no. */
+  statReroll?: boolean;
 }
 export const DEFAULT_SAFETY: Safety = { lines: [], veils: [], xcard: true };
 
@@ -136,6 +140,8 @@ export interface GameState {
   profiles?: Record<string, Profile>;
   /** Rain, fog, wind, gloom and temperature for the whole table. Missing means clear. */
   weather?: Weather;
+  /** Ability scores each player rolled at the table, by player id, and how many times they rerolled. */
+  statRolls?: Record<string, { sets: number[]; rerolls: number }>;
 }
 
 export type Intent =
@@ -159,6 +165,8 @@ export type Intent =
   | { t: 'template'; template: Omit<AreaTemplate, 'id' | 'by'> & { id?: string } }
   | { t: 'removeTemplate'; id: string }
   | { t: 'xcard' }
+  /** Roll six ability scores (4d6, drop the lowest) where the whole table sees them. */
+  | { t: 'rollStats' }
   | { t: 'torch'; tokenId: string; on: boolean }
   /** Cast a spell: the table rolls the attack or everyone's saves and applies the damage or healing. */
   | { t: 'cast'; spellId: string; slot?: number; targets?: string[]; point?: [number, number]; adv?: 'none' | 'adv' | 'dis'; charId?: string }
@@ -216,7 +224,9 @@ export interface PlayerView {
   myTokenId?: string;
   log: LogEntry[];
   combat: { active: boolean; round: number; current?: string; order: { tokenId: string; name: string; init: number; isYou: boolean }[] };
-  settings: Pick<Settings, 'discord' | 'lockMoves' | 'startLevel'>;
+  settings: Pick<Settings, 'discord' | 'lockMoves' | 'startLevel' | 'statRoll' | 'statReroll'>;
+  /** Players only: the ability scores you rolled at this table, and whether you may still reroll. */
+  myStatRolls?: { sets: number[]; canReroll: boolean };
   handout?: GameState['handout'];
   curtain: boolean;
   version: number;
@@ -342,6 +352,17 @@ export class HostCore {
     const p = this.s.players[id];
     return p?.charId ? this.s.characters[p.charId] : undefined;
   }
+  /** A new hero made from rolled scores must use exactly the six numbers its player rolled here; a table that requires rolling takes no other way. */
+  private checkRolledScores(from: string, b: CharacterBuild) {
+    const mode = this.s.settings.statRoll ?? 'allow';
+    if (mode === 'require' && b.statMethod !== 'roll') throw new GameError('Your GM wants heroes made with rolled scores. Pick "Roll for stats" on the Abilities step.');
+    if (b.statMethod !== 'roll') return;
+    const mine = this.s.statRolls?.[from];
+    if (!mine) throw new GameError('Roll for stats at this table first, then save your hero.');
+    const want = [...mine.sets].sort((x, y) => x - y).join(',');
+    const got = Object.values(b.base).sort((x, y) => x - y).join(',');
+    if (want !== got) throw new GameError(`Your scores should be the six you rolled: ${mine.sets.join(', ')}.`);
+  }
   private canEditChar(from: string, charId: string) {
     if (from === 'gm') return true;
     return this.s.players[from]?.charId === charId;
@@ -381,10 +402,27 @@ export class HostCore {
         if (!gm && c.build.level > cap) throw new GameError(`Your GM has new heroes start at level ${this.s.settings.startLevel ?? 1}. Lower your level and save again.`);
         const sheet = computeSheet(c.build);
         const state = prev ? { ...prev.state, hp: Math.min(prev.state.hp, sheet.maxHp) } : { ...freshState(c.build), ...c.state, hp: Math.min(c.state?.hp ?? sheet.maxHp, sheet.maxHp) };
+        if (!gm && !prev) this.checkRolledScores(from, c.build);
         this.s.characters[c.build.id] = { build: c.build, state, levelCap: prev?.levelCap };
         if (!gm) this.s.players[from].charId = c.build.id;
         this.ensureToken(c.build.id);
         if (!prev) this.system(`${this.playerName(from)} brings ${c.build.name} (${sheet.cls.name} ${c.build.level}) to the table.`);
+        break;
+      }
+      case 'rollStats': {
+        const mode = this.s.settings.statRoll ?? 'allow';
+        if (mode === 'off') throw new GameError('Your GM has rolling for stats turned off at this table.');
+        const rolls = (this.s.statRolls ??= {});
+        const had = rolls[from];
+        if (had && (!this.s.settings.statReroll || had.rerolls >= 1)) throw new GameError(this.s.settings.statReroll ? 'You have already used your reroll.' : "Your GM doesn't allow rerolls. Use the scores you rolled.");
+        const inline: NonNullable<LogEntry['inline']> = [];
+        for (let i = 0; i < 6; i++) {
+          const r = roll('4d6kh3');
+          inline.push({ formula: '4d6 drop lowest', total: r.total, detail: describeDice(r) });
+        }
+        rolls[from] = { sets: inline.map((x) => x.total), rerolls: had ? had.rerolls + 1 : 0 };
+        const total = inline.reduce((n, x) => n + x.total, 0);
+        this.add({ kind: 'chat', from: this.playerName(from), fromId: from, visibility: 'public', inline, text: `${had ? 'rerolled' : 'rolled'} for stats: [[0]] [[1]] [[2]] [[3]] [[4]] [[5]] (total ${total})` });
         break;
       }
       case 'pickChar': {
@@ -1378,7 +1416,8 @@ export class HostCore {
       code: s.code, you: id, role: gm ? 'gm' : 'player', map, revealed: gm ? s.revealed : s.curtain ? [] : s.revealed, tokens,
       players: Object.values(s.players).map((p) => ({ id: p.id, name: p.name, connected: p.connected, charId: p.charId })),
       party, myCharacter: myChar, myTokenId: myToken?.id, log, combat,
-      settings: { discord: s.settings.discord, lockMoves: s.settings.lockMoves, startLevel: s.settings.startLevel ?? 1 }, handout: s.handout, curtain: s.curtain, version: s.version,
+      settings: { discord: s.settings.discord, lockMoves: s.settings.lockMoves, startLevel: s.settings.startLevel ?? 1, statRoll: s.settings.statRoll ?? 'allow', statReroll: !!s.settings.statReroll },
+      myStatRolls: !gm && s.statRolls?.[id] ? { sets: s.statRolls[id].sets, canReroll: !!s.settings.statReroll && s.statRolls[id].rerolls < 1 } : undefined, handout: s.handout, curtain: s.curtain, version: s.version,
       visible: vis && !s.curtain ? [...vis.visible] : undefined,
       lit: vis && !s.curtain ? Array.from(vis.light, (v) => v).join('') : undefined,
       templates: s.curtain && !gm ? [] : s.templates ?? [],

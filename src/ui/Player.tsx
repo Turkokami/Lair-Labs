@@ -210,6 +210,7 @@ function PlayerTable({ s, onLeave }: { s: ClientSession; onLeave: () => void }) 
             levelUp={building === 'levelup'}
             maxLevel={building === 'levelup' ? ch?.levelCap ?? ch?.build.level ?? 1 : v.settings.startLevel ?? 1}
             onCancel={() => setBuilding(false)}
+            rolling={{ mode: v.settings.statRoll ?? 'allow', sets: v.myStatRolls?.sets, canReroll: v.myStatRolls?.canReroll, roll: () => void safe(send({ t: 'rollStats' })) }}
             onSave={(c) =>
               safe(
                 (building === 'levelup' ? send({ t: 'levelUp', character: c }) : send({ t: 'saveChar', character: c })).then(() => {

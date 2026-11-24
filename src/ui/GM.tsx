@@ -822,6 +822,14 @@ function TableTab({ s, gm, joinUrl, onQr, onKick, onEnd }: { s: GameState; gm: (
           {Array.from({ length: MAX_LEVEL }, (_, i) => i + 1).map((l) => <option key={l} value={l}>{l}</option>)}
         </select>
       </label>
+      <label className="inline">Rolling for ability scores
+        <select value={s.settings.statRoll ?? 'allow'} onChange={(e) => gm({ t: 'gm:settings', patch: { statRoll: e.target.value as 'allow' } })}>
+          <option value="allow">Allowed (or array, or point buy)</option>
+          <option value="require">Required for new heroes</option>
+          <option value="off">Off</option>
+        </select>
+      </label>
+      {(s.settings.statRoll ?? 'allow') !== 'off' && <label className="inline"><input type="checkbox" checked={!!s.settings.statReroll} onChange={(e) => gm({ t: 'gm:settings', patch: { statReroll: e.target.checked } })} /> Players may reroll their stats once</label>}
       <label className="inline"><input type="checkbox" checked={s.settings.lockMoves} onChange={(e) => gm({ t: 'gm:settings', patch: { lockMoves: e.target.checked } })} /> In combat, players can only move on their turn</label>
       <SafetyEditor safety={s.settings.safety ?? DEFAULT_SAFETY} onSave={(safety) => gm({ t: 'gm:safety', safety })} />
       <h3>Handout</h3>
