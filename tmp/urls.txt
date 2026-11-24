@@ -11,3 +11,4 @@ lich-rig0 https://ocejqvdipitcrjfy.public.blob.vercel-storage.com/models/mwv36jt
 orc-rig90 https://ocejqvdipitcrjfy.public.blob.vercel-storage.com/models/mwv3ti31-battle-rig-rnd_85aae34ed3e1431e-mwv3tf7b-37zoeVWgQukEooPwdhibLwAOfRf5M2.glb
 archer-rig90 https://ocejqvdipitcrjfy.public.blob.vercel-storage.com/models/mwv3w6yi-battle-rig-rnd_be8e6e7c30dc4849-mwv3w3wo-7DVxvwTHLj6vEY31cIi6DAt5lofdJB.glb
 archer-rig0 https://ocejqvdipitcrjfy.public.blob.vercel-storage.com/models/mwv3xhs9-battle-rig-rnd_be8e6e7c30dc4849-mwv3xggu-ylG81L6faso2iUcVXQI3P8sUfDnM2z.glb
+archer-sq90 https://ocejqvdipitcrjfy.public.blob.vercel-storage.com/models/mwv3zi1a-battle-rig-rnd_efd8763a791e4f89-mwv3zgs8-O1UsvmR29MBH6c8XxHQZS6Z3QL8opq.glb
