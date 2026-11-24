@@ -43,11 +43,31 @@ export function AdventurePicker({ gm, state, hasMap, onStarted, onClose }: {
       setBusy('');
     }
   };
+  const [tier, setTier] = useState(0);
+  const [length, setLength] = useState<'all' | 'one' | 'many'>('all');
+  const cards = ADVENTURE_CARDS.filter((a) => tierOf(a.levels) === tier && (length === 'all' || (length === 'one') === (a.chapters === 1)))
+    .sort((a, b) => parseInt(a.levels, 10) - parseInt(b.levels, 10) || a.title.localeCompare(b.title));
   return (
     <Modal title="Start an adventure" onClose={onClose} wide>
       <div className="stack">
-        <p className="muted">Ready to play: a story, big maps, people with profiles, handouts and balanced fights. You read; your players play.</p>
-        {ADVENTURE_CARDS.map((a) => (
+        <p className="muted">Ready to play: a story, big maps, people with profiles, handouts and balanced fights. You read; your players play. {ADVENTURE_CARDS.length} adventures.</p>
+        <div className="row gap wrap">
+          {TIERS.map((t, i) => (
+            <button key={t.name} className={tier === i ? 'primary small' : 'small'} onClick={() => setTier(i)}>
+              {t.name} <span className="muted">({ADVENTURE_CARDS.filter((a) => tierOf(a.levels) === i).length})</span>
+            </button>
+          ))}
+        </div>
+        <div className="row gap wrap small">
+          <span className="muted">{TIERS[tier].blurb}</span>
+          <select value={length} onChange={(e) => setLength(e.target.value as typeof length)}>
+            <option value="all">Any length</option>
+            <option value="one">One map (one-shots)</option>
+            <option value="many">Several parts (campaigns)</option>
+          </select>
+        </div>
+        {!cards.length && <p className="muted">None of that length here yet.</p>}
+        {cards.map((a) => (
           <div key={a.id} className="card stack">
             <div className="row between wrap">
               <b>{a.title}</b>
@@ -67,6 +87,15 @@ export function AdventurePicker({ gm, state, hasMap, onStarted, onClose }: {
     </Modal>
   );
 }
+
+const TIERS = [
+  { name: 'Levels 1-4', blurb: 'New heroes: village troubles, first dungeons, local villains.' },
+  { name: 'Levels 5-10', blurb: 'Heroes of the realm: monsters that threaten towns and kingdoms.' },
+  { name: 'Levels 11-16', blurb: 'Masters: giants, dragons, devils and plots that span nations.' },
+  { name: 'Levels 17-20', blurb: 'Legends: other planes, ancient dragons and the end of the world.' },
+];
+/** Which tier an adventure belongs to, by the level it starts at. */
+const tierOf = (levels: string) => { const l = parseInt(levels, 10) || 1; return l <= 4 ? 0 : l <= 10 ? 1 : l <= 16 ? 2 : 3; };
 
 /** The GM's script for the adventure being run: what to say, what's going on, who's who. */
 export function StoryPanel({ adv, progress, gm, state, onProgress, onProfile, onPick }: {
