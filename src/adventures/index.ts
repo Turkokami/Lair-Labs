@@ -202,6 +202,36 @@ export const ADVENTURE_CARDS: AdventureCard[] = [
     tagline: 'An illegal night bazaar in the catacombs, a friend\'s soul sold by mistake, and only until dawn to get it back.',
     tags: ['heist', 'haggling', 'undead', 'city', 'catacombs'],
   },
+  {
+    id: 'glass-sea', title: 'The Star in the Glass Sea', levels: '10', sessions: '1-2 sessions', players: '3-5', chapters: 1, mapSize: '400 × 400 ft',
+    tagline: 'A star fell into a desert of glass and took root; race two rival expeditions to the tower growing from its crater.',
+    tags: ['wilderness', 'high level', 'desert', 'mystery', 'rivals'],
+  },
+  {
+    id: 'hags-bargain', title: 'The Hags\' Bargain', levels: '6', sessions: '1 session', players: '3-5', chapters: 1, mapSize: '400 × 400 ft',
+    tagline: 'Seven years ago a starving village promised a coven of hags "the firstborn of the seventh spring". Tonight the miller\'s daughter turns seven.',
+    tags: ['one-shot', 'fairy tale', 'hags', 'marsh', 'bargain'],
+  },
+  {
+    id: 'tiger-masquerade', title: 'The Tiger Masquerade', levels: '13', sessions: '1-2 sessions', players: '3-5', chapters: 1, mapSize: '400 × 400 ft',
+    tagline: 'Every guest wears the face of a beast. One of them is wearing a face that is not theirs, and at midnight it takes a seat on the council.',
+    tags: ['intrigue', 'high level', 'masquerade', 'demon', 'mystery'],
+  },
+  {
+    id: 'ember-road', title: 'The Ember Road', levels: '1-4', sessions: '5-8 sessions', players: '3-5', chapters: 5, mapSize: '5 big maps',
+    tagline: 'A sleeping volcano has started to smoke: follow the old road from a frontier town to the mountain\'s heart and bring back the stolen stones that keep it dreaming.',
+    tags: ['starter', 'campaign', 'volcano', 'cult', 'road trip'],
+  },
+  {
+    id: 'silver-eyrie', title: 'The Silver Eyrie', levels: '16', sessions: '1-2 sessions', players: '3-5', chapters: 1, mapSize: '400 × 400 ft',
+    tagline: 'On the roof of the world, a dragon-abbot has forgotten himself, and a demon prince is climbing out of a god\'s dream.',
+    tags: ['mystery', 'high level', 'demons', 'dragon', 'mountain'],
+  },
+  {
+    id: 'storm-king-grief', title: 'The Storm King\'s Grief', levels: '14', sessions: '2-3 sessions', players: '3-5', chapters: 2, mapSize: '2 big maps',
+    tagline: 'A storm giant king mourns his drowned daughter with a storm that will not end. Find out who really sank her ship before the coast drowns.',
+    tags: ['epic', 'giants', 'storm', 'tragedy', 'sea'],
+  },
 ];
 
 const LOADERS: Record<string, () => Promise<Adventure>> = {
@@ -245,6 +275,12 @@ const LOADERS: Record<string, () => Promise<Adventure>> = {
   'wrackstone-light': () => import('./wrackstone-light').then((m) => m.WRACKSTONE_LIGHT),
   'blackgate-escape': () => import('./blackgate-escape').then((m) => m.BLACKGATE_ESCAPE),
   'bone-market': () => import('./bone-market').then((m) => m.BONE_MARKET),
+  'glass-sea': () => import('./glass-sea').then((m) => m.GLASS_SEA),
+  'hags-bargain': () => import('./hags-bargain').then((m) => m.HAGS_BARGAIN),
+  'tiger-masquerade': () => import('./tiger-masquerade').then((m) => m.TIGER_MASQUERADE),
+  'ember-road': () => import('./ember-road').then((m) => m.EMBER_ROAD),
+  'silver-eyrie': () => import('./silver-eyrie').then((m) => m.SILVER_EYRIE),
+  'storm-king-grief': () => import('./storm-king-grief').then((m) => m.STORM_KING_GRIEF),
 };
 
 export function loadAdventure(id: string): Promise<Adventure> {
