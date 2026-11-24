@@ -7,3 +7,4 @@ zombie-rig180 https://ocejqvdipitcrjfy.public.blob.vercel-storage.com/models/mwv
 zombie-rig0 https://ocejqvdipitcrjfy.public.blob.vercel-storage.com/models/mwv22s20-battle-rig-rnd_826e7b9d1afc4573-mwv22qxv-enRAkw8kd58FA5MCUglmKVyaK2PiAk.glb
 zombie-sq90 https://ocejqvdipitcrjfy.public.blob.vercel-storage.com/models/mwv2608m-battle-rig-rnd_36a8080bd09f4a75-mwv25yk7-Bc9GHAARUnjTkoZlSlcVEo1AzZZf6H.glb
 lich-rig180 https://ocejqvdipitcrjfy.public.blob.vercel-storage.com/models/mwv35bwy-battle-rig-rnd_65e43902b22b4a06-mwv35ayb-TIl59dfVuExR6xi9zKWy5VQEqyCJxo.glb
+lich-rig0 https://ocejqvdipitcrjfy.public.blob.vercel-storage.com/models/mwv36jtt-battle-rig-rnd_65e43902b22b4a06-mwv36j25-0jMx6LFM4la5XcWQNantD5wcqE2k64.glb
