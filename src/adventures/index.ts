@@ -67,6 +67,31 @@ export const ADVENTURE_CARDS: AdventureCard[] = [
     tagline: 'Three nights of a red moon, a village that wants someone to burn, and a wolf curse running through its first family.',
     tags: ['gothic horror', 'werewolves', 'mystery', 'forest'],
   },
+  {
+    id: 'academy-small-wonders', title: 'Trouble at the Academy of Small Wonders', levels: '1', sessions: '1 session', players: '3-5', chapters: 1, mapSize: '400 × 400 ft',
+    tagline: 'Exam night at a school for young wizards: the brooms sweep people out of windows, the books bite, and the headmistress is a cat.',
+    tags: ['one-shot', 'funny', 'school', 'magic', 'family'],
+  },
+  {
+    id: 'djinni-wager', title: 'The Djinni\'s Wager', levels: '11', sessions: '1-2 sessions', players: '3-5', chapters: 1, mapSize: '400 × 400 ft',
+    tagline: 'A bored djinni prince won a kingdom\'s rain in a bet. Win it back at his Grand Games, where cheating is allowed but getting caught is not.',
+    tags: ['planar', 'contests', 'comedy', 'sky'],
+  },
+  {
+    id: 'sand-king-tomb', title: 'Tomb of the Sand King', levels: '8', sessions: '1-2 sessions', players: '3-5', chapters: 1, mapSize: '400 × 400 ft',
+    tagline: 'A sandstorm has uncovered a king\'s tomb built to test his heir, and a rival expedition is already inside.',
+    tags: ['dungeon', 'traps', 'desert', 'undead', 'puzzles'],
+  },
+  {
+    id: 'troll-bridges', title: 'The Troll Bridges of Kel Morrow', levels: '6', sessions: '1 session', players: '3-5', chapters: 1, mapSize: '400 × 400 ft',
+    tagline: 'Seven bridges, one troll family, one stolen egg: solve the theft before the toll turns bloody.',
+    tags: ['one-shot', 'wilderness', 'trolls', 'mystery', 'funny'],
+  },
+  {
+    id: 'throne-of-cinders', title: 'The Throne of Cinders', levels: '20', sessions: '1-2 sessions', players: '3-5 players', chapters: 1, mapSize: '400 x 400 ft',
+    tagline: 'The last free armies storm a burned capital to stop an ancient red dragon being crowned a god at dawn.',
+    tags: ['epic', 'finale', 'dragon', 'war', 'city'],
+  },
 ];
 
 const LOADERS: Record<string, () => Promise<Adventure>> = {
@@ -83,6 +108,11 @@ const LOADERS: Record<string, () => Promise<Adventure>> = {
   'rat-king-sewers': () => import('./rat-king-sewers').then((m) => m.RAT_KING_SEWERS),
   'kraken-maw': () => import('./kraken-maw').then((m) => m.KRAKEN_MAW),
   'blood-moon-varrow': () => import('./blood-moon-varrow').then((m) => m.BLOOD_MOON_VARROW),
+  'academy-small-wonders': () => import('./academy-small-wonders').then((m) => m.ACADEMY_SMALL_WONDERS),
+  'djinni-wager': () => import('./djinni-wager').then((m) => m.DJINNI_WAGER),
+  'sand-king-tomb': () => import('./sand-king-tomb').then((m) => m.SAND_KING_TOMB),
+  'troll-bridges': () => import('./troll-bridges').then((m) => m.TROLL_BRIDGES),
+  'throne-of-cinders': () => import('./throne-of-cinders').then((m) => m.THRONE_OF_CINDERS),
 };
 
 export function loadAdventure(id: string): Promise<Adventure> {
