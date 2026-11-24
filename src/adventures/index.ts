@@ -112,6 +112,26 @@ export const ADVENTURE_CARDS: AdventureCard[] = [
     tagline: 'A manticore takes its toll from a desert silver camp, and somebody down in the camp is feeding it.',
     tags: ['one-shot', 'western', 'wilderness', 'manticore', 'mystery'],
   },
+  {
+    id: 'hydra-mirewater', title: 'The Hydra of Mirewater', levels: '11', sessions: '1-2 sessions', players: '3-5 players', chapters: 1, mapSize: '400 x 400 ft',
+    tagline: 'A stilt town paid its hydra every spring. This year someone stole the payment, and now the hydra is taking houses.',
+    tags: ['swamp', 'hydra', 'mystery', 'morally grey', 'wilderness'],
+  },
+  {
+    id: 'sunken-library', title: 'The Sunken Library of Quillmere', levels: '3', sessions: '1 session', players: '3-5 players', chapters: 1, mapSize: '400 x 400 ft',
+    tagline: 'A drought has given back a drowned library, and three rival crews are racing for the living catalogue at its heart.',
+    tags: ['one-shot', 'ruins', 'puzzles', 'race', 'cult'],
+  },
+  {
+    id: 'silent-archive', title: 'The Silent Archive', levels: '17-18', sessions: '2-3 sessions', players: '3-5 players', chapters: 2, mapSize: '2 big maps',
+    tagline: 'Every bell, song and name in the world is going quiet, one city at a time, and something is filing them away.',
+    tags: ['epic', 'city', 'planar', 'lich', 'silence'],
+  },
+  {
+    id: 'winterhollow-wolves', title: 'The Wolves of Winterhollow', levels: '2', sessions: '1 session (3-4 hours)', players: '3-5 players', chapters: 1, mapSize: '400 x 400 ft',
+    tagline: 'Wolves circle a snowed-in logging village and a child is missing. But the wolves are running from something.',
+    tags: ['one-shot', 'winter', 'survival', 'wolves'],
+  },
 ];
 
 const LOADERS: Record<string, () => Promise<Adventure>> = {
@@ -137,6 +157,10 @@ const LOADERS: Record<string, () => Promise<Adventure>> = {
   'wyvern-roost': () => import('./wyvern-roost').then((m) => m.WYVERN_ROOST),
   'hagsmoor-mill': () => import('./hagsmoor-mill').then((m) => m.HAGSMOOR_MILL),
   'manticore-mesa': () => import('./manticore-mesa').then((m) => m.MANTICORE_MESA),
+  'hydra-mirewater': () => import('./hydra-mirewater').then((m) => m.HYDRA_MIREWATER),
+  'sunken-library': () => import('./sunken-library').then((m) => m.SUNKEN_LIBRARY),
+  'silent-archive': () => import('./silent-archive').then((m) => m.SILENT_ARCHIVE),
+  'winterhollow-wolves': () => import('./winterhollow-wolves').then((m) => m.WINTERHOLLOW_WOLVES),
 };
 
 export function loadAdventure(id: string): Promise<Adventure> {
