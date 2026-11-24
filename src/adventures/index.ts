@@ -17,12 +17,42 @@ export const ADVENTURE_CARDS: AdventureCard[] = [
     tagline: 'A dwarf forge-vault inside a waking volcano, and the young red dragon who moved in.',
     tags: ['dungeon', 'high level', 'fire', 'dragon', 'traps'],
   },
+  {
+    id: 'hollow-orchard', title: 'The Hollow Orchard', levels: '3', sessions: '1 session', players: '3-5', chapters: 1, mapSize: '400 × 400 ft',
+    tagline: 'The apples ripen overnight, the scarecrows walk at dusk, and the pickers keep vanishing among the trees.',
+    tags: ['one-shot', 'folk horror', 'outdoors', 'hag'],
+  },
+  {
+    id: 'ember-court', title: 'The Ember Court', levels: '17', sessions: '1-2 sessions', players: '3-5', chapters: 1, mapSize: '400 × 400 ft',
+    tagline: 'An efreeti prince stole a kingdom\'s sun. Win it back from a brass palace on a sea of lava.',
+    tags: ['planar', 'intrigue', 'fire', 'demon'],
+  },
+  {
+    id: 'clockwork-spire', title: 'The Clockwork Spire', levels: '7', sessions: '1-2 sessions', players: '3-5', chapters: 1, mapSize: '400 × 400 ft',
+    tagline: 'A dead inventor\'s tower is winding itself up again, and when its great bell rings, the city will stop forever.',
+    tags: ['one-shot', 'tower', 'clockwork', 'constructs', 'race the clock'],
+  },
+  {
+    id: 'gilded-ledger', title: 'Heist at the Gilded Ledger', levels: '5', sessions: '2 sessions', players: '3-5', chapters: 2, mapSize: '2 big maps',
+    tagline: 'One night, one counting-house, one book that owns a whole neighbourhood. Steal it.',
+    tags: ['heist', 'city', 'stealth', 'caper', 'canals'],
+  },
+  {
+    id: 'frostfang-pass', title: 'Frostfang Pass', levels: '11-13', sessions: '4-6 sessions', players: '3-5', chapters: 3, mapSize: '3 big maps',
+    tagline: 'An endless winter, a starving town and the frost giants who blame it for their dead prince.',
+    tags: ['mini-campaign', 'winter', 'giants', 'dragon', 'diplomacy'],
+  },
 ];
 
 const LOADERS: Record<string, () => Promise<Adventure>> = {
   'lantern-thief': () => import('./lantern').then((m) => m.LANTERN),
   'drowned-bells': () => import('./saltmarrow').then((m) => m.SALTMARROW),
   cinderdeep: () => import('./cinderdeep').then((m) => m.CINDERDEEP),
+  'hollow-orchard': () => import('./hollow-orchard').then((m) => m.HOLLOW_ORCHARD),
+  'ember-court': () => import('./ember-court').then((m) => m.EMBER_COURT),
+  'clockwork-spire': () => import('./clockwork-spire').then((m) => m.CLOCKWORK_SPIRE),
+  'gilded-ledger': () => import('./gilded-ledger').then((m) => m.GILDED_LEDGER),
+  'frostfang-pass': () => import('./frostfang-pass').then((m) => m.FROSTFANG_PASS),
 };
 
 export function loadAdventure(id: string): Promise<Adventure> {
