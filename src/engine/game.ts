@@ -321,7 +321,10 @@ export class HostCore {
         if (amount > 0 && c.state.hp === 0 && !c.state.dead) {
           c.state.deathSaves.f += crit ? 2 : 1;
           c.state.stable = false;
-          if (c.state.deathSaves.f >= 3) {
+          if (amount - c.state.tempHp >= computeSheet(c.build).maxHp) {
+            c.state.dead = true;
+            this.system(`${c.build.name} is killed outright by massive damage.`);
+          } else if (c.state.deathSaves.f >= 3) {
             c.state.dead = true;
             this.system(`${c.build.name} has died.`);
           }
@@ -357,6 +360,12 @@ export class HostCore {
     const mode = this.s.settings.statRoll ?? 'allow';
     if (mode === 'require' && b.statMethod !== 'roll') throw new GameError('Your GM wants heroes made with rolled scores. Pick "Roll for stats" on the Abilities step.');
     if (b.statMethod !== 'roll') return;
+    // a hero rolled at an earlier table keeps those scores; they only have to be numbers 4d6 can make
+    if (b.rolledAt && b.rolledAt !== this.s.code && !this.s.statRolls?.[from]) {
+      if (Object.values(b.base).some((n) => !(n >= 3 && n <= 18))) throw new GameError('Rolled scores have to be between 3 and 18.');
+      this.system(`${b.name}'s scores were rolled at an earlier table: ${Object.values(b.base).join(', ')}.`, 'gm');
+      return;
+    }
     const mine = this.s.statRolls?.[from];
     if (!mine) throw new GameError('Roll for stats at this table first, then save your hero.');
     const want = [...mine.sets].sort((x, y) => x - y).join(',');
@@ -403,6 +412,7 @@ export class HostCore {
         const sheet = computeSheet(c.build);
         const state = prev ? { ...prev.state, hp: Math.min(prev.state.hp, sheet.maxHp) } : { ...freshState(c.build), ...c.state, hp: Math.min(c.state?.hp ?? sheet.maxHp, sheet.maxHp) };
         if (!gm && !prev) this.checkRolledScores(from, c.build);
+        if (c.build.statMethod === 'roll' && !c.build.rolledAt) c.build.rolledAt = this.s.code;
         this.s.characters[c.build.id] = { build: c.build, state, levelCap: prev?.levelCap };
         if (!gm) this.s.players[from].charId = c.build.id;
         this.ensureToken(c.build.id);
@@ -531,8 +541,13 @@ export class HostCore {
       }
       case 'move': return this.move(from, it.tokenId, it.x, it.y);
       case 'roll': {
-        const label = (it.label ?? '').slice(0, 60);
-        const r = roll(it.formula + (label ? ` # ${label}` : ''));
+        let label = (it.label ?? '').slice(0, 60);
+        const me = gm ? undefined : this.charOf(from);
+        if (me && it.attackDamage && !canAct(me.state)) throw new GameError(`${me.build.name} can't attack right now.`);
+        // exhaustion takes 2 per level off every d20 test the hero makes
+        const exh = me && /^\s*(1d20|2d20k[hl]1)\b/i.test(it.formula) ? me.state.exhaustion * 2 : 0;
+        if (exh) label = `${label} (exhaustion −${exh})`;
+        const r = roll(it.formula + (exh ? `-${exh}` : '') + (label ? ` # ${label}` : ''));
         const crit = r.natural !== undefined && r.natural >= (it.critRange ?? 20);
         const fumble = r.natural === 1;
         const tgt = it.attackDamage && it.targetId ? this.s.tokens.find((t) => t.id === it.targetId && (gm || !t.hidden)) : undefined;
@@ -616,7 +631,8 @@ export class HostCore {
         const c = this.s.characters[it.target];
         if (c) {
           if (!this.canEditChar(from, it.target)) throw new GameError("That isn't your character.");
-          c.state.conditions = toggle(c.state.conditions, it.cond, it.on);
+          if (it.cond === 'exhaustion') this.setExhaustion(c, it.on ? Math.max(1, c.state.exhaustion) : 0);
+          else c.state.conditions = toggle(c.state.conditions, it.cond, it.on);
           this.syncToken(it.target);
         } else {
           if (!gm) throw new GameError('Only the GM can do that.');
@@ -638,14 +654,22 @@ export class HostCore {
         }
         if (p.coins !== undefined) c.state.coins = Math.max(0, p.coins | 0);
         if (p.inspiration !== undefined) c.state.inspiration = p.inspiration;
-        if (p.exhaustion !== undefined) c.state.exhaustion = Math.max(0, Math.min(6, p.exhaustion));
+        if (p.exhaustion !== undefined) {
+          this.setExhaustion(c, p.exhaustion);
+          this.syncToken(it.charId);
+        }
         break;
       }
       case 'initiative': {
         const c = this.charOf(from);
         if (!c) throw new GameError('Pick a character first.');
         const tok = this.tokenForChar(c.build.id)!;
-        const r = roll(`1d20${fmt(computeSheet(c.build).initiative)} # Initiative`);
+        if (this.s.combat.active && this.s.combat.order.some((o) => o.tokenId === tok.id)) throw new GameError("You've already rolled initiative for this fight.");
+        // barbarians from level 7 roll with advantage (Feral Instinct); incapacitated creatures with disadvantage
+        const feral = c.build.classId === 'barbarian' && c.build.level >= 7;
+        const slow = c.state.conditions.some((x) => INCAPACITATING.includes(x));
+        const die = feral && !slow ? '2d20kh1' : slow && !feral ? '2d20kl1' : '1d20';
+        const r = roll(`${die}${fmt(computeSheet(c.build).initiative - c.state.exhaustion * 2)} # Initiative`);
         this.add({ kind: 'roll', from: this.playerName(from), fromId: from, roll: r, visibility: 'public' });
         this.setInit(tok.id, r.total);
         break;
@@ -660,7 +684,7 @@ export class HostCore {
       case 'deathSave': {
         const c = this.charOf(from);
         if (!c || c.state.hp > 0 || c.state.dead || c.state.stable) throw new GameError('No death save needed.');
-        const r = roll('1d20 # Death save');
+        const r = roll(`1d20${c.state.exhaustion ? fmt(-c.state.exhaustion * 2) : ''} # Death save`);
         const e = this.add({ kind: 'roll', from: this.playerName(from), fromId: from, roll: r, visibility: 'public' });
         const ds = c.state.deathSaves;
         if (r.natural === 20) {
@@ -689,7 +713,7 @@ export class HostCore {
         const st = c.state as CharacterState & { concDC?: number };
         if (!st.concDC) throw new GameError('No concentration check pending.');
         const sh = computeSheet(c.build);
-        const r = roll(`1d20${fmt(sh.saves.con.total)} # Concentration (DC ${st.concDC})`);
+        const r = roll(`1d20${fmt(sh.saves.con.total - c.state.exhaustion * 2)} # Concentration (DC ${st.concDC})`);
         this.add({ kind: 'roll', from: this.playerName(from), fromId: from, roll: r, visibility: 'public' });
         if (r.total < st.concDC) {
           this.system(`${c.build.name} loses concentration on ${c.state.concentration}.`);
@@ -721,9 +745,9 @@ export class HostCore {
         if (it.kind === 'long') {
           c.state.hp = sh.maxHp;
           c.state.tempHp = 0;
-          c.state.hitDiceUsed = Math.max(0, c.state.hitDiceUsed - Math.max(1, Math.floor(c.build.level / 2)));
+          c.state.hitDiceUsed = 0;
           c.state.deathSaves = { s: 0, f: 0 };
-          c.state.exhaustion = Math.max(0, c.state.exhaustion - 1);
+          this.setExhaustion(c, c.state.exhaustion - 1);
           c.state.stable = false;
           c.state.conditions = c.state.conditions.filter((x) => x !== 'unconscious');
           if (c.build.speciesId === 'human') c.state.inspiration = true;
@@ -956,7 +980,7 @@ export class HostCore {
     const sh = computeSheet(c.build);
     if (!sh.spell) throw new GameError(`${c.build.name} doesn't cast spells.`);
     if (!gm && ![...sh.spell.cantrips, ...sh.spell.prepared].some((x) => x.id === sp.id)) throw new GameError(`${c.build.name} doesn't have ${sp.name} ready.`);
-    if (c.state.dead || c.state.hp === 0) throw new GameError(`${c.build.name} can't cast right now.`);
+    if (!canAct(c.state)) throw new GameError(`${c.build.name} can't cast right now.`);
     const pact = sh.spell.pactLevel;
     const arcanum = !!pact && sp.level > 5;
     // warlock pact slots are always cast at the pact slot level
@@ -1094,6 +1118,18 @@ export class HostCore {
     for (const t of targets) fx.hits.push({ id: t.id });
   }
 
+  /** Exhaustion 0-6 (SRD 5.2.1): the condition chip follows the level, and level 6 is death. */
+  private setExhaustion(c: Character, level: number) {
+    const st = c.state;
+    st.exhaustion = Math.max(0, Math.min(6, level | 0));
+    st.conditions = toggle(st.conditions, 'exhaustion', st.exhaustion > 0);
+    if (st.exhaustion >= 6 && !st.dead) {
+      st.dead = true;
+      st.hp = 0;
+      this.system(`${c.build.name} dies of exhaustion.`);
+    }
+  }
+
   private applyHp(c: Character, delta: number) {
     const max = computeSheet(c.build).maxHp;
     const st = c.state as CharacterState & { concDC?: number };
@@ -1104,9 +1140,14 @@ export class HostCore {
       dmg -= fromTemp;
       const before = st.hp;
       st.hp = Math.max(0, st.hp - dmg);
-      if (st.concentration && -delta > 0) {
-        st.concDC = Math.max(10, Math.floor(-delta / 2));
+      if (st.concentration && -delta > 0 && st.hp > 0) {
+        st.concDC = Math.min(30, Math.max(10, Math.floor(-delta / 2)));
         this.system(`${c.build.name} must make a DC ${st.concDC} Constitution save to keep concentrating on ${st.concentration}.`);
+      }
+      if (st.hp === 0 && st.concentration) {
+        this.system(`${c.build.name} loses concentration on ${st.concentration}.`);
+        st.concentration = undefined;
+        st.concDC = undefined;
       }
       if (before > 0 && st.hp === 0) {
         if (dmg - before >= max) {
@@ -1159,7 +1200,7 @@ export class HostCore {
     Object.assign(t, {
       name: c.build.name, hp: c.state.hp, maxHp: sh.maxHp, ac: sh.ac + (shield ? 5 : 0),
       conditions: [...c.state.conditions, ...(shield ? [SHIELD_MARK] : []), ...(chill ? [CHILL_MARK] : [])],
-      initMod: sh.initiative, speed: Math.max(0, sh.speed - (chill ? 10 : 0)), color: c.build.color,
+      initMod: sh.initiative, speed: Math.max(0, sh.speed - (chill ? 10 : 0) - c.state.exhaustion * 5), color: c.build.color,
     });
     t.darkvision = speciesById(c.build.speciesId)?.darkvision ?? 0;
     t.art = `hero-${c.build.speciesId}-${c.build.classId}`;
@@ -1214,6 +1255,8 @@ export class HostCore {
       const c = this.charOf(from);
       if (!c || t.charId !== c.build.id) throw new GameError("You can only move your own hero.");
       if (c.state.hp === 0) throw new GameError("You can't move at 0 HP.");
+      const held = c.state.conditions.find((x) => SPEED_ZERO.includes(x));
+      if (held) throw new GameError(`You can't move while ${held}.`);
       const cur = this.currentTokenId();
       if (this.s.combat.active && this.s.settings.lockMoves && cur !== t.id) throw new GameError('Wait for your turn to move.');
       const cost = moveCost(m, t.x, t.y, x, y, 400);
@@ -1267,13 +1310,19 @@ export class HostCore {
   private advance(dir: 1 | -1) {
     const c = this.s.combat;
     if (!c.active || !c.order.length) throw new GameError('No combat running.');
-    let next = c.turn + dir;
-    if (next >= c.order.length) {
-      next = 0;
-      c.round++;
-    } else if (next < 0) {
-      next = c.order.length - 1;
-      c.round = Math.max(1, c.round - 1);
+    let next = c.turn;
+    // monsters that have fallen don't get a turn; heroes at 0 HP still do, for their death saves
+    for (let tries = 0; tries < c.order.length; tries++) {
+      next += dir;
+      if (next >= c.order.length) {
+        next = 0;
+        c.round++;
+      } else if (next < 0) {
+        next = c.order.length - 1;
+        c.round = Math.max(1, c.round - 1);
+      }
+      const k = this.s.tokens.find((x) => x.id === c.order[next].tokenId);
+      if (!(k && k.kind === 'monster' && k.hp <= 0)) break;
     }
     c.turn = next;
     c.begun = true;
@@ -1429,6 +1478,10 @@ export class HostCore {
 }
 
 export const fmt = (n: number) => (n >= 0 ? `+${n}` : `${n}`);
+/** Conditions that stop a creature taking actions (SRD 5.2.1), and those that drop its speed to 0. */
+const INCAPACITATING = ['incapacitated', 'paralyzed', 'petrified', 'stunned', 'unconscious'];
+const SPEED_ZERO = ['grappled', 'restrained', 'paralyzed', 'petrified', 'unconscious'];
+const canAct = (st: CharacterState) => !st.dead && st.hp > 0 && !st.conditions.some((x) => INCAPACITATING.includes(x));
 const toggle = (arr: string[], v: string, on: boolean) => (on ? (arr.includes(v) ? arr : [...arr, v]) : arr.filter((x) => x !== v));
 
 // re-exported helpers used by the UI

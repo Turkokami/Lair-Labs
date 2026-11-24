@@ -147,7 +147,17 @@ export function SheetPanel({ ch, roll, send, canEdit }: SheetProps) {
           ))}
         </div>
       )}
-      {st.exhaustion > 0 && <div className="notice">Exhaustion {st.exhaustion}: −{st.exhaustion * 2} to every d20 roll and −{st.exhaustion * 5} ft speed.</div>}
+      {(canEdit || st.exhaustion > 0) && (
+        <div className="row between">
+          <span>Exhaustion <b>{st.exhaustion}</b>{st.exhaustion > 0 && <span className="muted small"> · −{st.exhaustion * 2} to d20 rolls (added for you), −{st.exhaustion * 5} ft speed{st.exhaustion >= 5 ? ' · level 6 is death' : ''}</span>}</span>
+          {canEdit && (
+            <span className="row gap">
+              <button className="ghost icon small" disabled={st.exhaustion <= 0} onClick={() => safe(send({ t: 'charState', charId: ch.build.id, patch: { exhaustion: st.exhaustion - 1 } }))} aria-label="One less exhaustion level">−</button>
+              <button className="ghost icon small" disabled={st.exhaustion >= 6} onClick={() => (st.exhaustion < 5 || confirm('Level 6 exhaustion kills your hero. Add it?')) && safe(send({ t: 'charState', charId: ch.build.id, patch: { exhaustion: st.exhaustion + 1 } }))} aria-label="One more exhaustion level">+</button>
+            </span>
+          )}
+        </div>
+      )}
       {canEdit && (
         <div className="row gap wrap">
           <button className="ghost" onClick={() => safe(send({ t: 'hitDie', charId: ch.build.id }))}>Spend Hit Die (d{sh.hitDie}) · {ch.build.level - st.hitDiceUsed} left</button>

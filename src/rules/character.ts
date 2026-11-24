@@ -35,6 +35,8 @@ export interface CharacterBuild {
   pronouns?: string;
   /** How the base scores were made: standard array, point buy or rolled at the table (4d6, drop the lowest). */
   statMethod?: 'array' | 'points' | 'roll';
+  /** The table code where a rolled hero's scores were rolled. */
+  rolledAt?: string;
 }
 
 export interface CharacterState {

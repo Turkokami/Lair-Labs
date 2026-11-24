@@ -6,7 +6,7 @@ import type { Character } from '../rules/character';
 import { computeSheet } from '../rules/character';
 import { conditionName } from '../rules/core';
 import { TurnHud3D } from './TurnHud3D';
-import { nearestFoe, planSpell } from './targets';
+import { gapFt, nearestFoe, planSpell } from './targets';
 import type { Spell } from '../rules/spells';
 import { MapCanvas, lineToTemplate, type TemplateShape } from './MapCanvas';
 import { CharBuilder } from './CharBuilder';
@@ -197,7 +197,11 @@ function PlayerTable({ s, onLeave }: { s: ClientSession; onLeave: () => void }) 
     if (plan.aim && plan.aim.id !== myToken?.id && !sp.heal) setTarget(plan.aim.id);
     safe(send({ t: 'cast', spellId: sp.id, slot, targets: plan.targets, point: plan.point }));
   };
-  const combat = { active: v.combat.active, myTurn, inOrder: v.combat.order.some((o) => o.isYou), movedLeft: myToken && myTurn ? myToken.speed - myToken.movedFeet : undefined, aim: (reachFt: number) => nearestFoe(v.tokens, myToken, reachFt), plan: (sp: Spell) => planSpell(sp, v.tokens, myToken, target) };
+  const combat = { active: v.combat.active, myTurn, inOrder: v.combat.order.some((o) => o.isYou), movedLeft: myToken && myTurn ? myToken.speed - myToken.movedFeet : undefined, aim: (reachFt: number) => {
+    // the creature the player tapped, if this weapon reaches it; otherwise the nearest foe in reach
+    const picked = target ? v.tokens.find((k) => k.id === target && k.id !== myToken?.id && k.hp > 0) : undefined;
+    return picked && myToken && gapFt(myToken, picked) <= reachFt ? picked : nearestFoe(v.tokens, myToken, reachFt);
+  }, plan: (sp: Spell) => planSpell(sp, v.tokens, myToken, target) };
 
   if (building || !ch)
     return (
