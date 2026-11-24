@@ -232,6 +232,26 @@ export const ADVENTURE_CARDS: AdventureCard[] = [
     tagline: 'A storm giant king mourns his drowned daughter with a storm that will not end. Find out who really sank her ship before the coast drowns.',
     tags: ['epic', 'giants', 'storm', 'tragedy', 'sea'],
   },
+  {
+    id: 'clockwork-war', title: 'The Kneeling Fortress', levels: '15', sessions: '1-2 sessions', players: '3-5', chapters: 1, mapSize: '400 × 400 ft',
+    tagline: 'Under a mountain, two dead nations\' war machines are still fighting, and a general wants the biggest one.',
+    tags: ['battlefield', 'constructs', 'high level', 'ghosts', 'tragic'],
+  },
+  {
+    id: 'ninth-seal', title: 'The Ninth Seal', levels: '11-16', sessions: '8-12 sessions', players: '3-5', chapters: 5, mapSize: '5 big maps',
+    tagline: 'Eight seals under the world have already broken, someone is murdering the wardens who hid it, and the last key is in your pocket.',
+    tags: ['investigation', 'epic', 'mystery', 'campaign', 'twist'],
+  },
+  {
+    id: 'sun-goes-out', title: 'The Sun Goes Out', levels: '17-20', sessions: '8-12 sessions', players: '3-5', chapters: 5, mapSize: '5 big maps',
+    tagline: 'Every day is an hour shorter than the last. Topple five spires of night and climb to the end of the world to bring back the sun.',
+    tags: ['epic', 'campaign', 'angels', 'apocalypse', 'five-part'],
+  },
+  {
+    id: 'shattered-crown', title: 'The Shattered Crown', levels: '5-10', sessions: '10-14 sessions', players: '3-5', chapters: 6, mapSize: '6 big maps',
+    tagline: 'The high king is murdered and his crown lies in six cursed shards across six provinces: gather them before a charming usurper crowns himself.',
+    tags: ['campaign', 'intrigue', 'epic', 'quest', 'kingdom'],
+  },
 ];
 
 const LOADERS: Record<string, () => Promise<Adventure>> = {
@@ -281,6 +301,10 @@ const LOADERS: Record<string, () => Promise<Adventure>> = {
   'ember-road': () => import('./ember-road').then((m) => m.EMBER_ROAD),
   'silver-eyrie': () => import('./silver-eyrie').then((m) => m.SILVER_EYRIE),
   'storm-king-grief': () => import('./storm-king-grief').then((m) => m.STORM_KING_GRIEF),
+  'clockwork-war': () => import('./clockwork-war').then((m) => m.CLOCKWORK_WAR),
+  'ninth-seal': () => import('./ninth-seal').then((m) => m.NINTH_SEAL),
+  'sun-goes-out': () => import('./sun-goes-out').then((m) => m.SUN_GOES_OUT),
+  'shattered-crown': () => import('./shattered-crown').then((m) => m.SHATTERED_CROWN),
 };
 
 export function loadAdventure(id: string): Promise<Adventure> {
