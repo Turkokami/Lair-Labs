@@ -22,5 +22,6 @@ export function registerCustomModels() {
   // Sheet monsters (hy3d on the studio GPU, game-ready, rigged in house with the studio battle rig; see docs/monster-pipeline.md)
   registerFigureGLTF('goblin-alchemist', '/models/goblin-alchemist.glb', { height: 0.8 });
   registerFigureGLTF('zombie-butcher', '/models/zombie-butcher.glb', { height: 1.7 });
+  registerFigureGLTF('crowned-lich', '/models/crowned-lich.glb', { height: 1.8 });
   void registerFigureModel;
 }
