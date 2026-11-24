@@ -92,6 +92,26 @@ export const ADVENTURE_CARDS: AdventureCard[] = [
     tagline: 'The last free armies storm a burned capital to stop an ancient red dragon being crowned a god at dawn.',
     tags: ['epic', 'finale', 'dragon', 'war', 'city'],
   },
+  {
+    id: 'crows-ferry', title: 'The Bandits of Crow\'s Ferry', levels: '2', sessions: '1 session (3-4 hours)', players: '3-5 players', chapters: 1, mapSize: '400 x 400 ft',
+    tagline: 'Bandits hold the only ferry on the river and rob every traveller. Find out why before you hang them.',
+    tags: ['one-shot', 'wilderness', 'bandits', 'river', 'dragon'],
+  },
+  {
+    id: 'wyvern-roost', title: 'The Wyvern Roost of Mount Skarn', levels: '6', sessions: '1 session (4 hours)', players: '3-5 players', chapters: 1, mapSize: '400 x 400 ft',
+    tagline: 'Wyverns are taking the shepherds of Lowfold, and the only way to stop them is up the mountain.',
+    tags: ['one-shot', 'mountain', 'wyverns', 'mystery', 'climb'],
+  },
+  {
+    id: 'hagsmoor-mill', title: 'The Night Mill of Hagsmoor', levels: '1', sessions: '1 session (3-4 hours)', players: '3-5 players', chapters: 1, mapSize: '400 x 400 ft',
+    tagline: 'The old watermill grinds by itself after dark, and everyone who eats its bread falls into a dream they can\'t wake from.',
+    tags: ['one-shot', 'starter', 'folk tale', 'fen', 'bargain'],
+  },
+  {
+    id: 'manticore-mesa', title: 'The Toll on Sabbath Mesa', levels: '5', sessions: '1-2 sessions', players: '3-5 players', chapters: 1, mapSize: '400 x 400 ft',
+    tagline: 'A manticore takes its toll from a desert silver camp, and somebody down in the camp is feeding it.',
+    tags: ['one-shot', 'western', 'wilderness', 'manticore', 'mystery'],
+  },
 ];
 
 const LOADERS: Record<string, () => Promise<Adventure>> = {
@@ -113,6 +133,10 @@ const LOADERS: Record<string, () => Promise<Adventure>> = {
   'sand-king-tomb': () => import('./sand-king-tomb').then((m) => m.SAND_KING_TOMB),
   'troll-bridges': () => import('./troll-bridges').then((m) => m.TROLL_BRIDGES),
   'throne-of-cinders': () => import('./throne-of-cinders').then((m) => m.THRONE_OF_CINDERS),
+  'crows-ferry': () => import('./crows-ferry').then((m) => m.CROWS_FERRY),
+  'wyvern-roost': () => import('./wyvern-roost').then((m) => m.WYVERN_ROOST),
+  'hagsmoor-mill': () => import('./hagsmoor-mill').then((m) => m.HAGSMOOR_MILL),
+  'manticore-mesa': () => import('./manticore-mesa').then((m) => m.MANTICORE_MESA),
 };
 
 export function loadAdventure(id: string): Promise<Adventure> {
