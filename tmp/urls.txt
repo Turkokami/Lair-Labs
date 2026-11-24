@@ -3,3 +3,4 @@ goblin-raw-rig https://ocejqvdipitcrjfy.public.blob.vercel-storage.com/models/mw
 goblin-gr-rig https://ocejqvdipitcrjfy.public.blob.vercel-storage.com/models/mwv1if1e-battle-rig-rnd_8c5ba0fad0084165-mwv1iebj-mTWEBscRpDf8EVfCHRAJUy1AAVq6zF.glb
 goblin-gr https://ocejqvdipitcrjfy.public.blob.vercel-storage.com/models/rnd_8c5ba0fad0084165-FnQc8qUYQsX2sois9b8uS2sLZgpgzO.glb
 goblin-rig90 https://ocejqvdipitcrjfy.public.blob.vercel-storage.com/models/mwv1ypnb-battle-rig-rnd_8c5ba0fad0084165-mwv1yntd-1VDKHuQETTjuL0HZzmIHzkRQAnSDw6.glb
+zombie-rig180 https://ocejqvdipitcrjfy.public.blob.vercel-storage.com/models/mwv219jo-battle-rig-rnd_826e7b9d1afc4573-mwv218cc-ipXYQqeDnYBu8Y9Vw1sNBQatcUU888.glb
