@@ -48,6 +48,15 @@ python3 scripts/monster_sheet.py sheet.png <monster-name> [out_dir]
    `registerFigureGLTF('<name>', '/models/<name>.glb', { height: 1.7 })` in `registerCustomModels()` in `src/view3d/custom-models.ts`
    (height in squares; 1 square = 5 ft; turn with `yaw` if it faces the wrong way).
 
+## Recipes that worked (Nov 24 batch)
+
+- Most humanoids: battle_rig `{"template":"biped_a","turn":90}`. Check the rest sheet: the front 3/4 must show the face. If the model stands twisted, square it first with glb_edit (move, rotate about Y, save).
+- Lich (robe): turn 0. Werewolf: turn 270 fit best, then a 180 degree turn baked into the mesh and root bone (a rotated parent node crosses the legs).
+- Long hanging arms (troll): add `"body":"ape","reach":"soft"`; leave the boots rule off.
+- Dragon (four legs): `{"template":"quadruped","turn":180,"drop":true,"reach":"soft"}`; moves bite attack, hurt, collapse.
+- game-ready crashes on models with shape keys (werewolf, dragon): rig the raw model instead.
+- Clean-up options used: held (a staff stays rigid with its bone), lowarms and armleg (hands hanging by the boots), legarm (fists hanging by the knees), maxtex 1024.
+
 ## Cost per monster
 
 - Steps 1 and 2: nothing.
