@@ -132,6 +132,26 @@ export const ADVENTURE_CARDS: AdventureCard[] = [
     tagline: 'Wolves circle a snowed-in logging village and a child is missing. But the wolves are running from something.',
     tags: ['one-shot', 'winter', 'survival', 'wolves'],
   },
+  {
+    id: 'vampire-wedding', title: 'The Velbrand Wedding', levels: '9-11', sessions: '3-4 sessions', players: '3-5 players', chapters: 3, mapSize: '3 big maps',
+    tagline: 'A gothic wedding in a misty river valley, where the groom has not aged in sixty years and the vows are written in blood.',
+    tags: ['mini-campaign', 'gothic horror', 'vampires', 'intrigue', 'wedding'],
+  },
+  {
+    id: 'seven-suns-caravan', title: 'The Caravan of Seven Suns', levels: '2-4', sessions: '3-5 sessions', players: '3-5 players', chapters: 3, mapSize: '3 big maps',
+    tagline: 'Guard a painted caravan across the deep desert, and decide the fate of the singing jar that every bandit, cultist and gnoll on the road wants.',
+    tags: ['road trip', 'desert', 'caravan', 'mystery', 'choices'],
+  },
+  {
+    id: 'gray-kings', title: 'The Moot of the Gray Kings', levels: '14', sessions: '1-2 sessions', players: '3-5 players', chapters: 1, mapSize: '400 x 400 ft',
+    tagline: 'Three giant clans, one ancient peace and a saboteur who wants them at war: find the truth before the third dawn.',
+    tags: ['intrigue', 'giants', 'high level', 'mystery', 'outdoors'],
+  },
+  {
+    id: 'last-contract', title: 'The Last Contract', levels: '19', sessions: '1-2 sessions', players: '3-5 players', chapters: 1, mapSize: '400 x 400 ft',
+    tagline: 'A kingdom falls due at midnight. Rob the vault-city where gods and fiends keep their bargains, and steal it back.',
+    tags: ['heist', 'high level', 'fiends', 'golems', 'epic'],
+  },
 ];
 
 const LOADERS: Record<string, () => Promise<Adventure>> = {
@@ -161,6 +181,10 @@ const LOADERS: Record<string, () => Promise<Adventure>> = {
   'sunken-library': () => import('./sunken-library').then((m) => m.SUNKEN_LIBRARY),
   'silent-archive': () => import('./silent-archive').then((m) => m.SILENT_ARCHIVE),
   'winterhollow-wolves': () => import('./winterhollow-wolves').then((m) => m.WINTERHOLLOW_WOLVES),
+  'vampire-wedding': () => import('./vampire-wedding').then((m) => m.VAMPIRE_WEDDING),
+  'seven-suns-caravan': () => import('./seven-suns-caravan').then((m) => m.SEVEN_SUNS_CARAVAN),
+  'gray-kings': () => import('./gray-kings').then((m) => m.GRAY_KINGS),
+  'last-contract': () => import('./last-contract').then((m) => m.LAST_CONTRACT),
 };
 
 export function loadAdventure(id: string): Promise<Adventure> {
