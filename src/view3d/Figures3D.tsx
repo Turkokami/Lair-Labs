@@ -10,7 +10,7 @@ import { lookFor } from './figures';
 import { toast } from '../ui/common';
 
 const LINEUP = [
-  'skeleton', 'zombie', 'ghost', 'wraith', 'lich', 'mage', 'archmage', 'green-hag', 'night-hag', 'priest', 'cultist', 'knight', 'guard',
+  'skeleton-knight', 'skeleton', 'zombie', 'ghost', 'wraith', 'lich', 'mage', 'archmage', 'green-hag', 'night-hag', 'priest', 'cultist', 'knight', 'guard',
   'goblin', 'kobold', 'orc', 'troll', 'warhorse-skeleton', 'giant-spider', 'wolf', 'dragon-red-young', 'dragon-green-adult', 'wyvern', 'dragon-gold-wyrmling',
   'witch', 'wizard', 'necromancer', 'skeleton-archer', 'bone-dragon', 'hero-human-wizard', 'hero-elf-paladin', 'commoner',
 ];
