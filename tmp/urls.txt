@@ -14,3 +14,4 @@ archer-rig0 https://ocejqvdipitcrjfy.public.blob.vercel-storage.com/models/mwv3x
 archer-sq90 https://ocejqvdipitcrjfy.public.blob.vercel-storage.com/models/mwv3zi1a-battle-rig-rnd_efd8763a791e4f89-mwv3zgs8-O1UsvmR29MBH6c8XxHQZS6Z3QL8opq.glb
 wolf-edit https://ocejqvdipitcrjfy.public.blob.vercel-storage.com/models/mwv33g5c-edit-rnd_78e2c5fabc2c4352-mwv33g5c-Ghwsbafv1eMHghWiSHV03b2xlgnGJ2.glb
 wolf-rig90 https://ocejqvdipitcrjfy.public.blob.vercel-storage.com/models/mwv4614n-battle-rig-rnd_eb827c45f03f4ad4-mwv45zz9-pkbtsy0n93RjPv2RTgtayH0fT5pn9i.glb
+wolf-rig270 https://ocejqvdipitcrjfy.public.blob.vercel-storage.com/models/mwv4a0oz-battle-rig-rnd_eb827c45f03f4ad4-mwv49zx2-6KOe0LXBW3A4RznK1iP58F6EbCgfEt.glb
