@@ -9,3 +9,4 @@ zombie-sq90 https://ocejqvdipitcrjfy.public.blob.vercel-storage.com/models/mwv26
 lich-rig180 https://ocejqvdipitcrjfy.public.blob.vercel-storage.com/models/mwv35bwy-battle-rig-rnd_65e43902b22b4a06-mwv35ayb-TIl59dfVuExR6xi9zKWy5VQEqyCJxo.glb
 lich-rig0 https://ocejqvdipitcrjfy.public.blob.vercel-storage.com/models/mwv36jtt-battle-rig-rnd_65e43902b22b4a06-mwv36j25-0jMx6LFM4la5XcWQNantD5wcqE2k64.glb
 orc-rig90 https://ocejqvdipitcrjfy.public.blob.vercel-storage.com/models/mwv3ti31-battle-rig-rnd_85aae34ed3e1431e-mwv3tf7b-37zoeVWgQukEooPwdhibLwAOfRf5M2.glb
+archer-rig90 https://ocejqvdipitcrjfy.public.blob.vercel-storage.com/models/mwv3w6yi-battle-rig-rnd_be8e6e7c30dc4849-mwv3w3wo-7DVxvwTHLj6vEY31cIi6DAt5lofdJB.glb
