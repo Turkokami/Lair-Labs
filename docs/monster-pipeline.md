@@ -25,7 +25,10 @@ python3 scripts/monster_sheet.py sheet.png <monster-name> [out_dir]
 
 1. Upload the view JPGs where Squatch Studio can fetch them (a public URL), then `import_media_from_url`.
 2. `make_3d_model` engine `hy3d_local`, refs with roles front / left (side) / back.
-3. `make_game_ready`: about 12-15k triangles, 1024 textures.
+3. Take the RAW mesh, not the finished hy3d_local output: `glb_edit` with `source: "hunyuan_raw"`, action `move`,
+   box `[-5,-5,-5,5,5,5]`, offset 0, `save: true`. The finished output runs human-only steps (face fit, face mold,
+   MakeHuman hands, face shape keys) that wreck creatures: they cut holes in the werewolf's head and put a hand where
+   the dragon's head was. Skip `make_game_ready` too; the raw save (about 40k triangles) rigs fine with battle_rig.
 4. Rig in house, always. Never Tripo for Lair Labs rigging, even though it is cheap: he said "we rig in house ourselves".
    Use what is already in the studio's data bank, in this order:
    - `battle_rig` (free, no GPU): template `biped_a`, `turn` so the model faces +z, `save: true`. It gives a humanoid
@@ -43,7 +46,12 @@ python3 scripts/monster_sheet.py sheet.png <monster-name> [out_dir]
    - Keep exactly five animations named idle, walk, attack, hurt, die. Pick moves that start and end near the idle
      pose (for the knight: arc swipe trimmed to 1.7 s as attack, hurt trimmed to 1.3 s), and make die by tipping
      Hip back about 86 degrees and lowering it so the body lies on the ground.
-   - Check it with `gltf-validator` (0 errors) and look at stills of each move before pushing.
+   - Never delete stretched triangles (clean.py `"cut":0`): cutting them leaves holes that show in every pose.
+   - If the auto rig puts the arms in the wrong place (raised arms, a staff or bow held up, a long robe), fold the arm
+     weights into the chest (`torso.py`, keeping the spine and legs). The body still walks, leans and swings, and
+     nothing tears. Used for the lich (spine only), orc shaman and dragonborn archer (spine and legs).
+   - Check it with `gltf-validator` (0 errors) and render every model from front, side and back plus a still of each
+     move, close up on the head, before pushing. A far-off look missed the broken heads in the first batch.
 6. Save the GLB as `public/models/<name>.glb` and add
    `registerFigureGLTF('<name>', '/models/<name>.glb', { height: 1.7 })` in `registerCustomModels()` in `src/view3d/custom-models.ts`
    (height in squares; 1 square = 5 ft; turn with `yaw` if it faces the wrong way).
@@ -54,7 +62,7 @@ python3 scripts/monster_sheet.py sheet.png <monster-name> [out_dir]
 - Lich (robe): turn 0. Werewolf: turn 270 fit best, then a 180 degree turn baked into the mesh and root bone (a rotated parent node crosses the legs).
 - Long hanging arms (troll): add `"body":"ape","reach":"soft"`; leave the boots rule off.
 - Dragon (four legs): `{"template":"quadruped","turn":180,"drop":true,"reach":"soft"}`; moves bite attack, hurt, collapse.
-- game-ready crashes on models with shape keys (werewolf, dragon): rig the raw model instead.
+- Always rig the raw hy3d mesh (step 3). Turn for the raw mesh: 90 for bipeds, 180 for the dragon.
 - Clean-up options used: held (a staff stays rigid with its bone), lowarms and armleg (hands hanging by the boots), legarm (fists hanging by the knees), maxtex 1024.
 
 ## Cost per monster
