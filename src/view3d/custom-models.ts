@@ -23,5 +23,7 @@ export function registerCustomModels() {
   registerFigureGLTF('goblin-alchemist', '/models/goblin-alchemist.glb', { height: 0.8 });
   registerFigureGLTF('zombie-butcher', '/models/zombie-butcher.glb', { height: 1.7 });
   registerFigureGLTF('crowned-lich', '/models/crowned-lich.glb', { height: 1.8 });
+  registerFigureGLTF('orc-shaman', '/models/orc-shaman.glb', { height: 1.7 });
+  registerFigureGLTF('dragonborn-archer', '/models/dragonborn-archer.glb', { height: 1.7 });
   void registerFigureModel;
 }
