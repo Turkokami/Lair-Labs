@@ -157,6 +157,31 @@ export const ADVENTURE_CARDS: AdventureCard[] = [
     tagline: 'A travelling carnival comes to town for one night, and by dawn three townsfolk will leave with it, smiling.',
     tags: ['carnival', 'fey', 'creepy', 'one-shot', 'outdoor'],
   },
+  {
+    id: 'skyship-wreck', title: 'The Wreck of the Brass Albatross', levels: '4', sessions: '1 session', players: '3-5', chapters: 1, mapSize: '400 × 400 ft',
+    tagline: 'A royal airship lies in pieces across a jungle valley, and its cracked heart will explode at sunset.',
+    tags: ['one-shot', 'jungle', 'pulp', 'race the clock', 'airships'],
+  },
+  {
+    id: 'poisoned-garden', title: 'The Poisoned Garden', levels: '8', sessions: '1-2 sessions', players: '3-5', chapters: 1, mapSize: '400 × 400 ft',
+    tagline: 'At the Duchess\'s midsummer garden party her heir falls poisoned, and every guest is wearing the same white rose.',
+    tags: ['mystery', 'botanical horror', 'intrigue', 'outdoors', 'can be talked out'],
+  },
+  {
+    id: 'brightwall-siege', title: 'The Siege of Brightwall', levels: '7-8', sessions: '3-4 sessions', players: '3-5', chapters: 3, mapSize: '3 big maps',
+    tagline: 'A hobgoblin legion at the walls, a traitor inside them, and a beacon that must burn before the town falls.',
+    tags: ['siege', 'war', 'town', 'heroic', 'mini-campaign'],
+  },
+  {
+    id: 'lantern-saints', title: 'The Lantern Saints of Skerrow', levels: '4', sessions: '1 session', players: '3-5', chapters: 1, mapSize: '400 × 400 ft',
+    tagline: 'On the Night of Lanterns the relics of seven saints are vanishing one by one, and with each theft a ghost walks the cliff town.',
+    tags: ['one-shot', 'festival', 'ghosts', 'mystery', 'cliff town'],
+  },
+  {
+    id: 'thornwood-feast', title: 'The Midsummer Feast of the Thornwood', levels: '4', sessions: '1 session', players: '3-5', chapters: 1, mapSize: '400 × 400 ft',
+    tagline: 'One night a year the Thornwood opens its gate. Eat with care, promise nothing, and bring the lost singer home before the dawn bell.',
+    tags: ['one-shot', 'fey', 'fairy tale', 'riddles', 'can be talked out'],
+  },
 ];
 
 const LOADERS: Record<string, () => Promise<Adventure>> = {
@@ -191,6 +216,11 @@ const LOADERS: Record<string, () => Promise<Adventure>> = {
   'gray-kings': () => import('./gray-kings').then((m) => m.GRAY_KINGS),
   'last-contract': () => import('./last-contract').then((m) => m.LAST_CONTRACT),
   'carnival-shadows': () => import('./carnival-shadows').then((m) => m.CARNIVAL_SHADOWS),
+  'skyship-wreck': () => import('./skyship-wreck').then((m) => m.SKYSHIP_WRECK),
+  'poisoned-garden': () => import('./poisoned-garden').then((m) => m.POISONED_GARDEN),
+  'brightwall-siege': () => import('./brightwall-siege').then((m) => m.BRIGHTWALL_SIEGE),
+  'lantern-saints': () => import('./lantern-saints').then((m) => m.LANTERN_SAINTS),
+  'thornwood-feast': () => import('./thornwood-feast').then((m) => m.THORNWOOD_FEAST),
 };
 
 export function loadAdventure(id: string): Promise<Adventure> {
