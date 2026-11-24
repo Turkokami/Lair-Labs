@@ -182,6 +182,26 @@ export const ADVENTURE_CARDS: AdventureCard[] = [
     tagline: 'One night a year the Thornwood opens its gate. Eat with care, promise nothing, and bring the lost singer home before the dawn bell.',
     tags: ['one-shot', 'fey', 'fairy tale', 'riddles', 'can be talked out'],
   },
+  {
+    id: 'harrowfield-hive', title: 'The Hollow Under Harrowfield', levels: '3', sessions: '1 session', players: '3-5', chapters: 1, mapSize: '400 × 400 ft',
+    tagline: 'The wheat is sinking, the cows are vanishing, and a little girl is somewhere under the fields with things that chew through stone.',
+    tags: ['one-shot', 'rural horror', 'tunnels', 'giant bugs', 'mystery'],
+  },
+  {
+    id: 'wrackstone-light', title: 'The Dark Light of Wrackstone', levels: '2', sessions: '1 session', players: '3-5', chapters: 1, mapSize: '400 × 400 ft',
+    tagline: 'The lighthouse has been dark three nights, wreckers hold the island, the drowned are walking, and a ship full of passengers arrives at midnight.',
+    tags: ['one-shot', 'storm', 'island', 'undead', 'race'],
+  },
+  {
+    id: 'blackgate-escape', title: 'Escape from Blackgate', levels: '5', sessions: '1 session', players: '3-5', chapters: 1, mapSize: '400 × 400 ft',
+    tagline: 'Framed, stripped and locked in a prison-mine: break out before the warden sells you to the thing in the deep.',
+    tags: ['prison break', 'heist', 'mine', 'intrigue', 'horror'],
+  },
+  {
+    id: 'bone-market', title: 'The Bone Market', levels: '7', sessions: '1-2 sessions', players: '3-5', chapters: 1, mapSize: '400 × 400 ft',
+    tagline: 'An illegal night bazaar in the catacombs, a friend\'s soul sold by mistake, and only until dawn to get it back.',
+    tags: ['heist', 'haggling', 'undead', 'city', 'catacombs'],
+  },
 ];
 
 const LOADERS: Record<string, () => Promise<Adventure>> = {
@@ -221,6 +241,10 @@ const LOADERS: Record<string, () => Promise<Adventure>> = {
   'brightwall-siege': () => import('./brightwall-siege').then((m) => m.BRIGHTWALL_SIEGE),
   'lantern-saints': () => import('./lantern-saints').then((m) => m.LANTERN_SAINTS),
   'thornwood-feast': () => import('./thornwood-feast').then((m) => m.THORNWOOD_FEAST),
+  'harrowfield-hive': () => import('./harrowfield-hive').then((m) => m.HARROWFIELD_HIVE),
+  'wrackstone-light': () => import('./wrackstone-light').then((m) => m.WRACKSTONE_LIGHT),
+  'blackgate-escape': () => import('./blackgate-escape').then((m) => m.BLACKGATE_ESCAPE),
+  'bone-market': () => import('./bone-market').then((m) => m.BONE_MARKET),
 };
 
 export function loadAdventure(id: string): Promise<Adventure> {
