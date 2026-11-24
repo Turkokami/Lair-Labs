@@ -20,3 +20,11 @@ troll-ape https://ocejqvdipitcrjfy.public.blob.vercel-storage.com/models/mwv4j3f
 dragon-rig https://ocejqvdipitcrjfy.public.blob.vercel-storage.com/models/mwv4mtmo-battle-rig-rnd_7ef68b4f9db64cd1-mwv4mqt4-vgbBLlnTR84Mlxkc9v6gUTziAeGpVW.glb
 dragon-rig2 https://ocejqvdipitcrjfy.public.blob.vercel-storage.com/models/mwv4qbez-battle-rig-rnd_7ef68b4f9db64cd1-mwv4q9g3-975XZ592buzl4C3m0XDIMZluAfbaz9.glb
 wolf-raw https://ocejqvdipitcrjfy.public.blob.vercel-storage.com/models/rnd_78e2c5fabc2c4352-hunyuan-hhvwtjwDmuEZ9NI5VUGRW9i8fnKeAU.glb
+r-wolf https://ocejqvdipitcrjfy.public.blob.vercel-storage.com/models/mwv5ezpa-battle-rig-rnd_cb005c3bca884f0d-mwv5exyy-t8aa38hPwPpwAaGykXlnLRLZMpH9eq.glb
+r-goblin https://ocejqvdipitcrjfy.public.blob.vercel-storage.com/models/mwv5fnd2-battle-rig-rnd_39850e1fc4514f84-mwv5flqc-401i108yJ0Q1O30U963c5OcCD7aA7A.glb
+r-zombie https://ocejqvdipitcrjfy.public.blob.vercel-storage.com/models/mwv5gi2s-battle-rig-rnd_fe968b12f6944ba7-mwv5gg6t-LFvSz4xGD5x7RLIkYPZ0EYRfxzQCYU.glb
+r-lich https://ocejqvdipitcrjfy.public.blob.vercel-storage.com/models/mwv5hdl5-battle-rig-rnd_23c1ea2dbbc04c78-mwv5hbug-0MLLmXNtHMSfZUrK561Z52wQuJdtGZ.glb
+r-archer https://ocejqvdipitcrjfy.public.blob.vercel-storage.com/models/mwv5if65-battle-rig-rnd_4d1731c6be144bf9-mwv5iduv-tSeF6zRrMV5HMBlqucze5HXqljAo8M.glb
+r-orc https://ocejqvdipitcrjfy.public.blob.vercel-storage.com/models/mwv5j981-battle-rig-rnd_fa3776e704a44b03-mwv5j7op-B0tSOCpqEMd08Z1czqhZkhHj9YF00m.glb
+r-troll https://ocejqvdipitcrjfy.public.blob.vercel-storage.com/models/mwv5k0cm-battle-rig-rnd_332378745a18469b-mwv5jy50-KLyj1u8xTJfKxwxgZzSWtZU7zyU9AM.glb
+r-dragon https://ocejqvdipitcrjfy.public.blob.vercel-storage.com/models/mwv5kqpk-battle-rig-rnd_35bc34019a644318-mwv5koii-KS9VeHEcOzrs9LRPSxR9AKdWP6pfth.glb
