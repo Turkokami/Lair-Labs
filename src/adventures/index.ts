@@ -42,6 +42,31 @@ export const ADVENTURE_CARDS: AdventureCard[] = [
     tagline: 'An endless winter, a starving town and the frost giants who blame it for their dead prince.',
     tags: ['mini-campaign', 'winter', 'giants', 'dragon', 'diplomacy'],
   },
+  {
+    id: 'market-of-masks', title: 'The Market of Masks', levels: '3', sessions: '1 session', players: '3-5', chapters: 1, mapSize: '400 × 400 ft',
+    tagline: 'On the one night everyone wears a mask, a killer is wearing the Mask-Maker\'s face.',
+    tags: ['one-shot', 'mystery', 'social', 'festival', 'town'],
+  },
+  {
+    id: 'infernal-audit', title: 'The Infernal Audit', levels: '12', sessions: '1-2 sessions', players: '3-5', chapters: 1, mapSize: '400 × 400 ft',
+    tagline: 'A city\'s souls fall due at midnight. Your only weapons: a stamp, a form and the small print.',
+    tags: ['comedy', 'hell', 'devils', 'intrigue'],
+  },
+  {
+    id: 'rat-king-sewers', title: 'The Rat King of Lower Wick', levels: '1', sessions: '1 session', players: '3-5', chapters: 1, mapSize: '400 × 400 ft',
+    tagline: 'The rats of the poorest quarter steal in gangs, and the children swear a crowned rat gives the orders.',
+    tags: ['starter', 'city', 'sewers', 'funny', 'talk it out'],
+  },
+  {
+    id: 'kraken-maw', title: 'The Kraken\'s Maw', levels: '19', sessions: '1-2 sessions', players: '3-5', chapters: 1, mapSize: '400 × 400 ft',
+    tagline: 'A storm-giant queen has leashed a kraken and means to make it a god. Sail into the whirlpool and break the leash.',
+    tags: ['sea', 'kraken', 'giants', 'epic'],
+  },
+  {
+    id: 'blood-moon-varrow', title: 'Blood Moon over Varrow', levels: '6', sessions: '2 sessions', players: '3-5', chapters: 2, mapSize: '2 big maps',
+    tagline: 'Three nights of a red moon, a village that wants someone to burn, and a wolf curse running through its first family.',
+    tags: ['gothic horror', 'werewolves', 'mystery', 'forest'],
+  },
 ];
 
 const LOADERS: Record<string, () => Promise<Adventure>> = {
@@ -53,6 +78,11 @@ const LOADERS: Record<string, () => Promise<Adventure>> = {
   'clockwork-spire': () => import('./clockwork-spire').then((m) => m.CLOCKWORK_SPIRE),
   'gilded-ledger': () => import('./gilded-ledger').then((m) => m.GILDED_LEDGER),
   'frostfang-pass': () => import('./frostfang-pass').then((m) => m.FROSTFANG_PASS),
+  'market-of-masks': () => import('./market-of-masks').then((m) => m.MARKET_OF_MASKS),
+  'infernal-audit': () => import('./infernal-audit').then((m) => m.INFERNAL_AUDIT),
+  'rat-king-sewers': () => import('./rat-king-sewers').then((m) => m.RAT_KING_SEWERS),
+  'kraken-maw': () => import('./kraken-maw').then((m) => m.KRAKEN_MAW),
+  'blood-moon-varrow': () => import('./blood-moon-varrow').then((m) => m.BLOOD_MOON_VARROW),
 };
 
 export function loadAdventure(id: string): Promise<Adventure> {
