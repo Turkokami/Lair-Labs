@@ -4,7 +4,7 @@
   "description": "Lair Labs: a free digital tabletop for your own game nights",
   "scripts": {
     "dev": "vite",
-    "build": "node scripts/fetch-models.mjs && tsc --noEmit && vite build",
+    "build": "node scripts/b64.mjs && node scripts/fetch-models.mjs && tsc --noEmit && vite build",
     "preview": "vite preview",
     "test": "vitest run"
   },
