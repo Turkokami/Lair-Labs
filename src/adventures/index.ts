@@ -152,6 +152,11 @@ export const ADVENTURE_CARDS: AdventureCard[] = [
     tagline: 'A kingdom falls due at midnight. Rob the vault-city where gods and fiends keep their bargains, and steal it back.',
     tags: ['heist', 'high level', 'fiends', 'golems', 'epic'],
   },
+  {
+    id: 'carnival-shadows', title: 'The Carnival of Borrowed Shadows', levels: '6', sessions: '1 session', players: '3-5 players', chapters: 1, mapSize: '400 x 400 ft',
+    tagline: 'A travelling carnival comes to town for one night, and by dawn three townsfolk will leave with it, smiling.',
+    tags: ['carnival', 'fey', 'creepy', 'one-shot', 'outdoor'],
+  },
 ];
 
 const LOADERS: Record<string, () => Promise<Adventure>> = {
@@ -185,6 +190,7 @@ const LOADERS: Record<string, () => Promise<Adventure>> = {
   'seven-suns-caravan': () => import('./seven-suns-caravan').then((m) => m.SEVEN_SUNS_CARAVAN),
   'gray-kings': () => import('./gray-kings').then((m) => m.GRAY_KINGS),
   'last-contract': () => import('./last-contract').then((m) => m.LAST_CONTRACT),
+  'carnival-shadows': () => import('./carnival-shadows').then((m) => m.CARNIVAL_SHADOWS),
 };
 
 export function loadAdventure(id: string): Promise<Adventure> {
