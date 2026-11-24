@@ -1,2 +1,3 @@
 test-sola https://ocejqvdipitcrjfy.public.blob.vercel-storage.com/models/rnd_b0c1c96806ef4c14-O9wWD1zdq2MTNPMArAWiLeaQXSa6c7.glb
 goblin-raw-rig https://ocejqvdipitcrjfy.public.blob.vercel-storage.com/models/mwv18jnk-battle-rig-rnd_f35b628c66d949e0-mwv18ivs-RuEOfrtjfZbfgOGfqB9jCabARF22cL.glb
+goblin-gr-rig https://ocejqvdipitcrjfy.public.blob.vercel-storage.com/models/mwv1if1e-battle-rig-rnd_8c5ba0fad0084165-mwv1iebj-mTWEBscRpDf8EVfCHRAJUy1AAVq6zF.glb
