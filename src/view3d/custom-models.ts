@@ -25,5 +25,8 @@ export function registerCustomModels() {
   registerFigureGLTF('crowned-lich', '/models/crowned-lich.glb', { height: 1.8 });
   registerFigureGLTF('orc-shaman', '/models/orc-shaman.glb', { height: 1.7 });
   registerFigureGLTF('dragonborn-archer', '/models/dragonborn-archer.glb', { height: 1.7 });
+  registerFigureGLTF('werewolf-reaver', '/models/werewolf-reaver.glb', { height: 1.9 });
+  registerFigureGLTF('moss-troll', '/models/moss-troll.glb', { height: 2.6 });
+  registerFigureGLTF('cinderwing-red-dragon', '/models/cinderwing-red-dragon.glb', { height: 2.4 });
   void registerFigureModel;
 }
