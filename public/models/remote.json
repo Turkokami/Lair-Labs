@@ -1,4 +1,3 @@
 {
-  "_note": "3D models made in Squatch Studio. Each one is downloaded into public/models/<name> before the build (scripts/fetch-models.mjs).",
-  "skeleton-knight.glb": "https://ocejqvdipitcrjfy.public.blob.vercel-storage.com/models/mwty0bbm-trellis-rnd_c4bd37f529a2458c-hiDs5R6ApHjpSGFfylwgpozC8RZJYS.glb"
+  "_note": "3D models made in Squatch Studio. Each one is downloaded into public/models/<name> before the build (scripts/fetch-models.mjs)."
 }

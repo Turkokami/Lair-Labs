@@ -18,6 +18,6 @@ import { registerFigureGLTF, registerFigureModel } from './figures';
 
 export function registerCustomModels() {
   // Add yours here. Remote models are listed in public/models/remote.json and downloaded at build time.
-  registerFigureGLTF('skeleton-knight', '/models/skeleton-knight.glb', { height: 1.7 }); // Skeleton Knight (Trellis, from the concept sheet)
+  registerFigureGLTF('skeleton-knight', '/models/skeleton-knight.glb', { height: 1.7 }); // Skeleton Knight (Trellis model, rigged in house with the studio battle rig: idle, walk, attack, hurt, die)
   void registerFigureModel;
 }
