@@ -265,7 +265,7 @@ function kelMorrow() {
   });
   b.paint(37, nBank[40], 11, 2, 'sand');
   b.props_('standing-stone', [[38, 33], [41, 33], [45, 34], [47, 37], [46, 44], [39, 45], [37, 41]]).prop('stone-circle', 42, 40).prop('campfire-cold', 42, 44).prop('bone-heap', 44, 33).prop('flowers', 47, 37);
-  b.encounter('The Moot turns bloody', [37, 32, 11, 15], [['troll', 2], ['hillGiant', 1]], 'high');
+  b.encounter('The Moot turns bloody', [37, 32, 11, 15], [['trollMatriarch', 1], ['troll', 1], ['hillGiant', 1]], 'high');
   b.area('The Long Rapids', [[10, 32, 13, 15]], {
     read: 'The river runs white between boulders, roaring. Driftwood is jammed in every crack, and a wrecked raft spins slowly in an eddy.',
     gm: 'Swimming: DC 15 Athletics each round or take 2d6 bludgeoning on the rocks and be carried 30 ft downstream. The banks are walkable, slippery gravel.',
@@ -423,13 +423,13 @@ export const TROLL_BRIDGES: Adventure = {
   ],
   npcs: [
     {
-      id: 'pf_tbgristlemoss', name: 'Mother Gristlemoss', title: 'matriarch of the Morrow trolls', kind: 'monster', art: 'troll', monsterId: 'troll', shared: true,
+      id: 'pf_tbgristlemoss', name: 'Mother Gristlemoss', title: 'matriarch of the Morrow trolls', kind: 'monster', art: 'troll', monsterId: 'trollMatriarch', shared: true,
       wants: 'Her egg back safe before it hatches at moonrise tomorrow, and the name of whoever took it.',
       knows: 'The egg was in the nest at dusk two nights ago and gone by dawn, while Grub was on guard. She smelled nettles, but Gorsk brought her nettles that day, so she trusts nothing.',
       voice: 'Slow and grand. Calls everyone "morsel". Ends arguments by sitting down on something.',
       appearance: 'A moss-green troll twelve feet tall, with a necklace of cartwheels and a bridal veil made of fishing net (a present from Gorsk).',
       backstory: 'She has kept the bridges for ninety years and buried two husbands (both troll-hunters\' work). The egg is the last child she will ever have.',
-      gmNotes: 'Troll stat block with maximum hit points. She keeps a drawer of things troll-hunters left behind, and gives the heroes the one nobody in the family likes: a flame tongue longsword. If she is told the truth and shown proof, she calls off the Moot.',
+      gmNotes: 'Troll Matriarch (an original Lair Labs stat block): tougher and wiser than her children, and every troll on the bridges obeys her. She keeps a drawer of things troll-hunters left behind, and gives the heroes the one nobody in the family likes: a flame tongue longsword. If she is told the truth and shown proof, she calls off the Moot.',
     },
     {
       id: 'pf_tbbolder', name: 'Sir Bolder', title: 'keeper of the King\'s Arch, eldest son', kind: 'monster', art: 'troll', monsterId: 'troll', shared: true,

@@ -5,6 +5,7 @@ import { UNDEAD_FEY_CREATURES } from './undead-fey';
 import { BEAST_CREATURES } from './beasts';
 import { PLANAR_CREATURES } from './planar';
 import { STAPLE_CREATURES } from './staples';
+import { ADVENTURE_MONSTER_ART } from '../../rules/own';
 
 // Left out on purpose: names that come from a game book rather than the free rules or folklore.
 const NOT_FREE = new Set(['twigBlight', 'needleBlight', 'vineBlight', 'myconid', 'grick']);
@@ -25,6 +26,7 @@ const byName = new Map(CREATURES.map((c) => [normMonsterId(c.name.toLowerCase())
 const ALIAS: Record<string, string> = {
   rat: 'giant-rat', shriekerFungus: 'shrieker', goblinMinion: 'goblin', goblinWarrior: 'goblin', merfolkSkirmisher: 'merfolk',
   giantVenomousSnake: 'snake', swarmOfBats: 'bat', tough: 'thug', skeletonWarhorse: 'warhorse-skeleton', willOWisp: 'will-o-wisp',
+  ...ADVENTURE_MONSTER_ART,
 };
 export const creatureForMonster = (monsterId: string): CreatureDef | undefined => {
   const id = normMonsterId(monsterId);

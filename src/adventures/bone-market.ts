@@ -71,7 +71,7 @@ function boneMarket() {
   pp(b, 'ossuary-shelf', 19, 28); pp(b, 'ossuary-shelf', 26, 30); pp(b, 'skull-pile', 33, 33); pp(b, 'mimic-chest', 23, 28); pp(b, 'shelf-jars', 29, 28); pp(b, 'crate-stack', 36, 32);
   b.rubble(24, 26, 2, 1);
   lt(b, 20, 25, 10, 15, CANDLE); lt(b, 29, 29, 10, 15, CANDLE); lt(b, 35, 32, 10, 15, CANDLE);
-  b.encounter('The Tallymen', [14, 22, 24, 10], [['shieldGuardian', 2]], 'moderate');
+  b.encounter('The Tallymen', [14, 22, 24, 10], [['boneMarketTallyman', 2]], 'moderate');
 
   b.tunnel([[6, 21], [5, 29], [8, 36], [17, 42], [27, 43], [37, 41]], 3, { mat: 'stone-cobble', seed: 704 });
   b.area('Jar Alley', [[4, 24, 5, 12], [9, 39, 26, 5]], {
@@ -109,7 +109,7 @@ function boneMarket() {
     gm: 'The one place in the market where blades may be drawn. Brisa Scald runs the pit and hears everything said on the benches. She will tell the heroes where Thurne\'s strongroom is and that "crates go down the Long Ossuary before dawn, every night this month" if a hero wins a bout (fight her champions, or Brisa herself one-on-one to first blood). Betting: odds are 2 to 1 against strangers. Losers are tipped into the Drop, a chute that spits them into the Charnel Canal (20 ft, no damage, very wet). The Rat Run leaves from the east side to the Counting House back door (locked, DC 17 Thieves\' Tools; Brisa has a key, and sells it for 200 gp).',
   });
   for (let y = 6; y <= 16; y++) for (let x = 40; x <= 52; x++) { const dx = (x + 0.5 - 46.5) / 4.6, dy = (y + 0.5 - 11.5) / 3.6; if (dx * dx + dy * dy <= 1) b.paint(x, y, 1, 1, 'sand'); }
-  b.pit(53, 14, 2, 2);
+  b.pit(53, 14, 2, 2).note(54, 15, 'The Drop: a hole in the pit floor and a slimy chute down to the Charnel Canal (it comes out under the north bank, toward the east end). A loser tipped in lands in the water 20 ft below, unhurt.');
   pp(b, 'blood-pool', 46, 11); pp(b, 'weapon-rack', 42, 9); pp(b, 'cage', 51, 7); pp(b, 'cage', 52, 9); pp(b, 'chains-hanging', 48, 13);
   for (const [x, y] of [[39, 7], [53, 6], [38, 14], [55, 11], [41, 17], [50, 17]] as [number, number][]) pp(b, 'bench-long', x, y);
   pp(b, 'banner-pole', 44, 5); pp(b, 'stairs-down', 44, 7); pp(b, 'table-cards', 37, 11); pp(b, 'barrel-stack', 55, 8); pp(b, 'skull-pile', 54, 15);
@@ -214,6 +214,8 @@ function boneMarket() {
   b.area("Scurlow's Landing", [[28, 51, 8, 2]], { read: 'A stub of pier with a lantern on a pole, three boats tied to skull-shaped mooring posts and a little man sitting cross-legged on an upturned crate, mending a net and humming.', gm: 'Tibb Scurlow\'s ferry: 5 sp a head anywhere on the canal, 50 gp to the Dead Dock "and I never saw you". He saw Thurne\'s porters take crates by boat on earlier nights, before she found the secret stair was quicker.', label: [31, 52] });
   b.props_('mooring-post', [[29, 52], [33, 52]]).prop('dock-pier', 31, 53).prop('crate', 35, 51).prop('fishing-net', 30, 51).prop('lamp-post', 34, 52);
   b.props_('rowboat', [[30, 54], [33, 55], [12, 56], [52, 55]]).prop('canoe', 58, 54).prop('bridge-rope', 40, 55).prop('sewer-outflow', 1, 56);
+  // the Drop: the chute from the Gutter Pit's hole (53,14) comes out here, over the water
+  b.prop('sewer-outflow', 53, 51).note(53, 52, 'The Drop comes out here: losers tipped down the hole in the Gutter Pit slide 20 ft down a slimy chute and splash into the canal (no damage, very wet). It cannot be climbed back up without a rope (DC 15 Athletics).');
   b.props_('skull-pile', [[8, 51], [56, 51], [18, 60]]).prop('lantern-standing', 23, 52).prop('lantern-standing', 23, 59).prop('fish-crate', 47, 51).prop('cargo-crates', 5, 59).prop('deep-water', 15, 55).prop('deep-water', 48, 56);
   for (const x of [8, 23, 31, 45, 58]) lt(b, x, 52, 8, 15, CANDLE);
   b.encounter('Canal lurkers', [0, 51, 63, 10], [['chuul', 3]], 'low');
@@ -248,7 +250,7 @@ function boneMarket() {
   b.light(32, 66, 8, 15, CANDLE);
   b.tunnel([[43, 70], [48, 68], [51, 66]], 1, { mat: 'brick-floor', seed: 712 });
   b.door(51, 66, 'e', 'locked', 'door-iron');
-  b.encounter('The sewer Tallyman', [28, 63, 15, 17], [['shieldGuardian', 1]], 'low');
+  b.encounter('The sewer Tallyman', [28, 63, 15, 17], [['boneMarketTallyman', 1]], 'low');
 
   b.room('The Dead Dock', 52, 60, 10, 8, {
     mat: 'wood-planks',
@@ -312,7 +314,7 @@ export const BONE_MARKET: Adventure = {
   ],
   tips: [
     'Use the Tallow Clock: the bone chandelier has eight candles, and one goes out every hour of play, or after each long fight or long haggle. At the fourth candle, Thurne\'s crates go down the Long Ossuary. At the eighth, the dawn bell rings and Orsolo plays the organ.',
-    'The three laws are the heart of the game. No blade drawn in the aisles (the Gutter Pit is the only exception). No lie to a Broker (their tooth necklaces chatter at a lie, so let the players craft clever true sentences). No leaving with unpaid goods (the Tallymen check bone tallies at every exit but the Smugglers\' Run). Two Tallymen arrive 1d4 rounds after any law is broken. They grab, not kill: offenders are dragged to Barnabus to pay a fine (a memory, a year of life) or be thrown out.',
+    'The three laws are the heart of the game. No blade drawn in the aisles (the Gutter Pit is the only exception). No lie to a Broker (their tooth necklaces chatter at a lie, so let the players craft clever true sentences). No leaving with unpaid goods (the Tallymen check bone tallies at every exit but the Smugglers\' Run). The Tallymen are tall, stooped wardens of yellow bone and brass with counting beads rattling in their ribs (Tallyman stat block). Two arrive 1d4 rounds after any law is broken. They grab, not kill: offenders are dragged to Barnabus to pay a fine (a memory, a year of life) or be thrown out.',
     'Haggling: every price can be paid in coin or in pieces of the buyer: a happy memory, a laugh, a year of life, a secret, a tooth. Each DC 15 Persuasion knocks a quarter off; an especially strange offer can do the same with no roll. Let the players spend odd things and remind them later what they gave up.',
     'Dorrin\'s forty crowns are grave-gold, and the heroes carry the proof from the first scene. Cold in the hand, smells of earth (DC 15 Arcana or Medicine, detect magic shows necromancy, or Ossian simply tells them). Reward players who think to test it.',
     'Most fights can be avoided: pay Gizzard, win at the pit, feed the ghoul-runners, calm the hatchery, show Barnabus the proof and borrow his Tallymen. Give the same XP for a clever bargain as for a win.',
@@ -394,6 +396,14 @@ export const BONE_MARKET: Adventure = {
       backstory: 'A tutor to noble children who found out he was dying, and decided he would not. He has taught the market\'s dead to work for him for twenty years.',
       gmNotes: 'Mage stat block; swap fireball for animate dead if you like (two more zombies). He bargains honestly before dawn. At half hit points he tries to reach the organ and play it early.',
     },
+    {
+      id: 'pf_bmkmimic', name: 'The "mimic eggs" chest', title: 'a mimic for sale on Skull Row', kind: 'monster', art: 'mimic', monsterId: 'mimic',
+      wants: 'Something warm to open its lid. Failing that, to be sold to someone with soft hands.',
+      knows: 'Nothing but the taste of the last three buyers, and that the stall-keeper feeds it rats on Tuesdays.',
+      voice: 'A wet creak of hinges, then a sound like a dog swallowing.',
+      appearance: 'A brass-bound sea chest chalked "MIMIC EGGS - DO NOT OPEN UNTIL PAID", sitting a little too still on the bottom shelf.',
+      gmNotes: 'It is one mimic, not a chest of eggs. It bites (and sticks to) anyone who opens it or reaches inside, then lets go once it has had a mouthful. Too small a fight for an encounter at this level: run it as a single monster. The stall-keeper sells it for 40 gp "as is"; a hero who buys it owns a very bad pet. Biting a customer breaks no law of the market, so the Tallymen do not come.',
+    },
   ],
   handouts: [
     { id: 'bmk-receipt', title: "Dorrin's receipt", text: 'BONE MARKET. STALL OF THE GLASS, JAR ALLEY.\nReceived of Dorrin Abernack: the one thing in his house he will never miss.\nPaid in full: forty crowns of the deep mint.\nLot 77. No returns. No regrets.\n(signed with a thumbprint in grey ink)' },
@@ -415,6 +425,7 @@ export const BONE_MARKET: Adventure = {
         { npc: 'pf_bmkbarnabus', x: 45, y: 31 },
         { npc: 'pf_bmkodalys', x: 72, y: 16 },
         { npc: 'pf_bmktamas', x: 76, y: 12, hidden: true },
+        { npc: 'pf_bmkmimic', x: 23, y: 28, hidden: true },
         { npc: 'pf_bmktibb', x: 31, y: 52 },
         { npc: 'pf_bmkossian', x: 9, y: 66, hidden: true },
         { npc: 'pf_bmkorsolo', x: 72, y: 74, hidden: true },

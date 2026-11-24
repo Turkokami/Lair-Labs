@@ -224,13 +224,13 @@ function bureauOfBinding() {
   b.room('Hall of Seals', 56, 15, 15, 7, {
     mat: 'dungeon-slab',
     read: 'A long hall hung with ten thousand wax seals on cords, swaying in no wind. Before the vault door stands an iron giant with a stamp for a fist, and a slot in its chest marked REQUISITIONS.',
-    gm: 'The Notary Engine (iron golem). It lets through anyone who feeds it a requisition with the Stamp of Receipt and a shelf-mark from the Archive (the Notary Register has one). A forged requisition needs DC 20 with a forgery kit. Anyone else is "rejected", loudly.',
+    gm: 'The Notary Engine, a hulking clerk of iron and brass with a red-hot seal for each fist. It lets through anyone who feeds it a requisition with the Stamp of Receipt and a shelf-mark from the Archive (the Notary Register has one). A forged requisition needs DC 20 with a forgery kit. Anyone else is "rejected", loudly.',
   });
   b.floor(62, 22, 2, 1).door(62, 21, 's', 'closed', 'door-double').door(63, 21, 's', 'closed', 'door-double');
   b.floor(62, 14, 2, 1).door(62, 14, 's', 'locked', 'door-iron').door(63, 14, 's', 'locked', 'door-iron');
   b.props_('chains-hanging', [[58, 16], [68, 16], [58, 20], [68, 20]]).props_('censer-hanging', [[60, 18], [66, 18]]).prop('lock-plate', 62, 16).prop('statue-tall-knight', 70, 18);
   b.light(63, 18, 10, 20, '#ffb35c');
-  b.encounter('The Notary Engine', [56, 15, 15, 7], [['iron-golem', 1]], 'moderate');
+  b.encounter('The Notary Engine', [56, 15, 15, 7], [['notaryEngine', 1]], 'moderate');
 
   b.room('Vault of Original Contracts', 54, 2, 18, 12, {
     mat: 'marble',

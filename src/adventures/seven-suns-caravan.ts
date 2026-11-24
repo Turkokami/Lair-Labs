@@ -166,10 +166,10 @@ function brinkwell() {
   b.props_('boulder', [[45, 16], [55, 25]]).prop('signpost', 43, 19).prop('milestone', 50, 24).prop('skull-bleached', 47, 25);
   b.area('Dog Wash', [[40, 40, 15, 20]], {
     read: 'A dry stream-bed snakes south between the dunes, cracked mud at the bottom and dog tracks everywhere.',
-    gm: 'A shortcut that avoids the Camel\'s Knees. Five lean dune dogs (wolves) den here. Throwing them a goat haunch from Hadda\'s stores (DC 12 Animal Handling) sends them off squabbling. The wash ends at the cliff under the waystation, where a DC 15 Perception spots a crack with cold air coming out (the secret way into the cistern).',
+    gm: 'A shortcut that avoids the Camel\'s Knees. Five lean dune dogs den here. Throwing them a goat haunch from Hadda\'s stores (DC 12 Animal Handling) sends them off squabbling. The wash ends at the cliff under the waystation, where a DC 15 Perception spots a crack with cold air coming out (the secret way into the cistern).',
     label: [47, 47],
   });
-  b.encounter('Dune dogs in Dog Wash', [38, 38, 18, 20], [['wolf', 5]], 'low');
+  b.encounter('Dune dogs in Dog Wash', [38, 38, 18, 20], [['duneDog', 5]], 'low');
   b.props_('bones', [[46, 47], [51, 54]]).prop('bush', 42, 42).prop('thorn-bush', 49, 49).prop('mud-patch', 45, 45);
 
   // the Hollowstar Waystation: a ruined walled camp on the first night's road
@@ -218,7 +218,7 @@ function brinkwell() {
   b.encounter('The woman in grey', [63, 41, 14, 10], [['spy', 1], ['cultist', 4]], 'low');
   b.tunnel([[63, 47], [59, 50], [60, 56]], 2, { seed: 21, mat: 'cave-floor' });
   b.cave('Rat runs', 62, 58, 3.5, 3, { seed: 22, mat: 'cave-floor', gm: 'Rats nest in the cracks. Two swarms and six giant rats boil out at the first light. The crack west ends at a slab that pivots open onto Dog Wash (secret from the outside).' });
-  b.floor(56, 58, 2, 1, 'cave-floor').door(55, 58, 'e', 'secret');
+  b.floor(56, 58, 4, 1, 'cave-floor').door(55, 58, 'e', 'secret');
   b.encounter('Rats in the runs', [56, 52, 10, 10], [['swarmOfRats', 2], ['giantRat', 6]], 'low');
   b.props_('bones', [[61, 57], [63, 59]]).prop('sack', 60, 59);
   b.tunnel([[74, 50], [76, 53]], 2, { seed: 23, mat: 'cave-floor' });
@@ -265,19 +265,19 @@ function longGlare() {
   b.cave('The Elbow', 40, 23, 5, 3, {
     seed: 205, mat: 'dirt',
     read: 'The canyon bends hard and widens into a bowl of shadow. Bones are stacked in neat piles along the walls, like a welcome.',
-    gm: 'Grinner\'s ambush: eight gnolls and two worgs (hyena-beasts) drop from ledges and close both ends of the bend. Scouts sent ahead (DC 14 Perception) spot fresh dung and spring the trap early. A cask of Ombrel\'s perfume smashed on the rocks makes the gnolls swoon and squabble (they lose their next turn, once). They flee if half fall.',
+    gm: 'Grinner\'s ambush: eight gnolls and two hyena-beasts drop from ledges and close both ends of the bend. Scouts sent ahead (DC 14 Perception) spot fresh dung and spring the trap early. A cask of Ombrel\'s perfume smashed on the rocks makes the gnolls swoon and squabble (they lose their next turn, once). They flee if half fall.',
   });
-  b.encounter('Ambush at the Elbow', [34, 18, 14, 10], [['gnoll', 8], ['worg', 2]], 'moderate');
+  b.encounter('Ambush at the Elbow', [34, 18, 14, 10], [['gnoll', 8], ['cacklingHyenaBeast', 2]], 'moderate');
   b.props_('bone-heap', [[37, 22], [43, 24]]).prop('skull-pile', 40, 21).props_('boulder', [[38, 25], [44, 22]]);
   b.cave('The Laughing Den', 36, 12, 6, 3.5, {
     seed: 206, mat: 'dirt',
     read: 'A cave of hide tents and stolen carpets that smells of wet dog and sweet smoke. A big gnoll with a broken grin lounges on a pile of loot.',
-    gm: 'Grinner, chief of the Cackling Ring, with five gnolls and a worg. He believes eating a storm-child makes a gnoll a storm. He can be talked round (DC 15 Persuasion or Intimidation): he fears the Mother Wind more than anything, and proof that the jar holds her child (Whisk speaking, or the mural) makes him spit and leave the caravan alone. A goat path climbs from here to the road.',
+    gm: 'Grinner, chief of the Cackling Ring, with five gnolls and a hyena-beast. He believes eating a storm-child makes a gnoll a storm. He can be talked round (DC 15 Persuasion or Intimidation): he fears the Mother Wind more than anything, and proof that the jar holds her child (Whisk speaking, or the mural) makes him spit and leave the caravan alone. A goat path climbs from here to the road.',
   });
   carve([[35, 15], [33, 18]], 2, 'dirt');
   carve([[38, 5], [37, 9]], 2, 'dirt');
   b.props_('tent-round', [[33, 11], [39, 11]]).prop('loot-sacks', 36, 13).prop('rug-pelt', 35, 12).prop('cooking-pot-fire', 38, 14).prop('war-banner', 31, 12).prop('cage', 41, 12).light(38, 14, 10, 15);
-  b.encounter('The Laughing Den', [30, 8, 13, 9], [['gnoll', 6], ['worg', 1]], 'low');
+  b.encounter('The Laughing Den', [30, 8, 13, 9], [['gnollRingChief', 1], ['gnoll', 5], ['cacklingHyenaBeast', 1]], 'moderate');
   b.cave('Lookout ledge', 49, 20, 3, 2, { seed: 207, mat: 'stone-flagstone-warm', gm: 'A gnoll lookout post with a horn. Whoever holds it sees the whole Elbow and the brown wall of the storm coming.' });
   carve([[45, 22], [48, 20]], 2, 'stone-flagstone-warm');
   b.prop('crumbling-ledge', 50, 20).prop('spear-rack', 48, 19);
@@ -390,7 +390,7 @@ function longGlare() {
   });
   b.floor(62, 75, 1, 1, 'stone-flagstone-warm').door(62, 75, 's', 'secret');
   b.prop('altar-reredos', 62, 77).props_('candle-stand-tall', [[58, 77], [66, 77]]).prop('offering-bowl', 60, 77).prop('idol', 64, 77).light(62, 77, 10, 15, '#ffd98a');
-  b.encounter("Grinner's storm-raid", [50, 56, 24, 11], [['gnoll', 10], ['worg', 3]], 'high');
+  b.encounter("Grinner's storm-raid", [50, 56, 24, 11], [['gnollRingChief', 1], ['gnoll', 9], ['cacklingHyenaBeast', 3]], 'high');
 
   // any pocket of ground the rocks sealed off becomes rock too (this map has doors but no walls)
   const seen = new Set<number>([2 * 80 + 2]);
@@ -555,7 +555,7 @@ function jessamar() {
   });
   b.prop('summoning-circle', 72, 61).props_('brazier-pedestal', [[69, 58], [76, 58], [69, 65], [76, 65]]).prop('stair-spiral', 76, 61).prop('orb-pedestal', 72, 59).props_('chains-hanging', [[70, 63], [75, 63]]).light(72, 61, 10, 20, '#d9f0ff');
   b.encounter('The binding at the Windcatcher', [68, 57, 10, 10], [['cultFanatic', 1], ['veteran', 1], ['thug', 4], ['cultist', 6], ['spy', 1]], 'high');
-  b.encounter('The Mother Wind comes down', [59, 30, 20, 24], [['airElemental', 1]], 'high');
+  b.encounter('The Mother Wind comes down', [59, 30, 20, 24], [['motherWind', 1]], 'high');
 
   // the undercroft under the palace, reached from the well and from the Windcatcher
   b.rock(46, 67, 34, 13);
@@ -648,10 +648,10 @@ export const SEVEN_SUNS_CARAVAN: Adventure = {
       gmNotes: 'Bandit captain stat block. She raids the waystation in part 1, turns up thirsty at the barge wreck in part 2, and can become an unlikely ally in part 3 (her crew starts a brawl at the gate as a distraction, for a price).',
     },
     {
-      id: 'pf_sscgrinner', name: 'Grinner', title: 'chief of the Cackling Ring', kind: 'monster', art: 'gnoll', monsterId: 'gnoll',
+      id: 'pf_sscgrinner', name: 'Grinner', title: 'chief of the Cackling Ring', kind: 'monster', art: 'gnoll', monsterId: 'gnollRingChief',
       wants: 'To eat the storm-child and become a storm.', knows: 'The Throat, the Wash and the cliffs better than anyone, and the smell of the jar from a mile away.',
       voice: 'Giggles between every word. Talks about himself as "we".', appearance: 'A huge gnoll with a broken muzzle that never closes, wearing a stolen carpet as a cloak.',
-      gmNotes: 'Gnoll stat block (give him 30 hit points as the chief). He fears the Mother Wind. Proof that the jar holds her child turns him away for good; otherwise he leads the storm-raid at the cliffs.',
+      gmNotes: 'Gnoll Ring-Chief stat block. He fears the Mother Wind. Proof that the jar holds her child turns him away for good; otherwise he leads the storm-raid at the cliffs.',
     },
     {
       id: 'pf_sscwenlo', name: 'Wenlo Darrish', title: 'lamp-seller of the Yellow Sun', kind: 'npc', art: 'spy', monsterId: 'spy', shared: true,
@@ -739,7 +739,7 @@ export const SEVEN_SUNS_CARAVAN: Adventure = {
         },
         {
           room: 'Dog Wash', title: 'The dog road', optional: true, encounter: 'Dune dogs in Dog Wash',
-          gm: 'If the heroes scout for another way past the Knees, or come back this way after the theft. Lean dune dogs (wolves) defend their den. Meat makes friends. At the far end, a DC 15 Perception spots the cold crack in the cliff that leads into the cistern.',
+          gm: 'If the heroes scout for another way past the Knees, or come back this way after the theft. Lean dune dogs defend their den. Meat makes friends. At the far end, a DC 15 Perception spots the cold crack in the cliff that leads into the cistern.',
         },
         {
           room: 'Waystation courtyard', title: 'First night at Hollowstar',
@@ -914,7 +914,7 @@ export const SEVEN_SUNS_CARAVAN: Adventure = {
         {
           room: 'Palm Garden', title: 'The Mother Wind comes down', optional: true, encounter: 'The Mother Wind comes down',
           read: 'The sky over the garden tears open. Palms bend flat, fountains blow sideways, and a shape of whirling sand as tall as the tower howls one word: her child\'s name.',
-          gm: 'Only if the binding finished or the jar is smashed in anger. She is not evil: she wants her child. Fight her (air elemental) and she is driven off for a year of terrible storms, or free Whisk from the tower (break two bands, then open the vents) and she gathers her child up and is gone.',
+          gm: 'Only if the binding finished or the jar is smashed in anger. She is not evil: she wants her child. Fight her (the Mother Wind stat block) and she is driven off for a year of terrible storms, or free Whisk from the tower (break two bands, then open the vents) and she gathers her child up and is gone.',
         },
         {
           room: 'Caravan field', title: 'The Feast of Seven Suns',

@@ -114,7 +114,7 @@ function clockworkSpire() {
     wobble: 0,
     mat: 'wood-planks-dark',
     read: 'A round room with a round floor that is slowly turning. Walls stand on the floor like the spokes of a wheel, and they turn with it. Painted dancers on the walls seem to move.',
-    gm: 'The inner disc (marble) turns 90 degrees at the top of every round: the four spoke walls move with it, and anyone standing on the line where disc meets ring makes a DC 13 Dexterity save or falls prone. A lever in the oil store stops the turning (DC 15 Strength to pull: it is stiff). Oil oozes live in the gear trench.',
+    gm: 'The inner disc (marble) turns 90 degrees at the top of every round: the four spoke walls move with it, and anyone standing on the line where disc meets ring makes a DC 13 Dexterity save or falls prone. A lever in the oil store stops the turning (DC 15 Strength to pull: it is stiff). Gray oozes, fat on spilled oil, live in the gear trench.',
   });
   for (let y = 36; y <= 53; y++) for (let x = 29; x <= 50; x++) {
     const dx = (x + 0.5 - 40) / 6.5, dy = (y + 0.5 - 45) / 5.5;
@@ -228,7 +228,7 @@ function clockworkSpire() {
   b.room('The Menagerie', 33, 14, 14, 19, {
     mat: 'grass',
     read: 'A glass dome full of green light. Brass trees with copper leaves stand around a pond, and in the cages around the walls, clockwork beasts lift their heads: a lion, a scorpion as big as a cart, a winged thing with a tail full of spikes.',
-    gm: 'Wendle\'s clockwork zoo (use the lion, giant scorpion, manticore and giant eagle stat blocks; they are constructs and need no air or food). The cages open if anyone pulls the keeper\'s lever or if the Engine wants them out. Humming the feeding tune (handout) makes a beast lie down: DC 13 Performance per beast, as an action. Nibs the rust monster loves Fennick and hates the other beasts: let it loose and it eats one beast per round.',
+    gm: 'Wendle\'s clockwork zoo: clockwork lions, clockwork scorpions and clockwork manticores, plus two brass rooks he calls his "eagles" (all original Lair Labs stat blocks; they are constructs and need no air or food). Twisting a lion\'s wind-down key backwards stops it for a round. The cages open if anyone pulls the keeper\'s lever or if the Engine wants them out. Humming the feeding tune (handout) makes a beast lie down: DC 13 Performance per beast, as an action. Nibs the rust monster loves Fennick and hates the other beasts: let it loose and it eats one beast per round.',
   });
   b.pool(40, 23, 3, 2.5);
   b.props_('tree-dead', [[35, 16], [44, 16], [35, 30], [44, 30]]).props_('flowers', [[37, 18], [42, 28]]).props_('cage-hanging', [[39, 15], [41, 15]]).prop('fountain', 40, 20).prop('bench', 37, 27).prop('lily-pads', 40, 23).prop('statue-tall-winged', 45, 23).props_('bush', [[34, 23], [46, 19]]);
@@ -260,11 +260,11 @@ function clockworkSpire() {
     mat: 'stone-cobble',
     more: [[47, 28, 4, 3]],
     read: 'Two more pens. One is chewed through, the bars bitten into rusty stumps. Something with feathery feelers peeks out.',
-    gm: 'The north pen holds the manticores. The south pen is Nibs\'s: the rust monster ate its own bars long ago and only stays because Fennick visits.',
+    gm: 'The north pen holds the clockwork manticores. The south pen is Nibs\'s: the rust monster ate its own bars long ago and only stays because Fennick visits.',
   });
   for (const y of [24, 28]) b.wallRun(46, y, 3, 'e', 'bars').door(46, y + 1, 'e', 'closed', 'door-iron');
   b.props_('straw-bed', [[49, 24], [49, 30]]).prop('rubble-pile', 48, 28);
-  b.encounter('The menagerie wakes', [29, 14, 22, 19], [['giantScorpion', 2], ['manticore', 2], ['lion', 5], ['giantEagle', 2], ['rustMonster', 1]], 'moderate');
+  b.encounter('The menagerie wakes', [29, 14, 22, 19], [['clockworkScorpion', 2], ['clockworkManticore', 2], ['clockworkLion', 5], ['brassRook', 2], ['rustMonster', 1]], 'moderate');
 
   // main stair: 5th to 6th floor
   b.floor(24, 30, 5, 2, 'wood-planks-dark').door(23, 30, 'e', 'closed').door(23, 31, 'e', 'closed').door(28, 30, 'e', 'closed').door(28, 31, 'e', 'closed');
@@ -369,7 +369,7 @@ function clockworkSpire() {
     label: [0, 35],
   });
   b.props_('ladder', [[1, 52], [0, 40], [1, 25], [0, 12]]).props_('crumbling-ledge', [[1, 45], [0, 20]]).prop('rope-coil', 1, 58).prop('bridge-plank', 0, 33).prop('lantern-hook', 1, 30);
-  b.encounter('Brass rooks', [0, 5, 2, 55], [['giantEagle', 5], ['flyingSword', 10]], 'low');
+  b.encounter('Brass rooks', [0, 5, 2, 55], [['brassRook', 5], ['flyingSword', 10]], 'low');
 
   b.floor(75, 11, 3, 45, 'dungeon-slab');
   b.wallRun(75, 10, 3, 's').door(76, 10, 's', 'closed', 'door-iron').wallRun(75, 55, 3, 's').door(76, 55, 's', 'closed', 'door-iron');
@@ -520,7 +520,7 @@ export const CLOCKWORK_SPIRE: Adventure = {
         {
           room: 'The Turning Floor', title: 'The turning dance', encounter: 'The turning dance',
           read: 'The floor shifts under your feet with a grinding sigh. The wall that was on your left is now in front of you, and a suit of armour you had not noticed bows to you, like a dancer asking for a turn.',
-          gm: 'The disc turns every round; the spoke walls move with it. Armour dancers fight in step, and oil oozes come up out of the gear trench. The lever in the oil store stops the floor. Fire in the oil store is a disaster.',
+          gm: 'The disc turns every round; the spoke walls move with it. Armour dancers fight in step, and gray oozes, fat on spilled oil, come up out of the gear trench. The lever in the oil store stops the floor. Fire in the oil store is a disaster.',
           treasure: 'In the puppet stage\'s prop box: a cloak of elvenkind sewn for a puppet and resized by magic, and 120 gp in old coins.',
         },
         {
@@ -550,7 +550,7 @@ export const CLOCKWORK_SPIRE: Adventure = {
         {
           room: 'Outside scaffolding', title: 'Brass rooks', encounter: 'Brass rooks', optional: true,
           read: 'The scaffolding creaks in the wind. Then the wind brings a sound like a hundred pairs of scissors, and brass birds come diving off the stonework.',
-          gm: 'Brass rooks (giant eagles) and flying swords attack climbers. A hero hit while climbing makes a DC 12 Strength save or falls 10 ft to the next platform. This route skips floors 1 to 5.',
+          gm: 'Brass rooks (clockwork birds that dive at climbers) and flying swords attack climbers. A hero hit while climbing makes a DC 12 Strength save or falls 10 ft to the next platform. This route skips floors 1 to 5.',
         },
         {
           room: 'Service lift shaft', title: 'The lift stops', encounter: 'Lift ride', optional: true, handout: 'cs-lift',

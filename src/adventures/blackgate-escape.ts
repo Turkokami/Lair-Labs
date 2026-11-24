@@ -340,6 +340,12 @@ function blackgate() {
     label: [2, 6],
   });
   b.props_('boulder', [[1, 2], [3, 11]]).prop('tree-pine', 2, 9).prop('crumbling-ledge', 1, 12).prop('cairn', 3, 1);
+  // The rockfall seals the adit until it is blasted or dug out; the goat path zigzags down the face to the river.
+  b.door(5, 6, 'w', 'locked', 'door-broken').wall(5, 7, 'w');
+  b.note(5, 6, 'Rockfall: impassable until blasted (one keg of powder) or dug out (three hours).');
+  b.floor(0, 1, 1, 75, 'dirt').wall(0, 61, 'e');
+  b.props_('crumbling-ledge', [[0, 30], [0, 52]]).prop('boulder', 0, 70);
+  b.note(0, 40, 'Goat path down the cliff face: an hour to the river (DC 12 Athletics or Survival per hero; a failure costs 1d6 damage and ten minutes).');
 
   b.tunnel([[22, 30], [22, 34], [22, 38]], 2, { seed: 509, mat: 'cave-floor' });
   b.props_('mine-rails', [[22, 31], [22, 32], [22, 33], [22, 34], [22, 35]]);
@@ -497,6 +503,18 @@ export const BLACKGATE_ESCAPE: Adventure = {
       gmNotes: 'Veteran stat block. Bribable (a promised 50 gp from the vault, or Corra\'s tobacco money) to look away for one bell, or turned outright if shown the Count list with his own nephew\'s name on it (he is in the Lower tier, cell 9). He carries the Count slip.',
     },
     {
+      id: 'pf_bgehobb', name: 'Hobb Tarrant', title: 'ore dock guard, night shift', kind: 'npc', art: 'guard', monsterId: 'guard',
+      wants: 'A quiet night, a dry shed and his cut from the smugglers.', knows: 'When the smugglers\' boats come (the dark of the moon) and that the barge needs four to pole it.',
+      voice: 'Yawns mid-sentence. Calls everyone "friend" when money is near.', appearance: 'A heavy man in a damp cloak, his crossbow propped against the shed wall, unloaded.',
+      gmNotes: 'Guard stat block. Dozes in the dock shed with Dace. Ten gold buys his back turned; a fight here is over in a round but the shout may carry (DC 12 group Stealth or the alarm rises one step).',
+    },
+    {
+      id: 'pf_bgedace', name: 'Dace Morrow', title: 'ore dock guard, night shift', kind: 'npc', art: 'guard', monsterId: 'guard',
+      wants: 'To be anywhere but Blackgate.', knows: 'That Hobb sells the dock to smugglers, and that the Ore gate key hangs in the Mine head.',
+      voice: 'Young, nervous, talks too fast.', appearance: 'A thin youth in a uniform two sizes too big, asleep on a coil of rope.',
+      gmNotes: 'Guard stat block. Wakes first. Ten gold, or a good scare, and he runs rather than fights.',
+    },
+    {
       id: 'pf_bgeines', name: 'Ines Callowell', title: 'prison doctor', kind: 'npc', art: 'healer', monsterId: 'priest',
       wants: 'To stop being part of it. She lacks the courage to do it alone.', knows: 'Which prisoners went down the mine, that none came back, and that Malloch has bought sleeping draught from her every month to quiet the ones on the list.',
       voice: 'Brisk and kind, then suddenly very quiet when she lies.', appearance: 'A tired woman of fifty in a stained apron, with a healer\'s satchel she never puts down.',
@@ -531,6 +549,8 @@ export const BLACKGATE_ESCAPE: Adventure = {
         { npc: 'pf_bgemalloch', x: 64, y: 7, hidden: true },
         { npc: 'pf_bgegorrin', x: 59, y: 5, hidden: true },
         { npc: 'pf_bgetally', x: 11, y: 61, hidden: true },
+        { npc: 'pf_bgehobb', x: 19, y: 72 },
+        { npc: 'pf_bgedace', x: 20, y: 72 },
       ],
       scenes: [
         {

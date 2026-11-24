@@ -83,12 +83,12 @@ function thornwood() {
 
   b.area('Heart of the maze', [[36, 59, 9, 6]], {
     read: 'The hedges open on a round lawn around a white stone fountain. Two great topiary stags stand guard, clipped from living thorn, their antlers hung with tiny bells.',
-    gm: 'The stags are awakened trees. They ask every guest one question: "Whose guest are you?" Say "the Midsummer Lord\'s" and they bow. Say your own true name and they ring their bells and attack (a name given freely in the Thornwood is a gift the wood takes). Anyone who has hurt the hedge is not a guest. The fountain water is safe and sweet: a drink grants advantage on the next save against charm tonight.',
+    gm: 'The stags are living topiaries. They ask every guest one question: "Whose guest are you?" Say "the Midsummer Lord\'s" and they bow. Say your own true name and they ring their bells and attack (a name given freely in the Thornwood is a gift the wood takes). Anyone who has hurt the hedge is not a guest. The fountain water is safe and sweet: a drink grants advantage on the next save against charm tonight.',
     label: [40, 61],
   });
   b.prop('fountain', 40, 61).props_('hedge', [[37, 60], [43, 63]]).props_('bench', [[38, 63], [42, 59]]).prop('flowers', 39, 64).prop('lantern-standing', 44, 60);
   b.light(44, 60, 10, 15, '#ffe7a3');
-  b.encounter('Topiary stags', [36, 59, 9, 6], [['awakenedTree', 2]], 'low');
+  b.encounter('Topiary stags', [36, 59, 9, 6], [['livingTopiary', 2]], 'low');
   b.tunnel([[40, 70], [40, 73]], 2, { mat: 'grass' });
 
   // ---------- 3. The Owl glade (west side glade) ----------
@@ -112,7 +112,7 @@ function thornwood() {
   });
   b.prop('thorn-bush', 68, 63).props_('flowers', [[64, 61], [72, 65]]).prop('chest-open', 66, 64).prop('jewelry-box', 70, 62).prop('ring-cushion', 69, 65).prop('gem-bowl', 67, 61).prop('magic-cloak', 70, 64).prop('brambles', 63, 66).prop('lantern-hook', 66, 62).prop('gm-trap', 68, 64, 0, { gm: true });
   b.light(66, 62, 5, 15, '#ffd27f');
-  b.encounter('The debt-hounds', [63, 59, 11, 8], [['worg', 4], ['sprite', 4]], 'low');
+  b.encounter('The debt-hounds', [63, 59, 11, 8], [['feyDebtHound', 4], ['sprite', 4]], 'low');
   b.tunnel([[68, 59], [67, 55], [66, 51]], 2, { mat: 'dirt', seed: 47 });
 
   // ---------- 5. The feasting lawn and the high table ----------
@@ -256,7 +256,7 @@ function thornwood() {
   });
   b.prop('throne-dais', 40, 7).prop('throne', 40, 8).props_('cage-hanging', [[33, 10], [34, 13], [33, 15], [35, 9], [45, 9], [47, 13]]).prop('chandelier-antler', 40, 13).prop('rug-runner', 40, 16).props_('banner-hanging-tall', [[36, 7], [44, 7]]).prop('table-round', 44, 16).props_('chair', [[43, 16], [45, 16]]).prop('harpsichord', 46, 11).props_('candle-stand-tall', [[37, 9], [43, 9]]).prop('crystal-ball', 38, 10);
   b.light(40, 13, 15, 25, '#fff1c1').light(37, 9, 5, 10).light(43, 9, 5, 10);
-  b.encounter("The Lord's wrath", [32, 7, 17, 13], [['mage', 1]], 'high');
+  b.encounter("The Lord's wrath", [32, 7, 17, 13], [['midsummerLord', 1]], 'high');
   // the secret root stair in the trunk wall, east to the spinners' hollow
   // (a row where the trunk wall is solid above and below the passage, so the door is the only way in)
   let hx = 44, hy = 9;
@@ -281,7 +281,7 @@ function thornwood() {
   b.wallRun(62, 12, 3, 'e').wallRun(67, 13, 3, 'w').wallRun(62, 22, 4, 'e').wallRun(67, 22, 4, 'w');
   b.prop('fountain-grand', 65, 18).props_('statue', [[58, 13], [72, 13], [58, 24], [72, 24]]).props_('statue-tall-robed', [[60, 17], [70, 20]]).props_('statue-tall-knight', [[58, 20], [72, 17]]).prop('statue-tall-winged', 65, 14).prop('statue-knight', 65, 23).props_('hedge-long', [[59, 13], [69, 24]]).props_('bench', [[61, 19], [69, 18]]).props_('flowers', [[57, 23], [73, 14]]).prop('lamp-post', 63, 17).prop('stairs-down', 66, 19, 0, { gm: true }).prop('gm-treasure', 72, 24, 0, { gm: true });
   b.light(63, 17, 10, 20, '#cfe3ff');
-  b.encounter("The gardener's statues", [57, 13, 17, 12], [['animatedArmor', 3], ['awakenedTree', 2]], 'moderate');
+  b.encounter("The gardener's statues", [57, 13, 17, 12], [['stoneGardener', 4], ['livingTopiary', 2]], 'moderate');
   b.tunnel([[66, 25], [67, brookY(67) - 2]], 2, { mat: 'dirt', seed: 87 });
   b.hall(60, 8, 60, 11, 1, { mat: 'cave-floor' });
   b.door(60, 11, 's', 'secret');
@@ -298,11 +298,11 @@ function thornwood() {
   b.cave('The hidden bower', 70, 5, 6, 3.5, {
     seed: 29, mat: 'grass',
     read: 'Roses. A whole room of them, white and red, growing up through the roots into a dome of blossom. Moonlight falls through a hole far above onto a canopied bed, where a young woman in a gown of petals sits singing to herself, very softly, a song with no words.',
-    gm: 'Merriwen Dace has been the Lord\'s "Midsummer Lady" for a year. Without her name she does not know the heroes, her sister or her home, and she is happy, in a dreamy way. Three thorn wardens (awakened trees grown from rose briars) and a wisp guard her: they wake if anyone touches her or the bed without the Lord\'s leave. Clemency\'s lullaby makes Merriwen weep and listen; her name (from the cage, or the heel of honest bread) brings her all the way back.',
+    gm: 'Merriwen Dace has been the Lord\'s "Midsummer Lady" for a year. Without her name she does not know the heroes, her sister or her home, and she is happy, in a dreamy way. Three thorn wardens (great guardians grown from rose briars) and a wisp guard her: they wake if anyone touches her or the bed without the Lord\'s leave. Clemency\'s lullaby makes Merriwen weep and listen; her name (from the cage, or the heel of honest bread) brings her all the way back.',
   });
   b.prop('bed-canopy', 71, 4).props_('flowers', [[66, 3], [74, 6], [68, 7], [73, 3]]).props_('thorn-bush', [[66, 6], [75, 4]]).prop('vanity', 69, 3).prop('spinning-wheel', 67, 5).prop('rug-round', 70, 6).prop('candle-ring', 72, 6).prop('mirror', 74, 5);
   b.light(71, 4, 10, 20, '#ffe1f0').light(67, 5, 5, 10, '#ffe1f0');
-  b.encounter('The thorn wardens', [65, 2, 11, 6], [['awakenedTree', 3], ['willOWisp', 1]], 'high');
+  b.encounter('The thorn wardens', [65, 2, 11, 6], [['roseThornWarden', 3], ['willOWisp', 1]], 'high');
 
   b.note(40, 74, 'The dawn bell. When it rings at sunrise, the gate closes for a year and a day.');
   b.note(7, 14, 'Secret door: the willow-root way. Opens at Wistery\'s word or DC 16 Investigation.');
@@ -354,13 +354,13 @@ export const THORNWOOD_FEAST: Adventure = {
       gmNotes: 'Clemency\'s lullaby makes her stop, cry and listen (advantage on any check to calm her). Her name, given back by the wood, brings her all the way home: she can then order the thorn wardens to sleep, ending that fight. At the dawn bell, if she still cannot say her name, she becomes fey forever.',
     },
     {
-      id: 'pf_tfesaffrel', name: 'Lord Saffrel', title: 'the Midsummer Lord', kind: 'monster', art: 'fey-knight', monsterId: 'mage',
+      id: 'pf_tfesaffrel', name: 'Lord Saffrel', title: 'the Midsummer Lord', kind: 'monster', art: 'fey-knight', monsterId: 'midsummerLord',
       wants: 'A new song every night, forever. The fey make nothing new; only mortals do.',
       knows: 'Everything said aloud in his wood tonight, and every name in every cage. He cannot lie.',
       voice: 'Warm and amused. Never raises his voice, calls everyone "dear guest", and laughs at the wrong moments.',
       appearance: 'Tall and slender, with skin like birch bark, eyes of green glass and antlers of silver twigs hung with tiny bells.',
       backstory: 'He has ruled the Thornwood\'s single night for longer than Dimmock Cross has stood. He has heard every story twice.',
-      gmNotes: 'Uses the mage stat block; describe his spells as thorns, golden pollen and moonlight. He cannot harm a guest who keeps the courtesies, and he cannot refuse a wager offered in rhyme before the whole court. He is bound by every word he says. If the heroes become thieves or draw iron in his hall, he fights; at half hit points he yields ("A guest who can wound me is a guest worth keeping") and keeps whatever bargain ends the fight. Heroes he drops are not killed: they wake as statues in the garden, unless friends win them back.',
+      gmNotes: 'Uses the Midsummer Lord stat block: a thorn rapier, lances of moonlight and a cloud of golden pollen that sets heroes dancing. He cannot harm a guest who keeps the courtesies, and he cannot refuse a wager offered in rhyme before the whole court. He is bound by every word he says. If the heroes become thieves or draw iron in his hall, he fights; at half hit points he yields ("A guest who can wound me is a guest worth keeping") and keeps whatever bargain ends the fight. Heroes he drops are not killed: they wake as statues in the garden, unless friends win them back.',
     },
     {
       id: 'pf_tfewistery', name: 'Lady Wistery', title: 'Lady of the Willow, the Lord\'s consort', kind: 'monster', art: 'dryad', monsterId: 'dryad',
@@ -460,7 +460,7 @@ export const THORNWOOD_FEAST: Adventure = {
         {
           room: 'The Gifting Thorn', title: 'Take what you like', encounter: 'The debt-hounds', optional: true,
           read: 'The lone thorn tree is hung with treasures: a velvet cloak that ripples like water, a silver flute, rings on every twig. A painted board reads FOR OUR GUESTS. TAKE WHAT YOU LIKE. Somewhere nearby, something large is panting.',
-          gm: 'Every gift is real and every gift is a debt (DC 14 Arcana or Insight to see it). A fair gift left in return (gold of equal value, a true story, a lock of hair) clears it, and the tree rustles happily. A hero who takes something and leaves nothing is followed by the debt-hounds: four great grey hounds and four sprites riding on their collars. They do not fight to kill; they try to drag the debtor back to the tree. Paying, even mid-fight, stops them at once.',
+          gm: 'Every gift is real and every gift is a debt (DC 14 Arcana or Insight to see it). A fair gift left in return (gold of equal value, a true story, a lock of hair) clears it, and the tree rustles happily. A hero who takes something and leaves nothing is followed by the debt-hounds: four debt-hounds (long grey hounds with coin-bright eyes) and four sprites riding on their collars. They do not fight to kill; they try to drag the debtor back to the tree. Paying, even mid-fight, stops them at once.',
           treasure: 'For a fair trade: a cloak of elvenkind, a silver flute (25 gp) or a ring of water walking. Each takes a gift of similar worth.',
         },
         {
@@ -490,7 +490,7 @@ export const THORNWOOD_FEAST: Adventure = {
         {
           room: 'Garden of statues', title: 'The garden of forgotten guests', encounter: "The gardener's statues",
           read: 'Statues stand in every green room of the hedge garden: a farmer, a girl mid-curtsey, a soldier with a raised cup. When the moonlight touches the tinker in the corner, his stone lips move. "Is it Midsummer again?" he whispers. "Have you... brought my name?"',
-          gm: 'Corbin Askew tells the heroes about the cages, the fountain stair and its words ("I would like to leave now"). Four statues are the Lord\'s gardeners (animated armor) and two hedges are awake (awakened trees): they attack anyone who damages a statue, forces the fountain, or tries the stair without the words. Spoken politely, the words open the basin onto a root stair down to the spinners\' hollow. If the heroes free Corbin\'s name later, he wakes here, old and smiling.',
+          gm: 'Corbin Askew tells the heroes about the cages, the fountain stair and its words ("I would like to leave now"). Four statues are the Lord\'s stone gardeners and two hedges are living topiaries: they attack anyone who damages a statue, forces the fountain, or tries the stair without the words. Spoken politely, the words open the basin onto a root stair down to the spinners\' hollow. If the heroes free Corbin\'s name later, he wakes here, old and smiling.',
           treasure: 'In the stone hand of the girl mid-curtsey: a wand of magic missiles she brought as a gift sixty years ago. A spell scroll of Remove Curse is tucked in the fountain\'s dry spout.',
         },
         {
@@ -509,7 +509,7 @@ export const THORNWOOD_FEAST: Adventure = {
         {
           room: 'The hidden bower', title: 'The Midsummer Lady', encounter: 'The thorn wardens',
           read: 'Roses climb the roots into a dome of white and red. Moonlight falls on a canopied bed where a young woman in a gown of petals sings a song with no words. She looks up at you without a flicker of knowing. "Have you come to hear me sing?" she asks. Around her, the rose briars slowly stand up.',
-          gm: 'Three thorn wardens (awakened trees) and a wisp guard Merriwen. They wake if anyone touches her or the bed without the Lord\'s leave. Singing Clemency\'s lullaby (handout) makes Merriwen weep and listen, and the wardens hesitate for one round. Merriwen\'s name, from the cage-bird or the heel of honest bread, brings her back: she raises her hand and the wardens sleep. With the Lord\'s leave (won or shamed), they bow and let her go. Then it is a run for the gate. The sixth course is being poured, the Last Cup is offered to every passing guest, and the dawn bell is about to ring.',
+          gm: 'Three thorn wardens and a wisp guard Merriwen. They wake if anyone touches her or the bed without the Lord\'s leave. Singing Clemency\'s lullaby (handout) makes Merriwen weep and listen, and the wardens hesitate for one round. Merriwen\'s name, from the cage-bird or the heel of honest bread, brings her back: she raises her hand and the wardens sleep. With the Lord\'s leave (won or shamed), they bow and let her go. Then it is a run for the gate. The sixth course is being poured, the Last Cup is offered to every passing guest, and the dawn bell is about to ring.',
           handout: 'lullaby',
           treasure: 'Merriwen\'s silver thimble and needle case (25 gp), and a white rose that never wilts, for Clemency.',
         },

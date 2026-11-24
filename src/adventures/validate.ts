@@ -3,7 +3,7 @@
 // and by scripts/check-adventure.ts while writing a new adventure.
 import { isFloor, isWall, edgeBetween, type GameMap } from '../engine/map';
 import { objectById } from '../library/objects';
-import { creatureById } from '../library/creatures';
+import { creatureById, creatureForMonster } from '../library/creatures';
 import { monsterById } from '../rules/monsters';
 import { encounterXp, difficultyFor, statId } from './xp';
 import type { Adventure } from './types';
@@ -53,7 +53,11 @@ export function checkMap(m: GameMap, level: number): string[] {
     if (!isFloor(m, ax, ay) || !isFloor(m, bx, by)) out.push(`${m.name}: door ${k} needs floor on both sides`);
   }
   for (const en of m.encounters ?? []) {
-    for (const g of en.monsters) if (!statId(g.srd)) out.push(`${m.name}: "${en.name}" uses unknown monster ${g.srd}`);
+    for (const g of en.monsters) {
+      const id = statId(g.srd);
+      if (!id) out.push(`${m.name}: "${en.name}" uses unknown monster ${g.srd}`);
+      else if (!creatureForMonster(id)) out.push(`${m.name}: "${en.name}" monster ${id} has no token art (add it to ART_ in src/rules/own)`);
+    }
     const d = difficultyFor(encounterXp(en.monsters), level);
     if (d !== en.difficulty) out.push(`${m.name}: "${en.name}" is ${d} for level ${level} (${encounterXp(en.monsters)} XP), but says ${en.difficulty}`);
     const [ax, ay, aw, ah] = en.area;
@@ -77,6 +81,7 @@ export function checkAdventure(a: Adventure): string[] {
     if (!/^pf_[a-z0-9]{4,32}$/.test(n.id)) out.push(`NPC id ${n.id} must be pf_ and 4-32 lowercase letters or digits`);
     if (n.art && !creatureById(n.art)) out.push(`NPC ${n.name}: unknown art ${n.art}`);
     if (n.monsterId && !monsterById(n.monsterId)) out.push(`NPC ${n.name}: unknown monsterId ${n.monsterId}`);
+    else if (n.monsterId && !n.art && !creatureForMonster(n.monsterId)) out.push(`NPC ${n.name}: ${n.monsterId} has no token art (give the NPC art, or add it to ART_ in src/rules/own)`);
     if (!(n.wants && n.knows && n.voice && n.appearance)) out.push(`NPC ${n.name}: needs wants, knows, voice and appearance`);
   }
   const handouts = new Set(a.handouts.map((h) => h.id));

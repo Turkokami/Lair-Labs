@@ -267,7 +267,7 @@ function winterhollow() {
     gm: 'Hrimma, the old white wolf of the Stand, with two dire wolves and four wolves. She speaks Common (the grove\'s gift, long ago). She has Linnet, safe and warm in the pup hollow. Her offer: kill the Hush or sing it back to sleep, and the cub goes home and the pack goes back to the deep woods. Fighting her is a high fight and the pack flees when she drops below half her hit points.',
   });
   b.props_('bones', [[27, 5], [33, 7]]).prop('straw-bed', 25, 6).prop('rug-pelt', 29, 4).prop('skeleton-lying', 34, 4).prop('gm-treasure', 26, 7, 0, { gm: true });
-  b.encounter("Hrimma's den", [25, 3, 11, 7], [['direWolf', 3], ['wolf', 4]], 'high');
+  b.encounter("Hrimma's den", [25, 3, 11, 7], [['groveWardenWolf', 1], ['direWolf', 2], ['wolf', 4]], 'high');
   b.tunnel([[35, 5], [38, 4]], 2, { seed: 2616, mat: 'cave-floor' });
   b.cave('Pup hollow', 39, 4, 2.8, 2.2, {
     seed: 2617, mat: 'cave-floor',
@@ -517,13 +517,13 @@ export const WINTERHOLLOW_WOLVES: Adventure = {
       gmNotes: 'Teaches the sleep-song to anyone who sits and drinks her terrible pine tea. Hrimma and Wynfrith both trust her name.',
     },
     {
-      id: 'pf_wwhhrimma', name: 'Hrimma', title: 'the white wolf of the Stand', kind: 'monster', art: 'winter-wolf', monsterId: 'direWolf',
+      id: 'pf_wwhhrimma', name: 'Hrimma', title: 'the white wolf of the Stand', kind: 'monster', art: 'winter-wolf', monsterId: 'groveWardenWolf',
       wants: 'The Hush gone, the deer back, and her pack fed and home in the deep woods.',
       knows: 'The Hush sleeps by day in the hollow under the stump, hunts at night and grows bolder. The secret crack from the pup hollow to the Frozen falls.',
       voice: 'Speaks slowly, like wind in a chimney, never says "I", always "we".',
       appearance: 'A wolf as big as a pony, white as fresh snow, with one torn ear and pale gold eyes.',
       backstory: 'The grove gave her speech long ago, so she could guard the Stand. She has guarded it through five lifetimes of men.',
-      gmNotes: 'Use the dire wolf stat block with 50 hit points. She keeps her word. If the heroes promise to deal with the Hush, she lets Linnet go at once and sends a wolf to guide them (it fights beside them in the climax).',
+      gmNotes: 'Grove-Warden Wolf stat block (her own). She keeps her word. If the heroes promise to deal with the Hush, she lets Linnet go at once and sends a wolf to guide them (it fights beside them in the climax).',
     },
     {
       id: 'pf_wwhwynfrith', name: 'Wynfrith', title: 'dryad of the Stand of Nine', kind: 'monster', art: 'dryad', monsterId: 'dryad',

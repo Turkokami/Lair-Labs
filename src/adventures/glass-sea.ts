@@ -147,7 +147,7 @@ function glassSeaMap() {
   b.props_('crystal-spire', [[4, 13], [7, 15], [10, 13], [12, 17], [5, 17]]).props_('tree-dead', [[9, 17], [12, 14]]).props_('flowers', [[6, 13], [11, 16]]).prop('bench', 8, 13).light(7, 15, 5, 15, '#cdefff');
   b.pit(15, 10, 2, 2).prop('sinkhole', 15, 10).note(15, 10, 'Sinkhole: drifted sand over a buried street. DC 13 Perception to spot; DC 14 Dexterity save or fall 20 ft.');
   b.props_('sand-ripples', [[12, 1], [1, 11], [17, 16], [6, 20]]).props_('desert-rocks', [[1, 1], [16, 13]]);
-  b.encounter('Hunters in the shimmer', [2, 2, 23, 17], [['invisibleStalker', 2]], 'low');
+  b.encounter('Hunters in the shimmer', [2, 2, 23, 17], [['heatGhost', 2]], 'low');
 
   // ---------- the buried streets under the Crust ----------
   b.floor(25, 12, 18, 2, 'stone-cobble');
@@ -213,7 +213,7 @@ function glassSeaMap() {
   b.room('The War Archive', 5, 34, 8, 6, {
     mat: 'marble',
     read: 'Shelves of glass plates stand in rows, each one as thin as paper and cloudy with images. Hold one to the light and you see armies marching, cities burning, a man in armour giving orders.',
-    gm: 'Quell\'s war archive: his memories of nine years of war, stored in glass. Every plate the scholars lift out and read is a meal for the seed (and a lesson from Quell). Ambrine\'s field notes are on the reading desk (handout). Smashing the archive (an hour\'s work) starves Quell of his best lessons: in the Crown, the stone golem loses its Slow action. A loose panel in the east wall (DC 16 Perception) hides the Marshal\'s private reliquary.',
+    gm: 'Quell\'s war archive: his memories of nine years of war, stored in glass. Every plate the scholars lift out and read is a meal for the seed (and a lesson from Quell). Ambrine\'s field notes are on the reading desk (handout). Smashing the archive (an hour\'s work) starves Quell of his best lessons: in the Crown, the Gardener loses its Stilling Light. A loose panel in the east wall (DC 16 Perception) hides the Marshal\'s private reliquary.',
   });
   b.props_('archive-stacks', [[6, 35], [6, 38], [9, 35], [9, 38]]).prop('writing-desk', 11, 37).prop('scroll-pile', 12, 35).prop('crystal-ball', 11, 39).prop('magic-mirror', 5, 36, 90).light(9, 36, 10, 15, '#cfe8ff');
   b.room('The Sealed Reliquary', 13, 35, 4, 4, {
@@ -273,11 +273,11 @@ function glassSeaMap() {
   // ---------- the crater rim ----------
   b.area('The South Pass', [[57, 38, 3, 6]], {
     read: 'A notch in the crater wall, choked with broken glass. Above it the air shimmers and spins, and the shards on the ground lift and turn as if something breathes on them.',
-    gm: 'Three air elementals, storms of glass splinters, guard the main way in. In the shard wind, their attacks deal an extra 1d6 slashing. They are the seed\'s antibodies: they ignore anyone carrying a crystal from the basin or walking with the Little Star.',
+    gm: 'Three shard storms, whirling columns of glass splinters, guard the main way in. In the shard wind, their attacks deal an extra 1d6 slashing. They are the seed\'s antibodies: they ignore anyone carrying a crystal from the basin or walking with the Little Star.',
     label: [58, 41],
   });
   b.props_('rubble-pile', [[57, 39], [58, 43]]).props_('crystal-cluster', [[59, 38], [57, 42]]).light(58, 40, 5, 15, '#bfefff');
-  b.encounter('Shard storm', [52, 38, 12, 8], [['airElemental', 3]], 'low');
+  b.encounter('Shard storm', [52, 38, 12, 8], [['shardStorm', 3]], 'low');
   b.area('The North Pass', [[57, 8, 3, 7]], {
     read: 'A narrow cleft in the crater wall, so clear you can see the tower through the stone on either side, bent and broken like a picture in water.',
     gm: 'Unguarded, but the cracked glass is difficult terrain all the way. Coming in this way, the heroes see the Shard Garden from above and gain surprise on whatever waits there.',
@@ -300,20 +300,20 @@ function glassSeaMap() {
   // ---------- the Shard Garden: the impact basin ----------
   b.area('The Shard Garden', [[46, 14, 25, 25]], {
     read: 'The crater floor is a garden that no one planted. Crystal trees grow in spirals, crystal flowers open and close like breathing mouths, and the air hums one long low note. In the middle, the tower rises: smooth, green-white and alive.',
-    gm: 'Everything here is growing, slowly, while you watch. The guardians of the garden attack anyone who harms the crystals: two earth elementals, two air elementals and two basilisks, all crusted with crystal. The Little Star first appears here, to the hero who seems most gentle. If it trusts the heroes, it calls the guardians off.',
+    gm: 'Everything here is growing, slowly, while you watch. The guardians of the garden attack anyone who harms the crystals: two earth elementals and two basilisks, all crusted with crystal, and two shard storms. The Little Star first appears here, to the hero who seems most gentle. If it trusts the heroes, it calls the guardians off.',
     label: [54, 36],
   });
   for (const [x, y] of [[48, 20], [47, 28], [52, 15], [64, 15], [69, 22], [69, 31], [62, 37], [50, 36], [67, 36]]) b.prop('crystal-spire', x, y);
   b.props_('cave-crystals', [[46, 24], [55, 16], [68, 27], [54, 37]]).props_('crystal-cluster', [[50, 17], [66, 17], [70, 26], [47, 33]]).props_('glowing-fungus', [[49, 30], [66, 33]]).prop('magic-circle', 58, 36);
   for (const [x, y, w, h] of [[47, 21, 1, 3], [68, 29, 2, 1], [60, 16, 1, 2], [52, 34, 2, 1]]) b.pit(x, y, w, h);
   for (const [x, y] of [[48, 22], [67, 20], [60, 36], [49, 33], [64, 16]]) b.light(x, y, 10, 20, '#9fe7ff');
-  b.encounter('The Shard Garden', [46, 34, 25, 5], [['earthElemental', 2], ['airElemental', 2], ['basilisk', 2]], 'moderate');
+  b.encounter('The Shard Garden', [46, 34, 25, 5], [['earthElemental', 2], ['shardStorm', 2], ['basilisk', 2]], 'moderate');
 
   // ---------- the Glass Tower ----------
   b.room('The Root Hall', 51, 29, 15, 5, {
     mat: 'marble',
     read: 'Inside, the tower is warm. Roots of glass as thick as a man run along the floor and up the walls, and light pulses through them, slow as a heartbeat, from somewhere above.',
-    gm: 'The ground floor. The Root-Keeper, a shield guardian grown out of the tower\'s glass, stands at the foot of the roots with three crystal basilisks curled around its feet. It obeys whoever holds the seed\'s favour: if the Little Star walks with the heroes, it bows. Two stairs climb through the roots, one to the Gallery and one to the Well. A narrow gap between roots in the west wall (DC 15 Perception) lets someone in or out unseen.',
+    gm: 'The ground floor. The Root-Keeper, a crystal guardian grown out of the tower\'s glass, stands at the foot of the roots with three crystal basilisks curled around its feet. It obeys whoever holds the seed\'s favour: if the Little Star walks with the heroes, it bows. Two stairs climb through the roots, one to the Gallery and one to the Well. A narrow gap between roots in the west wall (DC 15 Perception) lets someone in or out unseen.',
   });
   b.room('The Echo Gallery', 51, 19, 5, 10, {
     mat: 'marble',
@@ -328,7 +328,7 @@ function glassSeaMap() {
   b.room('The Crown', 56, 19, 5, 10, {
     mat: 'marble',
     read: 'The top of the tower is open to the sky. In the middle, a star the size of a cart hangs in a cradle of glass roots, beating like a heart, and around it petals of crystal are slowly, slowly opening.',
-    gm: 'The seed\'s heart. Quell\'s echo stands at its side and rides the Gardener, a stone golem of living crystal, with two heat-ghosts (invisible stalkers) and a shard storm (air elemental). See the climax scene for how prep changes this fight. Climbing the outside to the north window: DC 18 Athletics.',
+    gm: 'The seed\'s heart. Quell\'s echo stands at its side and rides the Gardener, a hulking crystal gardener grown by the seed, with two heat-ghosts and a shard storm. See the climax scene for how prep changes this fight. Climbing the outside to the north window: DC 18 Athletics.',
   });
   b.wallRun(51, 19, 15, 'n').wallRun(51, 33, 15, 's').wallRun(51, 19, 15, 'w').wallRun(65, 19, 15, 'e');
   b.wallRun(51, 28, 15, 's').wallRun(55, 19, 10, 'e').wallRun(60, 19, 10, 'e');
@@ -341,8 +341,8 @@ function glassSeaMap() {
   b.prop('stair-spiral', 63, 21).prop('pit-deep', 63, 24).props_('light-orb', [[62, 26], [64, 20]]).prop('crystal-cluster', 61, 27);
   b.prop('orb-pedestal', 58, 23).props_('crystal-spire', [[56, 20], [60, 20], [56, 27], [60, 27]]).prop('ring-cushion', 58, 26, 0, { gm: true });
   b.light(58, 23, 20, 30, '#e8fbff').light(58, 31, 10, 20, '#9fe7ff').light(53, 24, 5, 15, '#d8b4ff').light(63, 24, 10, 15, '#b8ffd9');
-  b.encounter('The Root-Keeper', [51, 29, 15, 5], [['shieldGuardian', 1], ['basilisk', 3]], 'low');
-  b.encounter('The Glass Marshal', [56, 19, 5, 10], [['stoneGolem', 1], ['invisibleStalker', 2], ['airElemental', 1]], 'high');
+  b.encounter('The Root-Keeper', [51, 29, 15, 5], [['rootKeeper', 1], ['basilisk', 3]], 'low');
+  b.encounter('The Glass Marshal', [56, 19, 5, 10], [['crystalGardener', 1], ['heatGhost', 2], ['shardStorm', 1]], 'high');
 
   // a few spires of fused glass on the flats, for cover and to break sight lines
   for (const [cx, cy, s] of [[33, 44, 41], [24, 40, 42], [68, 46, 43], [20, 58, 44]] as const) blob(cx, cy, 1.4, 1.2, s, (x, y) => b.rock(x, y, 1, 1));
@@ -442,15 +442,15 @@ export const GLASS_SEA: Adventure = {
       knows: 'Everything the glass remembers, all mixed up, and nothing at all about the world beyond the Shine.',
       voice: 'A child\'s voice that echoes, as if two children speak at once. Asks question after question. Repeats the last thing it was told.',
       appearance: 'A small glowing figure of light, about the size of a six-year-old, whose face is never quite the same twice. It leaves frost-flowers on the glass where it walks.',
-      gmNotes: 'Cannot be fought or harmed. If the heroes are kind to it, it walks with them: crystal guardians stand aside and the air elementals of the rim let them pass.',
+      gmNotes: 'Cannot be fought or harmed. If the heroes are kind to it, it walks with them: crystal guardians stand aside and the shard storms of the rim let them pass.',
     },
     {
-      id: 'pf_glsgardener', name: 'The Gardener', title: 'crystal guardian of the seed', kind: 'monster', art: 'stoneGolem', monsterId: 'stoneGolem',
+      id: 'pf_glsgardener', name: 'The Gardener', title: 'crystal guardian of the seed', kind: 'monster', art: 'stoneGolem', monsterId: 'crystalGardener',
       wants: 'To keep the seed safe. That is all it was grown for.',
       knows: 'Nothing but its task, and the voice that rides it.',
       voice: 'Silent. When Quell rides it, it speaks with his voice from inside its chest.',
       appearance: 'A towering figure of green-white crystal, shaped like a woman with a gardener\'s hood, with roots for feet and a heart-light that pulses with the seed.',
-      gmNotes: 'Stone golem stat block. If Quell\'s statue was shattered, the Gardener is free: it does not fight unless someone harms the seed. If the Garden Memory reached the heart, it has disadvantage on attacks while Quell rides it.',
+      gmNotes: 'Crystal Gardener (an original Lair Labs stat block); thunder damage cracks it. If Quell\'s statue was shattered, the Gardener is free: it does not fight unless someone harms the seed. If the Garden Memory reached the heart, it has disadvantage on attacks while Quell rides it.',
     },
   ],
   handouts: [
@@ -543,7 +543,7 @@ export const GLASS_SEA: Adventure = {
         },
         {
           room: 'The Bell Tower', title: 'The buried streets', optional: true,
-          gm: 'Two invisible stalkers hunt the rooftops for Quell; he sends them after anyone who visits his statue. They fight in the Glass Orchard if they can. The secret panel in the Bell Tower opens on Lantern Street, which runs under the Crust to the Sunken Plaza and, through a hidden crawlway, into the crater basin unseen. The buried bathhouse and shrine are worth a look.',
+          gm: 'Two heat-ghosts, invisible in bright sun, hunt the rooftops for Quell; he sends them after anyone who visits his statue. They fight in the Glass Orchard if they can. The secret panel in the Bell Tower opens on Lantern Street, which runs under the Crust to the Sunken Plaza and, through a hidden crawlway, into the crater basin unseen. The buried bathhouse and shrine are worth a look.',
           encounter: 'Hunters in the shimmer',
           treasure: 'On the Merchants\' Roofs: 220 gp and a street map. In the bathhouse: a potion of superior healing and Quell\'s seal. In the buried shrine: 140 gp of offerings.',
         },

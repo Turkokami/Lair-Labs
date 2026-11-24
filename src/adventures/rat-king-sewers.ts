@@ -317,7 +317,7 @@ function lowerWick() {
   b.prop('throne', 38, 68).prop('throne-dais', 38, 69).prop('bathtub', 36, 68).props_('lamp-post', [[34, 68], [42, 68], [40, 70]]).prop('treasure-pile', 41, 69).prop('coin-stacks', 35, 70).prop('crown-cushion', 39, 70).prop('broken-furniture', 33, 71).prop('debris-wood', 43, 67);
   b.props_('lantern-cluster', [[29, 62], [47, 62], [28, 76], [48, 76], [37, 67], [43, 71]]).props_('candles', [[30, 63], [46, 63], [29, 75], [47, 75]]).props_('loot-sacks', [[31, 75], [45, 75]]).props_('crate-pile', [[28, 66], [48, 70]]).prop('banner-hanging-tall', 38, 62).prop('bone-heap', 29, 70);
   b.light(38, 68, 20, 30, '#ffd27a').light(29, 62, 15, 20, '#ffb35c').light(47, 62, 15, 20, '#ffb35c').light(28, 76, 15, 20, '#ffb35c').light(48, 76, 15, 20, '#ffb35c').light(43, 71, 10, 15, '#ffd27a');
-  b.encounter('Court of the Rat King', [28, 62, 21, 15], [['wererat', 1]], 'high');
+  b.encounter('Court of the Rat King', [28, 62, 21, 15], [['ratKingWererat', 1]], 'high');
 
   // ----- Jory's den and the royal treasury (behind the throne room) -----
   b.floor(49, 69, 3, 1, 'brick-floor').door(48, 69, 'e', 'secret');
@@ -399,13 +399,13 @@ export const RAT_KING_SEWERS: Adventure = {
   ],
   npcs: [
     {
-      id: 'pf_rkjory', name: 'Jory Flint', title: 'the Rat King of Lower Wick', kind: 'monster', art: 'wererat', monsterId: 'wererat',
+      id: 'pf_rkjory', name: 'Jory Flint', title: 'the Rat King of Lower Wick', kind: 'monster', art: 'wererat', monsterId: 'ratKingWererat',
       wants: 'Justice for Lower Wick, the lamps lit again, and the children safe. Also, secretly, to stop being a rat.',
       knows: 'Every pipe under the city, every secret of the quarter, and exactly how much lamp tax Grumm has stolen (212 gp a year, for six years).',
       voice: 'Grand and theatrical, like a bad actor playing a king ("We are DISPLEASED"). When he forgets himself, he talks like a tired working man.',
       appearance: 'A scrawny man of forty in a patched lamplighter\'s coat, with whiskers that are a little too long and a brass lamp-snuffer worn as a crown. In rat form, a hunched grey rat-man the size of a door.',
       backstory: 'The last lamplighter of Lower Wick. Cheated by Warden Grumm, beaten by the Brass Collars and thrown in the sewer, where a dying wererat bit him. He thinks the rats chose him.',
-      gmNotes: 'Talking to the King: he starts hostile but listening. Each of these lowers the DC of a Persuasion check to end it peacefully (start at DC 16, -3 for each): the lamp-tax book as proof, a promise to take it to the council, the lamps of Dead Lamp Lane lit, a safe place for the urchins (Mabel will take them on), Old Nan\'s word. At DC 10 or less he agrees without a roll. In a fight he uses his hybrid form (immune to non-silvered weapons), hurls junk (hand crossbow stats), calls the rats with a squeak (they are only a distraction: they make the ground difficult) and flees at 10 HP through a rat hole to his den. He never fights to the death, and never harms a child.',
+      gmNotes: 'Talking to the King: he starts hostile but listening. Each of these lowers the DC of a Persuasion check to end it peacefully (start at DC 16, -3 for each): the lamp-tax book as proof, a promise to take it to the council, the lamps of Dead Lamp Lane lit, a safe place for the urchins (Mabel will take them on), Old Nan\'s word. At DC 10 or less he agrees without a roll. In a fight he uses the Rat King stat block (an original Lair Labs wererat): his hybrid form (immune to non-silvered weapons), his lamplighter\'s hook, Hurl Junk, King of the Drains to call the rats with a squeak (they are only a distraction: they make the ground difficult), and Bolt-Hole to flee at 10 HP through a rat hole to his den. He never fights to the death, and never harms a child.',
     },
     {
       id: 'pf_rkmabel', name: 'Mabel Gristle', title: 'landlady of the Gutter Swan', kind: 'npc', art: 'innkeeper', shared: true,

@@ -290,7 +290,7 @@ function varrow() {
     label: [36, 60],
   });
   b.props_('cage', [[29, 60], [31, 60]]).prop('firewood', 42, 60).prop('wagon', 38, 61, 90).prop('stump', 34, 61).prop('gm-secret-door', 30, 62, 0, { gm: true });
-  b.encounter('The first hunt', [27, 49, 18, 14], [['werewolf', 5], ['direWolf', 7]], 'high');
+  b.encounter('The first hunt', [27, 49, 18, 14], [['werewolfGreyAlpha', 1], ['werewolf', 4], ['direWolf', 7]], 'high');
 
   // ---------- outside, south: the wolf trail, the bone hollow and the ford ----------
   b.area('Wolf trail', [[29, 63, 3, 5]], { gm: 'A narrow trail worn by paws from the hidden gate to the bone hollow. Orrin\'s journal mentions it.', label: [30, 65] });
@@ -478,7 +478,7 @@ function deepWood() {
   b.prop('idol-colossal', 37, 5).prop('altar', 37, 7).prop('magic-circle', 37, 10).props_('brazier', [[35, 7], [39, 7]]).props_('pillar-broken', [[33, 8], [41, 8], [33, 13], [41, 13]]).prop('column-fallen', 34, 11, 90).props_('rubble-pile', [[40, 14], [32, 6]]).prop('chains-hanging', 36, 8).prop('blood-pool', 38, 9, 0, { gm: true }).prop('candle-ring', 37, 9).props_('ferns', [[42, 6], [32, 15]]);
   b.rubble(39, 13, 2, 2);
   b.light(35, 7, 15, 20, '#ff6a3a').light(39, 7, 15, 20, '#ff6a3a');
-  b.encounter('The binding', [30, 5, 15, 12], [['werewolf', 5], ['direWolf', 7]], 'high');
+  b.encounter('The binding', [30, 5, 15, 12], [['werewolfGreyAlpha', 1], ['werewolf', 4], ['direWolf', 7]], 'high');
   b.area('Shrine forecourt', [[31, 17, 13, 5]], {
     read: 'Broad steps climb to the shrine between toppled columns. Wolf statues line the way, every one with its head smashed off.',
     gm: 'Two werewolves would normally keep watch here; if the heroes came quietly (DC 14 Stealth as a group) they are inside at the altar instead. The steps give cover (half cover behind the columns). From here you can hear Gunnar\'s voice, chanting.',
@@ -548,13 +548,13 @@ export const BLOOD_MOON_VARROW: Adventure = {
   ],
   npcs: [
     {
-      id: 'pf_bvgunnar', name: 'Gunnar Vossmark', title: 'the old millmaster', kind: 'monster', art: 'werewolf', monsterId: 'werewolf',
+      id: 'pf_bvgunnar', name: 'Gunnar Vossmark', title: 'the old millmaster', kind: 'monster', art: 'werewolf', monsterId: 'werewolfGreyAlpha',
       wants: 'His mill, his seat and his family back: all of them, on four legs and loyal to him forever.',
       knows: 'The binding rite, who he has bitten and when, the hidden gate in the south stakes, and that the moon-cup lies sealed beneath the shrine.',
       voice: 'Soft, slow and fond. Calls everyone "lad" or "lass", and chuckles before he says anything cruel.',
       appearance: 'A stooped old man with a white streak through his grey hair, a blackthorn cane and a heavy wool shawl. As a wolf he is huge and grey, with the same white streak down his spine.',
       backstory: 'Forty years master of the mill and the council, until the vote last spring. He has never forgiven Mattias for standing there and letting it happen.',
-      gmNotes: 'Werewolf stat block. In Part 1 he joins the first hunt as the great grey wolf for two rounds only, then leaps the stakes and flees. At the shrine he is the alpha: give him 90 hit points, and wolves and werewolves within 30 feet of him add 2 to their attack rolls. If he dies before the moon sets on the third night, the curable ones fall to the ground human, sobbing. If he dies early in Part 1, Henrik takes his place at the altar, and the curable ones break free more easily (DC 12 instead of DC 15).',
+      gmNotes: 'Grey Alpha stat block. In Part 1 he joins the first hunt as the great grey wolf for two rounds only, then leaps the stakes and flees. At the shrine he is the alpha: wolves and werewolves within 30 feet of him add 2 to their attack rolls (his Pack Lord trait), and his howl calls the whole pack onto one target. If he dies before the moon sets on the third night, the curable ones fall to the ground human, sobbing. If he dies early in Part 1, Henrik takes his place at the altar (use the Grey Alpha stat block for him), and the curable ones break free more easily (DC 12 instead of DC 15).',
     },
     {
       id: 'pf_bvmattias', name: 'Mattias Vossmark', title: 'head of the village council', kind: 'npc', art: 'noble', shared: true,

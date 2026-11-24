@@ -77,7 +77,7 @@ function seetheGardens() {
     gm: `Emeric's own path to the grave. Pushing through is difficult ground and every creature takes 3 (1d6) piercing damage from thorns unless it moves at half speed. A DC 14 Survival finds the gardener's footprints going up, alone, night after night.`,
     label: [73, 22],
   });
-  b.encounter("The mother rose", [62, 1, 17, 20], [['treant', 1], ['shamblingMound', 2]], 'high');
+  b.encounter("The mother rose", [62, 1, 17, 20], [['motherRose', 1], ['shamblingMound', 2]], 'high');
 
   // ================= the cascade: hot water from the grotto runs down the whole west side to the canal =================
   b.water(5, 12, 2, 61);
@@ -212,7 +212,7 @@ function seetheGardens() {
   });
   b.prop('fountain', 19, 56).prop('statue', 18, 55).props_('bench', [[17, 57], [20, 54]]).props_('lantern-hanging', [[11, 49], [25, 51], [13, 61], [27, 59], [21, 49]]).props_('hedge', [[9, 52], [15, 48], [29, 56], [23, 62], [11, 58], [27, 50]]).props_('statue-tall-winged', [[13, 53], [25, 57]]).props_('flowers', [[15, 59], [29, 49]]).prop('gm-secret-door', 29, 62, 0, { gm: true });
   b.light(19, 56, 10, 15, LANTERN).light(11, 49, 5, 10, LANTERN).light(27, 59, 5, 10, LANTERN);
-  b.encounter('The hedges close', [9, 48, 22, 16], [['awakenedTree', 6], ['awakenedShrub', 12]], 'low');
+  b.encounter('The hedges close', [9, 48, 22, 16], [['livingTopiary', 6], ['awakenedShrub', 12]], 'low');
 
   b.area('Lantern Lawn', [[32, 47, 19, 16]], {
     read: `Hundreds of paper lanterns float over a lawn as smooth as green velvet. Musicians play under a striped marquee, footmen glide between tables of sugared fruit, and every guest wears the same white rose pinned over the heart.`,
@@ -243,13 +243,13 @@ function seetheGardens() {
   b.building('The Orchid House', 65, 48, 14, 15, {
     mat: 'marble',
     read: `A palace of glass, silver-lit by the moon. Orchids, lilies and ferns fill every bed, and in the middle stands the Duchess's pride: a bower of white roses shaped like a wedding arch, its petals glowing faintly in the dark. Inside the arch, three slender figures stand as still as statues, their faces made of rose petals.`,
-    gm: `The display where the Midsummer Roses were cut for the guests. The petal-figures are the rose's daughters (dryads), each grown with the face of an eight-year-old girl. They speak in one sweet voice: "You stepped on me. You all stepped on me." The bower itself is a shambling mound. They attack anyone who cuts a rose or threatens the gardener; otherwise they watch, and answer questions in riddles (they know the heir "must go first, because he went first"). Fire makes them flee.`,
+    gm: `The display where the Midsummer Roses were cut for the guests. The petal-figures are the rose's daughters, each grown with the face of an eight-year-old girl. They speak in one sweet voice: "You stepped on me. You all stepped on me." The bower itself is a shambling mound. They attack anyone who cuts a rose or threatens the gardener; otherwise they watch, and answer questions in riddles (they know the heir "must go first, because he went first"). Fire makes them flee.`,
     doors: [[65, 56, 'w', 'closed', 'door-double'], [71, 48, 'n', 'closed'], [71, 62, 's', 'closed']],
     windows: [[65, 50, 'w'], [65, 53, 'w'], [65, 59, 'w'], [68, 48, 'n'], [74, 48, 'n'], [77, 48, 'n'], [78, 51, 'e'], [78, 54, 'e'], [78, 57, 'e'], [78, 60, 'e'], [67, 62, 's'], [75, 62, 's']],
   });
   b.props_('flowers', [[67, 50], [76, 50], [67, 60], [76, 60], [72, 51]]).props_('ferns', [[66, 54], [77, 56]]).props_('tree-palm', [[67, 57], [76, 53]]).prop('archway-grand', 71, 55).prop('fountain-grand', 71, 58).props_('plinth-display', [[69, 52], [74, 52]]).props_('bench', [[68, 61], [74, 61]]).props_('crop-rows', [[73, 56], [68, 55]]).prop('mushrooms', 77, 61);
   b.light(71, 55, 15, 20, GREEN).light(67, 50, 5, 10, GREEN).light(76, 60, 5, 10, GREEN);
-  b.encounter('Thorns in the Orchid House', [65, 48, 14, 15], [['dryad', 4], ['shamblingMound', 1], ['violetFungus', 4]], 'low');
+  b.encounter('Thorns in the Orchid House', [65, 48, 14, 15], [['roseDaughter', 4], ['shamblingMound', 1], ['violetFungus', 4]], 'low');
 
   b.props_('lamp-post', [[31, 64], [52, 64], [63, 47]]).props_('hedge-long', [[31, 50], [63, 64]]).props_('flowers', [[8, 47], [31, 59]]).prop('tree-birch', 8, 64);
   b.light(31, 64, 10, 15, LANTERN).light(52, 64, 10, 15, LANTERN);
@@ -321,7 +321,7 @@ function seetheGardens() {
     const x = 2 + Math.floor(r() * 76), y = 23 + Math.floor(r() * 22);
     if (b.isFloor(x, y) && b.cellAt(x, y) === 1 && !(x >= 9 && x <= 24 && y >= 27 && y <= 37) && !(x >= 32 && x <= 61 && y >= 23 && y <= 42)) b.prop(r() < 0.5 ? 'flowers' : 'bush', x, y);
   }
-  b.note(70, 9, `The mother rose: treant stat block, but she cannot leave the terrace (her roots hold her). Minus 30 hit points if the warren's taproot was cut. If the truth is confessed at the grave, she does not fight.`);
+  b.note(70, 9, `The mother rose: Mother Rose stat block. She cannot leave the terrace (her roots hold her), but her thorns burst up anywhere on its soil. Minus 30 hit points if the warren's taproot was cut. If the truth is confessed at the grave, she does not fight.`);
   b.note(37, 38, `Thrush attacks when the heir is left alone with her, or when Sir Leopold is named. She flees by the cascade if reduced below half.`);
   return b.build();
 }
@@ -402,10 +402,10 @@ export const POISONED_GARDEN: Adventure = {
       gmNotes: 'Red herring and best ally. Her poison ring and her open delight in the poisoning make her look guilty (Captain Toller suspects her second). Treat her as the heroes\' encyclopedia: with a DC 13 Persuasion she tells them the Posy story and suggests they "ask the gardener where his daughter is buried".',
     },
     {
-      id: 'pf_pgdposy', name: 'The Rose', title: 'the mother rose, what is left of Posy Greaves', kind: 'monster', art: 'treant', monsterId: 'treant',
+      id: 'pf_pgdposy', name: 'The Rose', title: 'the mother rose, what is left of Posy Greaves', kind: 'monster', art: 'treant', monsterId: 'motherRose',
       wants: 'For the people who trampled her to know what it feels like. For her papa to stay.', knows: 'Everything her roots touch: every guest wearing her flowers, every word said in the garden. Not that she is dead; she thinks she has simply grown.',
       voice: 'A little girl\'s voice from a hundred blossoms at once, sweet and sulky. "You\'re treading on me."', appearance: 'A briar the size of a house that stands up out of a child\'s grave: braided stems for limbs, thorns as long as daggers, and at its heart a single white rose that never closes.',
-      gmNotes: 'Treant stat block; she cannot leave the Forsaken Terrace. Fire does double harm to her. Minus 30 hit points if her taproot in the warren was cut. If the truth of Posy\'s death is confessed at the grave by the Duchess or Aurelian, and Emeric or a hero speaks kindly to her (DC 14 Persuasion; no roll if Emeric does it), she stops fighting and lets her roots go: only her two mindless guardians fight on. When she dies or lets go, every Midsummer Rose in the garden withers within the hour.',
+      gmNotes: 'Mother Rose stat block; she cannot leave the Forsaken Terrace, but she can strike anyone standing on its soil. Fire does double harm to her and stops her regrowing. Minus 30 hit points if her taproot in the warren was cut. If the truth of Posy\'s death is confessed at the grave by the Duchess or Aurelian, and Emeric or a hero speaks kindly to her (DC 14 Persuasion; no roll if Emeric does it), she stops fighting and lets her roots go: only her two mindless guardians fight on. When she dies or lets go, every Midsummer Rose in the garden withers within the hour.',
     },
   ],
   handouts: [
@@ -458,7 +458,7 @@ export const POISONED_GARDEN: Adventure = {
         {
           room: 'The Orchid House', title: 'Rose-daughters', encounter: 'Thorns in the Orchid House',
           read: 'In the glowing bower of white roses stand three slender figures, as still as statues, with faces made of petals. As you come closer, every face turns to you at once, and they are all the same face: a little girl\'s. "You\'re not wearing me," they say together. "Why aren\'t you wearing me?"',
-          gm: 'The rose-daughters (dryads) and the bower (shambling mound) only fight if someone cuts a rose, threatens the gardener or attacks. They answer questions as a sulky child would: "He stepped on me first, so he goes first." "Papa grew me back." A DC 14 Nature check spots that the bower\'s roots run up the hill toward the east terrace. Fire makes the daughters flee.',
+          gm: 'The rose daughters and the bower (shambling mound) only fight if someone cuts a rose, threatens the gardener or attacks. They answer questions as a sulky child would: "He stepped on me first, so he goes first." "Papa grew me back." A DC 14 Nature check spots that the bower\'s roots run up the hill toward the east terrace. Fire makes the daughters flee.',
           treasure: 'On the gardener\'s hook by the north door: a wand of web he uses to train climbing vines.',
         },
         {
@@ -500,7 +500,7 @@ export const POISONED_GARDEN: Adventure = {
         {
           room: 'The Forsaken Terrace', title: 'The mother rose', encounter: 'The mother rose',
           read: 'Thousands of roses turn toward you at once. Over a child\'s grave, a briar the size of a house unfolds itself and stands, thorns as long as swords, and from every blossom on the terrace a little girl\'s voice says: "You\'re treading on me."',
-          gm: 'The climax. There are two ways to win. Fight: the Rose (treant, minus 10 for burned trays and 30 for a cut taproot) and two shambling mounds; if Emeric sided with her, he fights too. Or talk: if the Duchess or Aurelian confesses the truth here, and Emeric or a hero speaks kindly to her (DC 14 Persuasion, no roll for Emeric), the Rose lets go and only the mindless mounds fight. Either way, when she dies or lets go, every Midsummer Rose in the garden withers within the hour and the heir wakes at dawn.',
+          gm: 'The climax. There are two ways to win. Fight: the Rose (Mother Rose stat block, minus 10 for burned trays and 30 for a cut taproot) and two shambling mounds; if Emeric sided with her, he fights too. Or talk: if the Duchess or Aurelian confesses the truth here, and Emeric or a hero speaks kindly to her (DC 14 Persuasion, no roll for Emeric), the Rose lets go and only the mindless mounds fight. Either way, when she dies or lets go, every Midsummer Rose in the garden withers within the hour and the heir wakes at dawn.',
           treasure: 'The Duchess\'s reward: 750 gp each and a ring of protection for whoever saved her son. If Emeric lives and is forgiven, his staff of the woodlands. Dame Verity gives the heroes a periapt of proof against poison, "because you\'ve earned a dull life for a while".',
         },
       ],

@@ -227,13 +227,13 @@ function emberCourt() {
   b.room('Treasury', 52, 6, 8, 10, {
     mat: 'stone-flagstone-warm',
     read: 'A vault lined with shelves of brass. Coins, crowns, caged gems and bottles that hum. In the middle stands a statue of the prince in iron, and as the door opens, its head turns.',
-    gm: 'The brass warden (iron golem stat block) attacks anyone without the prince\'s signet. The vault door from the Throne Hall is locked (DC 25 Thieves\' Tools, or the signet). The servants\' route reaches a secret panel in the east wall that the warden does not watch: a DC 20 Stealth check gets in and out unseen. Here: the Hearth-Cage, Pyrrhax\'s collar key and the compact.',
+    gm: 'The brass warden, a furnace-hearted giant of polished brass (Brass Warden stat block), attacks anyone without the prince\'s signet. The vault door from the Throne Hall is locked (DC 25 Thieves\' Tools, or the signet). The servants\' route reaches a secret panel in the east wall that the warden does not watch: a DC 20 Stealth check gets in and out unseen. Here: the Hearth-Cage, Pyrrhax\'s collar key and the compact.',
   });
   b.door(51, 10, 'e', 'locked', 'door-iron');
   b.hall(50, 10, 51, 10);
   b.props_('treasure-pile', [[53, 7], [58, 7], [53, 14]]).props_('coin-stacks', [[58, 14], [55, 7]]).prop('display-case', 59, 10).prop('jewelry-box', 54, 11).prop('reliquary', 57, 12).prop('orb-pedestal', 56, 9).prop('treasure-urn', 52, 12).prop('statue-knight', 55, 13);
   b.light(56, 9, 10, 20, '#fff1c4');
-  b.encounter('The brass warden', [52, 6, 8, 10], [['iron-golem', 1]], 'low');
+  b.encounter('The brass warden', [52, 6, 8, 10], [['emberBrassWarden', 1]], 'low');
 
   b.cave('The Sunken Crucible', 27, 13, 5, 6, {
     seed: 49, mat: 'cave-floor',

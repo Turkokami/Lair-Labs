@@ -121,7 +121,7 @@ function underCrownField() {
   b.tunnel([[21, 73], [23, 76], [27, 75], [29, 71]], 2, { seed: 151 });
   b.area("The worm's tunnel", [[21, 73, 7, 4]], {
     read: 'A perfectly round tunnel, glassy-smooth, bored through solid rock. The walls are scored with spiral rings, like the inside of a gun barrel.',
-    gm: 'Bored by the purple worm that cracked the Stillward a month ago. It is a quiet back way into the machine graveyard, and the worm\'s way home: if the worm is alive, there is a 1 in 6 chance each time the heroes use it that they feel it coming (DC 15 Perception to hear it first).',
+    gm: 'Bored by the quickiron borer that cracked the Stillward a month ago. It is a quiet back way into the machine graveyard, and the worm\'s way home: if the borer is alive, there is a 1 in 6 chance each time the heroes use it that they feel it coming (DC 15 Perception to hear it first).',
     label: [24, 75],
   });
   b.props_('bones', [[23, 75], [27, 74]]).prop('skeleton-lying', 25, 76);
@@ -131,7 +131,7 @@ function underCrownField() {
   b.cave('The Stillward', 15, 61, 5, 3, {
     seed: 153, mat: 'stone-flagstone',
     read: 'A wall of bronze and black iron, forty feet high, closes off the tunnel ahead. Two hands are cast on it, one bronze and one iron, clasped. The wall is split from floor to ceiling, and the crack is wide enough to drive a cart through.',
-    gm: 'The Stillward: the seal the apprentices of both nations built together 312 years ago, when their masters died and the machines would not stop. The inscription (DC 15 History, or Gisla knows the old letters) says: "Here we left the war. Do not go and fetch it." The crack runs from a round bore-hole low on the wall: something huge tunnelled into the seal from below (a purple worm). The general\'s sentries guard the crack from the camp side.',
+    gm: 'The Stillward: the seal the apprentices of both nations built together 312 years ago, when their masters died and the machines would not stop. The inscription (DC 15 History, or Gisla knows the old letters) says: "Here we left the war. Do not go and fetch it." The crack runs from a round bore-hole low on the wall: something huge tunnelled into the seal from below (a quickiron borer, a metal-eating wyrm). The general\'s sentries guard the crack from the camp side.',
   });
   b.props_('gate-iron-tall', [[12, 60], [18, 60]]).prop('rune-stone', 15, 59).props_('ceiling-rubble', [[14, 62], [17, 63]]).prop('sinkhole', 13, 63).prop('torch-standing', 16, 61);
   b.light(16, 61, 10, 20);
@@ -215,13 +215,13 @@ function underCrownField() {
   ]);
   b.area('Brazen trench', [[17, 13, 7, 38]], {
     read: 'A zig-zag ditch lined with bronze sheeting, deep enough to hide a giant to the waist. Bronze soldiers stand on the firing steps, faces to the dark, waiting for an order that never changes.',
-    gm: 'The Aumery front line. Its machines ignore anyone wearing the Brazen sun badge (there are dozens on the dead). Firing steps lead up and out into no-man\'s land; the south end opens toward the general\'s camp. Behind the line is a dugout where the crews sat out the guns: a skeleton still holds a hand of cards, and a footlocker holds 40 sun badges. If the heroes come through without badges, the line wakes.',
+    gm: 'The Aumery front line. Its machines ignore anyone wearing the Brazen sun badge (there are dozens on the dead). Firing steps lead up and out into no-man\'s land; the south end opens toward the general\'s camp. Behind the line is a dugout where the crews sat out the guns: a skeleton still holds a hand of cards, and a footlocker holds 40 sun badges. If the heroes come through without badges, the line wakes: the bronze soldiers are clockwork troopers, backed by the stone golem and shield guardians of the garrison.',
     label: [19, 28],
   });
   b.props_('stairs-up', [[19, 15], [22, 25], [19, 34], [22, 43]]).props_('sandbags', [[21, 22], [18, 31], [21, 40], [18, 48]]).props_('statue-knight', [[22, 28], [18, 36]]).props_('skeleton-lying', [[19, 19], [21, 45]]).prop('spear-rack', 18, 25, 90).props_('lantern-hook', [[19, 17], [21, 36]]).prop('weapon-barrel', 22, 33).prop('cannon', 22, 27, 90);
   b.light(19, 17, 10, 15).light(21, 36, 10, 15);
   b.props_('bunk-bed', [[18, 24], [18, 28]]).prop('table-cards', 19, 26).prop('stove', 20, 23).prop('skeleton-seated', 19, 27).prop('footlocker', 20, 29); // the dugout behind the line
-  b.encounter('The Brazen line', [17, 13, 7, 38], [['stone-golem', 1], ['shield-guardian', 2], ['animated-armor', 6]], 'low');
+  b.encounter('The Brazen line', [17, 13, 7, 38], [['stone-golem', 1], ['shield-guardian', 2], ['clockworkTrooper', 6]], 'low');
 
   b.area("The fortress's shadow", [[20, 13, 4, 8]], {
     read: 'Between the trench and a forearm of riveted iron as long as a street, the air is still. A bronze hand the size of a barn door lies on the ground here, palm up.',
@@ -239,7 +239,7 @@ function underCrownField() {
   b.props_('caltrops', [[27, 36], [41, 29], [36, 47], [44, 43]]).props_('brambles', [[29, 44], [43, 35], [49, 40], [32, 50]]).props_('skeleton-lying', [[31, 38], [44, 33], [40, 49]]).props_('burning-wreckage', [[34, 34], [46, 44]]).prop('siege-tower', 43, 38).prop('column-fallen', 29, 30, 30).prop('ballista', 48, 36).prop('statue-tall-knight', 26, 34, 90).prop('war-banner', 37, 46).prop('cannon', 31, 46, 45).prop('battering-ram', 47, 28).prop('crumbling-ledge', 45, 50);
   for (const [cx, cy] of craters.slice(0, 4)) b.prop('pit-deep', cx, cy);
   b.light(34, 34, 15, 25, '#ff7a2e').light(46, 44, 15, 25, '#ff7a2e');
-  b.encounter('Gravemaker walks', [26, 28, 24, 12], [['iron-golem', 1], ['gorgon', 3]], 'moderate');
+  b.encounter('Gravemaker walks', [26, 28, 24, 12], [['gravemaker', 1], ['gorgon', 3]], 'moderate');
 
   b.area('The White Crater', [[35, 37, 7, 7]], {
     read: 'One crater is different. A white flag on a broken pole still stands at its lip. In the bottom, two skeletons lie side by side, one in bronze-buttoned cloth, one in an iron-grey apron, and between them a paper sealed in glass.',
@@ -267,13 +267,13 @@ function underCrownField() {
   b.room('The Knee-Gate', 37, 18, 6, 6, {
     mat: 'dungeon-slab',
     read: 'The inside of the knee is a gatehouse of riveted plate. Two iron knights flank an inner portcullis, and swords hang in the air between them, turning slowly, points out.',
-    gm: 'A brass plate by the portcullis tells who built the Oathmother (handout). The wardens here attack anyone who does not carry an Order-Key. A key held up makes them stand aside. The general\'s men got through by losing a dozen soldiers; their bodies are still here.',
+    gm: 'A brass plate by the portcullis tells who built the Oathmother (handout). The wardens here (two Knee-Gate Wardens, with four flying swords turning between them) attack anyone who does not carry an Order-Key. A key held up makes them stand aside. The general\'s men got through by losing a dozen soldiers; their bodies are still here.',
   });
   b.door(39, 23, 's', 'closed', 'door-double').door(40, 23, 's', 'closed', 'door-double');
   b.hall(39, 15, 39, 17, 2).door(39, 17, 's', 'open', 'door-iron').door(40, 17, 's', 'open', 'door-iron').door(39, 14, 's', 'closed', 'door-iron').door(40, 14, 's', 'closed', 'door-iron');
   b.props_('statue-tall-knight', [[37, 19], [42, 19]]).prop('portcullis', 39, 18).props_('skeleton-lying', [[38, 22], [41, 21]]).prop('gear-pile', 42, 22).prop('brazier-everburning', 37, 22);
   b.light(37, 22, 10, 15, '#7fb8ff');
-  b.encounter('The knee wardens', [37, 18, 6, 6], [['shield-guardian', 2], ['stone-golem', 1], ['flying-sword', 4]], 'low');
+  b.encounter('The knee wardens', [37, 18, 6, 6], [['kneeGateWarden', 2], ['flying-sword', 4]], 'low');
 
   b.room('Gun deck', 28, 3, 5, 13, {
     mat: 'wood-planks-dark',
@@ -482,7 +482,7 @@ function underCrownField() {
   b.building('Troop car', 47, 58, 5, 3, {
     mat: 'wood-planks-dark',
     read: 'Benches along both walls, and soldiers in iron-grey sitting on them, shoulder to shoulder, as if the train might start again at any moment. None of them has a face.',
-    gm: 'The Hammerfall was the Compact\'s armoured train, shelled on the bridge in the war\'s last week. Its crew never got off. Animated armour fills the benches, and the dead crew haunt it as wraiths and specters.',
+    gm: 'The Hammerfall was the Compact\'s armoured train, shelled on the bridge in the war\'s last week. Its crew never got off. Clockwork troopers fill the benches, and the dead crew haunt it as wraiths and specters.',
     doors: [[47, 59, 'w', 'closed', 'door-iron'], [49, 58, 'n', 'closed', 'door-iron']],
   });
   b.building('Gun car', 52, 58, 5, 3, {
@@ -500,7 +500,7 @@ function underCrownField() {
   });
   b.props_('bench-long', [[48, 58], [48, 60]]).prop('weapon-rack', 50, 60).prop('cannon', 54, 59).prop('barrel-stack', 53, 60).prop('stove', 59, 59).prop('lever', 61, 58).prop('strongbox', 61, 60).prop('lantern-hanging', 49, 59);
   b.light(49, 59, 5, 10).light(59, 59, 5, 10, '#ff9a3c');
-  b.encounter('The last run of the Hammerfall', [47, 58, 16, 3], [['shield-guardian', 1], ['animated-armor', 8], ['wraith', 2], ['specter', 4]], 'low');
+  b.encounter('The last run of the Hammerfall', [47, 58, 16, 3], [['shield-guardian', 1], ['clockworkTrooper', 8], ['wraith', 2], ['specter', 4]], 'low');
 
   // ================= THE MACHINE GRAVEYARD (south) =================
   b.paint(24, 52, 23, 24, 'dirt');
@@ -508,13 +508,13 @@ function underCrownField() {
   b.mud(27, 57, 3, 2).mud(35, 66, 4, 2).rubble(33, 60, 2, 2).rubble(25, 66, 2, 3).rubble(43, 62, 2, 2);
   b.area('Machine graveyard', [[24, 52, 23, 24]], {
     read: 'This was the rail yard where both sides hauled their broken machines. Now it is a valley of dead giants: ribcages of bronze, heads of iron as big as houses, a hand the size of a tavern lying palm-up in the mud. In places the ground has been bored through, in round, glassy holes.',
-    gm: 'A purple worm came up through here a month ago, cracked the Stillward from below, and found that the dead machines are full of quickiron, which it likes. It surfaces when it feels footsteps: a DC 16 group Stealth check avoids it. Salvage: 1 hour and a DC 15 Investigation finds 2,000 gp of quickiron (heavy: 200 lb) and a working animated shield.',
+    gm: 'A quickiron borer came up through here a month ago, cracked the Stillward from below, and found that the dead machines are full of quickiron, which it likes. It surfaces when it feels footsteps: a DC 16 group Stealth check avoids it. Salvage: 1 hour and a DC 15 Investigation finds 2,000 gp of quickiron (heavy: 200 lb) and a working animated shield.',
     label: [33, 58],
   });
   b.props_('mine-rails', [[25, 59], [26, 59], [27, 59], [28, 59], [29, 59], [30, 59], [31, 59], [32, 59], [33, 59], [34, 59], [35, 59], [36, 59], [37, 59], [41, 59], [42, 59], [43, 59], [44, 59], [45, 59], [46, 59]]);
   b.props_('giant-ribcage', [[27, 54], [36, 70]]).prop('statue-tall-knight', 34, 55, 90).prop('statue-tall-winged', 44, 66, 270).props_('column-collapsed', [[29, 68], [40, 63]]).props_('gear-pile', [[31, 56], [43, 72], [26, 62]]).prop('anvil', 35, 63).props_('burning-wreckage', [[37, 61], [28, 72]]).prop('mine-cart', 39, 59).prop('sinkhole', 33, 68).prop('pit-deep', 41, 54).prop('debris-wood', 45, 57).prop('cannon', 30, 61, 120);
   b.light(37, 61, 15, 20, '#ff7a2e').light(28, 72, 10, 20, '#ff7a2e');
-  b.encounter('The seal-breaker', [26, 54, 18, 18], [['purple-worm', 1]], 'low');
+  b.encounter('The seal-breaker', [26, 54, 18, 18], [['quickironBorer', 1]], 'low');
 
   return b.build();
 }
@@ -530,7 +530,7 @@ export const CLOCKWORK_WAR: Adventure = {
   pitch:
     'Three hundred years ago two nations of artificers went to war under the mountain Hollowcrown, with soldiers of stone and bronze and iron. The nations are long gone. The war is not. Two weeks ago, the miners of Pennyrock broke through into a sealed cavern, and heard it: guns, and marching, and the slow tick of a machine as big as a castle. Now the miners are dying, a general of the realm has gone down with two companies and not come back, and the ground under Pennyrock shakes every hour, on the hour.',
   secret:
-    'The Brazen Crown of Aumery and the Iron Compact of Drask fought over the quickiron seam under Hollowcrown. Each side\'s machines obey an Order-Engine in its command bunker, and both engines hold the same standing order: "Hold the field until the enemy yields." Neither nation survived to yield. The two Chief Artificers, Isembard Oradel (Brazen) and Ilka Vrell (Compact), met under a white flag to end it, but the only way to lift a standing order is in the Heart of the Oathmother, the walking fortress both nations built together when they were friends, with both Order-Keys turned at once. Before they could, a shell from Gravemaker, the Compact\'s own juggernaut, killed them both. Their apprentices sealed the cavern behind the Stillward and fled. The ghosts went home to their bunkers, each sure the other side broke the truce. A month ago a purple worm cracked the seal. Now General Marek Esterhal has come down with a battle-mage, Cyprian Arvanne. He does not want to end the war: he wants the Oathmother. Arvanne is working a ritual to wake her Heart without the keys. When it is done, the general will sit in her Crown, walk her out through Pennyrock and on to Kestrelgate, and make himself king.',
+    'The Brazen Crown of Aumery and the Iron Compact of Drask fought over the quickiron seam under Hollowcrown. Each side\'s machines obey an Order-Engine in its command bunker, and both engines hold the same standing order: "Hold the field until the enemy yields." Neither nation survived to yield. The two Chief Artificers, Isembard Oradel (Brazen) and Ilka Vrell (Compact), met under a white flag to end it, but the only way to lift a standing order is in the Heart of the Oathmother, the walking fortress both nations built together when they were friends, with both Order-Keys turned at once. Before they could, a shell from Gravemaker, the Compact\'s own juggernaut, killed them both. Their apprentices sealed the cavern behind the Stillward and fled. The ghosts went home to their bunkers, each sure the other side broke the truce. A month ago a quickiron borer, a metal-eating wyrm, cracked the seal. Now General Marek Esterhal has come down with a battle-mage, Cyprian Arvanne. He does not want to end the war: he wants the Oathmother. Arvanne is working a ritual to wake her Heart without the keys. When it is done, the general will sit in her Crown, walk her out through Pennyrock and on to Kestrelgate, and make himself king.',
   hooks: [
     'Gisla Coalby, foreman of Pennyrock, begs for help: iron bulls are killing her miners, and the general\'s soldiers are dragging the rest down to dig.',
     'The realm\'s spymaster has noticed General Esterhal took two companies without orders, and a battle-mage with him. She wants to know why, quietly, and will pay 20,000 gp to have him stopped if it is treason.',
@@ -592,10 +592,10 @@ export const CLOCKWORK_WAR: Adventure = {
       gmNotes: 'Iron golem stat block. Wall of force holds it back while Arvanne concentrates. Fire heals it: the Engine hall\'s furnace is next door.',
     },
     {
-      id: 'pf_cwrgravemaker', name: 'Gravemaker', title: 'the Iron Compact\'s juggernaut', kind: 'monster', art: 'ironGolem', monsterId: 'ironGolem',
+      id: 'pf_cwrgravemaker', name: 'Gravemaker', title: 'the Iron Compact\'s juggernaut', kind: 'monster', art: 'ironGolem', monsterId: 'gravemaker',
       wants: 'To hold the field.', knows: 'Every square of no-man\'s land.',
       voice: 'A howl of steam before it fires.', appearance: 'A walking siege-gun of black iron on four legs, the number VII painted on its flank, iron bulls running at its feet like dogs.',
-      gmNotes: 'Iron golem stat block; its poison breath is a gout of burning gas from its gun. It walks during every Push. A Compact gear badge makes it ignore you. Ilka can stop it with a word if she is brought to it.',
+      gmNotes: 'Gravemaker stat block (its own). It walks during every Push. A Compact gear badge makes it ignore you. Ilka can stop it with a word if she is brought to it.',
     },
   ],
   handouts: [
@@ -664,8 +664,8 @@ export const CLOCKWORK_WAR: Adventure = {
         {
           room: 'Machine graveyard', title: 'The valley of dead giants', optional: true, encounter: 'The seal-breaker',
           read: 'The mud shivers. A dead iron head the size of a house tips over and rolls aside, and the ground beneath it opens like a mouth.',
-          gm: 'The purple worm that broke the Stillward. Footsteps call it (DC 16 group Stealth to avoid). It can be led into a Push to fight Gravemaker, or lured back down its tunnel with a cart of quickiron.',
-          treasure: '2,000 gp of quickiron (200 lb), an animated shield, and in the worm\'s gizzard, a Brazen officer\'s +2 longsword and 1,200 gp of gems.',
+          gm: 'The quickiron borer that broke the Stillward. Footsteps call it (DC 16 group Stealth to avoid). It can be led into a Push to fight Gravemaker, or lured back down its tunnel with a cart of quickiron.',
+          treasure: '2,000 gp of quickiron (200 lb), an animated shield, and in the borer\'s gizzard, a Brazen officer\'s +2 longsword and 1,200 gp of gems.',
         },
         {
           room: 'Troop car', title: 'The last run of the Hammerfall', optional: true, encounter: 'The last run of the Hammerfall',

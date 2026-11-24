@@ -74,6 +74,11 @@ function harrowfield() {
     gm: 'The lamb hole: a collapsed burrow roof, far too narrow for an adult. Dilly chased the last lamb here two dusks ago and the ground gave way under her. A Small hero can squeeze down it (DC 12 Athletics): it drops into the larder burrow under the barn. Ida Gubbins is here, ear to the ground.',
     label: [27, 5],
   });
+  b.area('Lamb hole', [[28, 6, 1, 1]], {
+    gm: 'The narrow way down: a collapsed burrow roof that drops 15 feet into the larder burrow under the barn. Small heroes only, DC 12 Athletics to squeeze down (or climb back up). Medium heroes stick at the shoulders.',
+    label: [28, 6],
+  });
+  b.note(28, 6, 'Lamb hole: drops into the larder burrow (Small heroes only, DC 12 Athletics).');
   b.pit(28, 6, 1, 1).prop('sinkhole', 28, 6).prop('backpack', 29, 7).prop('fence-gate', 27, 11).props_('water-trough', [[23, 2]]).props_('hay-bale', [[32, 2], [23, 9]]).props_('bones', [[25, 4]]).prop('bush', 31, 9).prop('mud-patch', 26, 6);
 
   // ---------- the barn (built by hand so the hole in its floor opens downward) ----------
@@ -221,6 +226,12 @@ function harrowfield() {
     gm: 'The colony\'s food store, and a feast for rats. Giant rats and rat swarms boil out at light or noise. A DC 12 Investigation in the heap finds Dilly\'s other shoe (no blood) and a trail of small footprints in the dirt heading south: she got out alive. The lamb hole from the pasture opens in the roof here.',
   });
   b.props_('bone-heap', [[26, 30], [31, 32]]).prop('giant-ribcage', 28, 31).props_('mud-patch', [[25, 32], [30, 29]]).prop('skull-pile', 32, 30).prop('sack', 24, 31).prop('gm-treasure', 31, 33, 0, { gm: true });
+  b.area('Foot of the lamb hole', [[28, 28, 2, 2]], {
+    gm: 'The lamb hole from the sheep pasture comes down through the roof here: a narrow shaft of collapsed earth with daylight (or moonlight) at the top. Dilly fell down it. A Small hero can climb up it (DC 12 Athletics); nobody bigger fits.',
+    label: [29, 29],
+  });
+  b.prop('ceiling-rubble', 29, 29).prop('mud-patch', 28, 29);
+  b.note(29, 29, 'Lamb hole: the narrow shaft up to the sheep pasture (Small heroes only, DC 12 Athletics).');
   b.encounter('The larder', [23, 28, 11, 7], [['swarmOfRats', 3], ['giantRat', 7]], 'low');
   b.tunnel([[23, 31], [20, 30], [17, 29]], 2, { mat: 'dirt', seed: 504 });
   b.tunnel([[27, 35], [26, 39], [23, 42]], 2, { mat: 'dirt', seed: 505 });
@@ -406,7 +417,7 @@ function harrowfield() {
   b.mud(48, 66, 4, 3).mud(56, 70, 5, 2);
   b.props_('boulder', [[52, 67], [53, 69], [55, 68], [51, 70]]).props_('bone-heap', [[46, 64], [59, 72]]).prop('giant-ribcage', 58, 64).prop('acid-pool', 49, 72).prop('skull-pile', 61, 67).prop('treasure-pile', 56, 66).prop('gm-treasure', 57, 66, 0, { gm: true }).prop('steam-vent', 47, 69);
   b.light(53, 68, 5, 15, '#d6b36a');
-  b.encounter('The Broodmother', [44, 61, 20, 14], [['ankheg', 3]], 'high');
+  b.encounter('The Broodmother', [44, 61, 20, 14], [['ankhegBroodmother', 1], ['ankheg', 2]], 'high');
 
   b.note(36, 22, 'Ways down: the farmhouse cellar, the barn hole, the swallow hole (swim), the big sinkhole in Long Acre, the windmill trapdoor, and (Small heroes only) the lamb hole.');
   b.note(67, 37, 'The feeding bell: ring it three times and an ankheg comes up the feeding run in 2 rounds.');
@@ -490,12 +501,12 @@ export const HARROWFIELD_HIVE: Adventure = {
       gmNotes: 'Uses the scout stat block. A useful guide: with her ear trumpet she can tell which tunnels are empty. She will not go further down than the sinkhole cave ("I catch moles, not monsters").',
     },
     {
-      id: 'pf_hfhgrindmaw', name: 'Old Grindmaw', title: 'the Broodmother', kind: 'monster', art: 'ankheg', monsterId: 'ankheg',
+      id: 'pf_hfhgrindmaw', name: 'Old Grindmaw', title: 'the Broodmother', kind: 'monster', art: 'ankheg', monsterId: 'ankhegBroodmother',
       wants: 'Food, warmth, and her forty eggs safe.',
       knows: 'Only the shaking of the ground, and the sound of a brass bell that means meat.',
       voice: 'Mandibles clicking like a slow loom, and a low grinding, like a millstone turning on nothing.',
       appearance: 'An ankheg the size of a hay wagon, her shell scarred white with old acid burns, her body swollen with eggs.',
-      gmNotes: 'Use the ankheg stat block with maximum hit points (66). She never leaves the brood chamber. If the sluice flooded the chamber she begins the fight with 15 damage. She will not cross burning ground.',
+      gmNotes: 'Uses the Ankheg Broodmother stat block (66 hit points). She never leaves the brood chamber. If the sluice flooded the chamber she begins the fight with 15 damage and her speed is halved. She will not cross burning ground.',
     },
   ],
   handouts: [

@@ -200,7 +200,7 @@ function marrowellFarm() {
   });
   for (const [x, y] of [[66, 40], [70, 40], [74, 40], [78, 40], [66, 52], [70, 52], [74, 52], [78, 52], [66, 56], [74, 56]]) b.prop('crop-rows', x, y);
   b.props_('scarecrow', [[67, 42], [72, 43], [76, 45], [66, 48], [70, 50], [77, 50], [72, 46]]).props_('haystack', [[68, 45], [75, 42], [74, 54]]).props_('hay-bale', [[65, 55], [78, 47]]).prop('gm-treasure', 72, 46, 0, { gm: true });
-  b.encounter('Scarecrows at dusk', [64, 40, 15, 14], [['awakenedShrub', 6], ['swarmOfRats', 3], ['giantRat', 4]], 'low');
+  b.encounter('Scarecrows at dusk', [64, 40, 15, 14], [['hagStrawServant', 6], ['swarmOfRats', 3], ['giantRat', 4]], 'low');
 
   // ---------- the harvest chapel (south-east) ----------
   b.building('Harvest chapel', 60, 62, 10, 8, {
@@ -263,11 +263,11 @@ function marrowellFarm() {
   b.cave('The larder', 60, 6, 6, 3.5, {
     seed: 76, mat: 'cave-floor',
     read: 'Roots hang from the ceiling like the ribs of a great animal. Between them dangle long bundles, wrapped tight in bark and leaves. One of the bundles is moaning.',
-    gm: 'The hag\'s larder. Dunstan Rook and young Kit Sedge hang here alive, cocooned and feverish; Merry Ash and Old Garth did not survive. A knot of living roots (an awakened tree) guards them, with rats that feed on the scraps. Cutting a captive free takes an action (AC 10, 10 hit points of bark).',
+    gm: 'The hag\'s larder. Dunstan Rook and young Kit Sedge hang here alive, cocooned and feverish; Merry Ash and Old Garth did not survive. A knot of living roots (root-knot guardian) guards them, with rats that feed on the scraps. Cutting a captive free takes an action (AC 10, 10 hit points of bark).',
   });
   b.props_('chains-hanging', [[57, 5], [60, 4], [63, 5]]).props_('cage-hanging', [[62, 7]]).props_('bone-heap', [[57, 7]]).prop('skull-pile', 64, 8).prop('gm-treasure', 63, 4, 0, { gm: true });
   b.light(60, 6, 5, 10, '#7fbf7f');
-  b.encounter('The larder keepers', [53, 2, 15, 9], [['awakenedTree', 1], ['giantRat', 6], ['swarmOfRats', 3]], 'moderate');
+  b.encounter('The larder keepers', [53, 2, 15, 9], [['crookbackRootKnot', 1], ['giantRat', 6], ['swarmOfRats', 3]], 'moderate');
   b.tunnel([[54, 6], [47, 8]], 2, { mat: 'cave-floor', seed: 77 });
 
   b.cave('Drowned grotto', 16, 13, 6, 4, {
@@ -276,17 +276,18 @@ function marrowellFarm() {
     gm: 'Tobin\'s real bones, stolen from his grave through the roots. The hag keeps them as the seed of her changeling. Carrying them out in a sack or cloak is easy; laying them back in the chapel yard frees the boy (see Tobin). The tunnel east leads to the hollow.',
   });
   b.pool(15, 15, 3, 2, true);
+  b.water(16, 16, 2, 2, true); // the drowned way surfaces here
   b.prop('bones', 19, 11).prop('mushrooms', 12, 11).prop('stalactites', 21, 14).prop('gm-treasure', 20, 11, 0, { gm: true });
   b.tunnel([[22, 13], [30, 12]], 1, { mat: 'cave-floor', seed: 79 });
 
   b.cave("Mother Windfall's hollow", 38, 11, 9, 6, {
     seed: 80, mat: 'dirt',
     read: 'You stand inside the root-heart of the great tree. Green witch-light burns in hollows of the wood, a cauldron of cider steams over a fire of apple logs, and roots hang everywhere like a curtain. Someone is humming a lullaby.',
-    gm: 'Mother Windfall\'s home. She first appears as a kindly old picker woman and offers the heroes a share of the harvest to go away. Fighting her here, she has her root-servant (awakened tree, which sleeps if the chapel wassail was poured on Old Crookback\'s roots), three straw children and two rat swarms. Each burned witch-knot costs her 15 hit points before the fight starts.',
+    gm: 'Mother Windfall\'s home. She first appears as a kindly old picker woman and offers the heroes a share of the harvest to go away. Fighting her here, she has her root-servant (root-knot guardian, which sleeps if the chapel wassail was poured on Old Crookback\'s roots), three straw children (hag-stuffed scarecrows) and two rat swarms. Each burned witch-knot costs her 15 hit points before the fight starts.',
   });
   b.prop('cauldron', 38, 11).prop('campfire', 38, 12).props_('sconce-witchfire', [[33, 8], [43, 9], [35, 15]]).prop('magic-mirror', 44, 12).props_('herbs-drying', [[32, 11], [41, 7]]).prop('straw-bed', 34, 13).props_('bones', [[43, 14], [31, 9]]).prop('treasure-pile', 44, 11).prop('shelf-jars', 36, 7).prop('chains-hanging', 40, 9);
   b.light(38, 11, 10, 20, '#7dff9a').light(43, 9, 5, 10, '#7dff9a');
-  b.encounter('Mother Windfall', [30, 6, 17, 11], [['greenHag', 1], ['awakenedTree', 1], ['awakenedShrub', 3], ['swarmOfRats', 2]], 'high');
+  b.encounter('Mother Windfall', [30, 6, 17, 11], [['greenHag', 1], ['crookbackRootKnot', 1], ['hagStrawServant', 3], ['swarmOfRats', 2]], 'high');
 
   b.cave('The nursery', 30, 3, 4, 1.8, {
     seed: 81, mat: 'dirt',
@@ -345,11 +346,11 @@ export const HOLLOW_ORCHARD: Adventure = {
       gmNotes: 'Can be turned: DC 15 Persuasion, or DC 10 with proof (the larder, the nursery, the bones, the ring of pips). Cutting open the bargain-token in front of her also works. Turned, she opens the knot-hole and stands with the heroes. If she renounces the bargain in the hollow, the hag cannot use her illusions or turn invisible for the rest of the fight.',
     },
     {
-      id: 'pf_hotobin', name: 'Tobin Marrowell', title: 'the boy who came back', kind: 'monster', art: 'child', monsterId: 'awakenedShrub',
+      id: 'pf_hotobin', name: 'Tobin Marrowell', title: 'the boy who came back', kind: 'monster', art: 'child', monsterId: 'appleChangeling',
       wants: 'For his mother to be happy, and for the green lady to stop calling him at night.', knows: 'How the pond water felt, the green lady\'s lullaby, and where the nursery is ("where I sleep when I\'m not here").',
       voice: 'Polite and sing-song. Repeats the last thing an adult said, a moment too late.', appearance: 'A pale nine-year-old with damp hair who never blinks. He smells of apples, and there are pips in his teeth.',
       backstory: 'The hag\'s changeling: apple-flesh, pond water and Tobin\'s bones, with some of the real boy\'s memories and none of his warmth. Not yet. At first frost he will be "ripe".',
-      gmNotes: 'Uses the awakened shrub stat block (vulnerable to fire). He does not fight. In the final fight the hag calls him to stand in front of her: a turned Hester can call him away. If the bones are laid to rest, he becomes his own: he stays until the frost, says goodbye, and becomes an apple sapling on Rowan\'s grave.',
+      gmNotes: 'Uses the Apple Changeling stat block (vulnerable to fire). He does not fight. In the final fight the hag calls him to stand in front of her: a turned Hester can call him away. If the bones are laid to rest, he becomes his own: he stays until the frost, says goodbye, and becomes an apple sapling on Rowan\'s grave.',
     },
     {
       id: 'pf_howindfall', name: 'Mother Windfall', title: 'the old woman in the tree', kind: 'monster', art: 'green-hag', monsterId: 'greenHag',

@@ -287,7 +287,7 @@ function krakensMaw() {
   b.props_('barrel-stack', [[55, 45], [57, 49]]).props_('barrel-group', [[56, 44], [55, 49]]).prop('oil-slick', 56, 47).prop('tar-pit', 57, 46);
   for (const [x, y] of [[20, 33], [19, 45], [25, 54], [36, 59], [42, 59], [51, 56]]) b.light(x, y, 10, 20, '#9fd3ff');
   b.encounter('Cage-hulk keepers', [20, 50, 10, 8], [['chuul', 4], ['sahuagin', 16], ['giantShark', 3]], 'low');
-  b.encounter('Gatehulk reavers', [31, 55, 15, 8], [['vampire', 1], ['wight', 6]], 'low');
+  b.encounter('Gatehulk reavers', [31, 55, 15, 8], [['drownedCommodore', 1], ['wight', 6]], 'low');
 
   // ---------- the Wrathwater: the queen's flagship, moored at the north-east edge of the Maw ----------
   b.cave('The Wrathwater', 68, 14, 5.5, 10, {
@@ -443,11 +443,11 @@ export const KRAKEN_MAW: Adventure = {
       gmNotes: 'Sea hag stat block. Price for each secret: one happy memory (the hero forgets it; they gain a level of exhaustion that a long rest will not clear for a week), or the hero\'s reflection for a year. She keeps bargains to the letter.',
     },
     {
-      id: 'pf_kmvoss', name: 'Commodore Halloran Voss', title: 'drowned master of the Hulkhold', kind: 'monster', art: 'vampire', monsterId: 'vampire',
+      id: 'pf_kmvoss', name: 'Commodore Halloran Voss', title: 'drowned master of the Hulkhold', kind: 'monster', art: 'wight', monsterId: 'drownedCommodore',
       wants: 'To rest, and his dead sailors to rest. Failing that, to see the queen drown.', knows: 'The ring\'s layout, the guard rotas and that the queen sings on the Godstone day and night.',
       voice: 'Clipped and formal, an officer to the end. Water runs out of his mouth when he is angry.', appearance: 'A grey, bloated man in a fine blue coat gone black with sea, gold braid green with rot, eyes like drowned pearls.',
       backstory: 'His fleet sailed out of Callowmere to fight the kraken and never came back. The crown raised them all and set them to guard the thing that killed them.',
-      gmNotes: 'Vampire stat block (the crown\'s power, not a vampire\'s curse: he needs no blood). He must obey the crown but hates it. Promise to break it and pass a DC 21 Persuasion check and he lets the heroes through and gives them crew-tokens. When the crown breaks he and his crews crumble into salt, thanking them.',
+      gmNotes: 'Drowned Commodore (an original Lair Labs stat block). The crown\'s binding holds him in his body; he needs no blood, only orders. He must obey the crown but hates it. Promise to break it and pass a DC 21 Persuasion check and he lets the heroes through and gives them crew-tokens. When the crown breaks he and his crews crumble into salt, thanking them.',
     },
     {
       id: 'pf_kmthrale', name: 'Captain Wenna Thrale', title: 'master of the Stubborn Lark', kind: 'npc', art: 'ship-captain', monsterId: 'veteran', shared: true,

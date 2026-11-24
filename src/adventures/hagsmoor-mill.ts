@@ -245,7 +245,7 @@ function hagsmoorAtMidnight() {
   b.pool(74, 20, 2.6, 3, true);
   b.prop('grindstone', 71, 23).props_('light-orb', [[73, 18], [75, 21], [74, 23]]).prop('whirlpool', 74, 20).props_('reeds', [[71, 17], [77, 24]]).prop('bones-mud', 76, 16).prop('stalactites', 72, 16);
   b.light(74, 20, 15, 25, '#7fe0a8');
-  b.encounter('The Mardle', [69, 14, 10, 14], [['seaHag', 1]], 'high');
+  b.encounter('The Mardle', [69, 14, 10, 14], [['millpondHag', 1]], 'high');
   b.tunnel([[74, 16], [73, 12], [73, 9]], 2, { mat: 'cave-floor', seed: 13 });
   b.cave("The Mardle's larder", 74, 8, 4, 3.2, {
     seed: 9, mat: 'cave-floor',
@@ -352,7 +352,7 @@ export const HAGSMOOR_MILL: Adventure = {
     'This is a folk tale. Things come in threes, bargains are kept to the letter, and kindness is rewarded. Let clever and generous ideas win.',
     'There are three ways to the grotto: through the mill and its cellar, round the fen by the causeway and the barrow, or swimming the culvert from the millpond. All of them work.',
     'The drowned millhands, the barrow skeletons, the rats and the mud mephits can all be avoided, calmed or bargained with. Reward that as much as a win.',
-    'The Mardle is a sea hag stat block and very dangerous at level 1. She would much rather bargain than fight. If she drops below half her hit points, she offers terms. If a hero falls to her Death Glare, she offers to give them back for a price.',
+    'The Mardle uses the Millpond Hag stat block and is very dangerous at level 1. She would much rather bargain than fight. If she drops below half her hit points, she offers terms. If a hero falls asleep under her Dream-Drinking Stare, she offers to give their dreams back for a price.',
     'Short on time? Skip the tithe barn and the Mere, and have Ketty meet the heroes on the causeway. Fast group? Ring the shell bell so the Mardle is ready for them.',
     'Keep the villagers funny and warm (Absalom\'s by-laws, Dobbin\'s songs, Petronella\'s bravery) so the creepy parts land harder.',
   ],
@@ -425,13 +425,13 @@ export const HAGSMOOR_MILL: Adventure = {
       gmNotes: 'Counts as one of the five zombies in The night shift. If addressed by name with Bettony\'s name (DC 12 Persuasion), he stops and the whole shift stops with him.',
     },
     {
-      id: 'pf_hgmmardle', name: 'The Mardle', title: 'the thing in the millpond', kind: 'monster', art: 'sea-hag', monsterId: 'seaHag',
+      id: 'pf_hgmmardle', name: 'The Mardle', title: 'the thing in the millpond', kind: 'monster', art: 'sea-hag', monsterId: 'millpondHag',
       wants: 'What she is owed: a Crale\'s dreams, every night, as was agreed. And back pay since midsummer.',
       knows: 'The exact words of the bargain, every dream she has ever drunk, and every name in Hagsmoor.',
       voice: 'Soft, wet and reasonable, like a kindly aunt. Never raises her voice until the deal is broken. Repeats the last word of what people say, tasting it.',
       appearance: 'A long, thin woman with green-grey skin, pondweed hair and eyes like two lily-buds. Her fingers drip, and she smells of cut reeds and rain.',
       backstory: 'Older than the village. She has made bargains with fen folk for as long as there has been a fen.',
-      gmNotes: 'Sea hag stat block (freshwater). Bargaining: she must hear a fair offer made three times kindly (three DC 12 Persuasion checks, or one great speech). She accepts Ambrose or Petronella sleeping at the mill again (one Crale a night), and releases the sleepers. Back pay can be settled with a dream from each hero (they dream nothing for a month) or something clever. Trick: she is bound by the bargain\'s words, so a named Crale sleeping under the roof that very night (even napping on the cellar sacks) stops the grinding at once. Fight: she flees into the pool at 10 HP or less, and the sleepers wake only if the quern is smashed or their bottled dreams are poured back.',
+      gmNotes: 'Millpond Hag stat block. Bargaining: she must hear a fair offer made three times kindly (three DC 12 Persuasion checks, or one great speech). She accepts Ambrose or Petronella sleeping at the mill again (one Crale a night), and releases the sleepers. Back pay can be settled with a dream from each hero (they dream nothing for a month) or something clever. Trick: she is bound by the bargain\'s words, so a named Crale sleeping under the roof that very night (even napping on the cellar sacks) stops the grinding at once. Fight: she flees into the pool at 10 HP or less, and the sleepers wake only if the quern is smashed or their bottled dreams are poured back.',
     },
   ],
   handouts: [

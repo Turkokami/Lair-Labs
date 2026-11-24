@@ -85,10 +85,10 @@ function theGullet() {
   b.cave('Cave mouth', 9, 10, 7, 6, { seed: 3, read: 'The sea-stair ends in a cave that breathes: the sea pushes in, the air rushes out.', gm: 'Tide clock: every 30 minutes of play the water rises one step (see tips). Wet footprints and a dragged boat lead east.' });
   b.start(6, 9, 3, 3);
   b.tunnel([[13, 11], [20, 13]], 2, { seed: 4 });
-  b.cave('Tide pools', 27, 15, 11, 8, { seed: 5, read: 'Pools of clear water glitter with anemones, crabs and drowned coins. In the deepest pool, something long and grey is coiled.', gm: 'The Eel-Mother (giant constrictor snake) and two giant frogs. The coins are real: 23 gp scattered in the shallows (one action each to grab a handful while she watches).' });
+  b.cave('Tide pools', 27, 15, 11, 8, { seed: 5, read: 'Pools of clear water glitter with anemones, crabs and drowned coins. In the deepest pool, something long and grey is coiled.', gm: 'The Eel-Mother (tidepool eel-mother: a grey eel as long as a rowing boat) and two giant frogs. She lurks in the deepest pool and drags greedy waders under. The coins are real: 23 gp scattered in the shallows (one action each to grab a handful while she watches).' });
   b.pool(27, 16, 5, 3, true).pool(32, 12, 2, 1.5).pool(22, 19, 2, 1.5);
   b.props_('lily-pads', [[24, 13], [30, 19]]).prop('coins-small', 31, 13).prop('stalagmites', 20, 11);
-  b.encounter('The Eel-Mother', [18, 8, 18, 15], [['giant-constrictor-snake', 1], ['giant-frog', 2]], 'low');
+  b.encounter('The Eel-Mother', [18, 8, 18, 15], [['tidepoolEelMother', 1], ['giant-frog', 2]], 'low');
   b.tunnel([[35, 12], [42, 8]], 2, { seed: 6 });
   b.room("Smugglers' ledge", 42, 4, 12, 6, { mat: 'wood-planks', read: 'Someone built a wooden ledge along the cave wall long ago: hooks, a pulley, rotten crates and a fresh lantern.', gm: 'The cult\'s supply cache. Fresh food for twenty, and a map scratched on a crate lid showing the Bell Road (handout).' });
   b.props_('crate', [[43, 5], [44, 5], [52, 8]]).prop('winch', 47, 4).prop('lantern-hook', 50, 5).prop('supplies', 45, 8).prop('gear-pile', 53, 5).light(50, 5, 10, 15);
@@ -179,7 +179,7 @@ function drownedAbbey() {
   b.hall(48, 48, 56, 48, 2);
   b.room('Crypt of the abbesses', 56, 44, 16, 12, { mat: 'dungeon-slab', read: 'Dry, against all sense. Stone abbesses lie on their tombs with their hands folded. One tomb is open and empty.', gm: 'A wight (once the abbey\'s steward, who let the hag in) with two ghouls and four zombies. The steward wears the key to the bell frame. The empty tomb is Wenna\'s: her bones are under the bell tower pool, and laying them here lets her ghost rest.' });
   b.props_('sarcophagus-effigy', [[58, 46], [61, 46], [64, 46], [67, 46], [58, 52], [61, 52], [64, 52]]).prop('sarcophagus-open', 67, 52).props_('candle-stand-tall', [[70, 45], [70, 54]]);
-  b.hall(60, 36, 60, 43, 1).door(60, 44, 'n', 'secret');
+  b.hall(60, 36, 60, 43, 1).wall(60, 36, 'n').wallRun(60, 37, 7, 'w').door(60, 40, 'w', 'secret').door(60, 44, 'n', 'secret').prop('stairs-down', 60, 42);
   b.encounter('The faithless steward', [56, 44, 16, 12], [['wight', 1], ['ghoul', 2], ['zombie', 4]], 'moderate');
   return b.build();
 }

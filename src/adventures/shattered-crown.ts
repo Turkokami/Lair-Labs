@@ -555,7 +555,7 @@ function wrenhollow() {
     gm: 'Hildegrun\'s own body, carried here by her monks. Her hands once held the shard; now they are empty. Reading her prayer aloud over the body and adding "and now, Mother, let them go" (any hero, with the chronicle page or the infirmary splinter) blesses it: in the chancel, the wraith hesitates (see the climax). The door from the ossuary is locked (DC 15 thieves\' tools; the founder\'s ring in the plague pit fits it).',
   });
   b.prop('sarcophagus-effigy', 6, 70).props_('candle-ring', [[4, 68], [9, 68]]).prop('statue-tall-winged', 7, 73).prop('gm-treasure', 9, 73, 0, { gm: true }).light(6, 70, 8, 10, '#ffffff');
-  b.floor(15, 69, 2, 1, 'dungeon-slab').floor(11, 72, 1, 2, 'dungeon-slab');
+  b.floor(15, 69, 2, 1, 'dungeon-slab');
   b.room('Plague pit', 12, 70, 8, 7, {
     mat: 'cave-floor',
     read: 'A rough cave where the village plague-dead were laid in lime. The lime has cracked. Things move under it, slowly, like sleepers turning over.',
@@ -563,7 +563,9 @@ function wrenhollow() {
   });
   b.prop('bone-heap', 14, 72).prop('skeleton-lying', 17, 74).prop('open-grave', 15, 75).prop('mud-patch', 18, 71);
   b.floor(20, 63, 2, 2, 'cave-floor').door(21, 63, 'e', 'secret');
-  b.area('Barrow door', [[19, 62, 5, 4]], { gm: 'A stone slab in the hillside, overgrown with ivy. From outside it is a secret (DC 16 Perception, or Brother Hennick shows them). From inside, it swings open easily.', label: [21, 64] });
+  // the barrow passage runs down behind the Hall of Brothers and comes out through the crack in the plague pit's east wall
+  b.floor(20, 65, 1, 7, 'cave-floor').wallRun(20, 63, 6, 'w').prop('rubble-pile', 20, 70);
+  b.area('Barrow door', [[19, 62, 5, 4], [20, 66, 1, 6]], { gm: 'A stone slab in the hillside, overgrown with ivy. From outside it is a secret (DC 16 Perception, or Brother Hennick shows them). From inside, it swings open easily.', label: [21, 64] });
 
   scatter(b, 'tree-pine', 0, 6, 18, 10, 10, 209);
   scatter(b, 'tree-pine', 22, 56, 50, 23, 30, 210);
@@ -653,17 +655,17 @@ export const SHATTERED_CROWN: Adventure = {
       gmNotes: 'Veteran stat block. She found the Iron Shard and set it into the old war golem Gallowmaul to "defend the city from the war that\'s coming". The golem now obeys only the shard. She knows the golem\'s shutdown word, but must reach its chest to speak it.',
     },
     {
-      id: 'pf_shcmorwenna', name: 'Morwenna Saltreave', title: 'the Tide Queen of Scuttlehold', kind: 'monster', art: 'ship-captain', monsterId: 'mage', shared: true,
+      id: 'pf_shcmorwenna', name: 'Morwenna Saltreave', title: 'the Tide Queen of Scuttlehold', kind: 'monster', art: 'ship-captain', monsterId: 'tideQueenCorsair', shared: true,
       wants: 'Freedom for the Saltreach Isles: no king, no tax, no navy, ever again. And the sea itself to obey her.', knows: 'Every current and reef in the isles, and that the Chancellor has offered her a duchy for the shard.',
       voice: 'Low and amused, with a sailor\'s swearing. Laughs at danger. Gets very quiet when she is truly angry.', appearance: 'A tall woman with salt-white braids and sea-green eyes, in a captain\'s coat over mail, the green shard set in the hilt of her cutlass.',
       backstory: 'The crown\'s navy hanged her father for smuggling. She has fought the crown ever since, and the isles love her for it.',
-      gmNotes: 'Mage stat block (the shard\'s storm magic). The Tide Shard lets her command the sea within a mile: raise waves, call sharks, bind a water elemental. She can be bargained with: a promise of the isles\' freedom in writing, sealed by the Regent, is worth more to her than the shard.',
+      gmNotes: 'Tide Queen stat block: a cutlass, storm bolts and breaking waves from the shard. The Tide Shard lets her command the sea within a mile: raise waves, call sharks, bind a water elemental. She can be bargained with: a promise of the isles\' freedom in writing, sealed by the Regent, is worth more to her than the shard.',
     },
     {
-      id: 'pf_shcgrummox', name: 'Grummox', title: 'the Rightful, King of the Highfells', kind: 'monster', art: 'ogre', monsterId: 'oni',
+      id: 'pf_shcgrummox', name: 'Grummox', title: 'the Rightful, King of the Highfells', kind: 'monster', art: 'ogre', monsterId: 'shardCrownedOgreKing',
       wants: 'To be crowned in the capital as the true heir of the High King, and for everyone to finally kneel.', knows: 'Nothing true about his ancestry. But since the Granite Shard fell into his stewpot, he is clever, and he knows it.',
       voice: 'Slow, booming, with long words he has only just learned and loves using ("Inde-fatigably!"). Refers to himself as "We, the Rightful".', appearance: 'A huge ogre in a patchwork royal cloak sewn from tapestries, a stone shard glowing in a crown of beaten cooking pots.',
-      gmNotes: 'Oni stat block: the Granite Shard gives him the oni\'s magic (flight, invisibility, regeneration, a giant\'s cunning). Underneath he is lonely and wants respect more than a crown. A hero who kneels and gives him a real title (and a Regent\'s writ to go with it) can win him over.',
+      gmNotes: 'Shard-Crowned Ogre King stat block: the Granite Shard gives him a giant\'s cunning, a voice that makes people kneel, regeneration, and the trick of stepping through bare stone. Underneath he is lonely and wants respect more than a crown. A hero who kneels and gives him a real title (and a Regent\'s writ to go with it) can win him over.',
     },
   ],
   handouts: [
@@ -1057,7 +1059,7 @@ export const SHATTERED_CROWN: Adventure = {
           title: "Storm on the Gull's Revenge",
           encounter: "Storm on the Gull's Revenge",
           read: "The sky turns black in a heartbeat. Rain comes sideways. On the deck of her flagship the Tide Queen stands at the wheel with her cutlass raised, and the sea rises behind her in a wall of green water. \"Nobody takes the sea from me!\" she shouts. \"NOBODY!\"",
-          gm: "The climax if the bargain failed. Morwenna (mage), her water elemental (none if the shrine was broken), Black Annet and her best crew. The deck pitches: DC 12 Dexterity save at the start of each turn or fall prone. The gun battery's cannon can crack the mast (see the area notes). At half hit points, Morwenna will still bargain: she is fighting the shard as much as the heroes. The Tide Shard: gift, the carrier can breathe water, has a swim speed of 40 feet and can cast Control Water once per day; twist, the carrier cannot bear any rule, order or wall, and must break any they are given.",
+          gm: "The climax if the bargain failed. Morwenna (Tide Queen stat block), her water elemental (none if the shrine was broken), Black Annet and her best crew. The deck pitches: DC 12 Dexterity save at the start of each turn or fall prone. The gun battery's cannon can crack the mast (see the area notes). At half hit points, Morwenna will still bargain: she is fighting the shard as much as the heroes. The Tide Shard: gift, the carrier can breathe water, has a swim speed of 40 feet and can cast Control Water once per day; twist, the carrier cannot bear any rule, order or wall, and must break any they are given.",
           treasure: "The Tide Shard. Morwenna's strongbox in the stern cabin: 1,600 gp, a necklace of adaptation, a cloak of the manta ray, and her father's pardon, signed by High King Edwin a week too late.",
         },
       ],
@@ -1147,7 +1149,7 @@ export const SHATTERED_CROWN: Adventure = {
           title: "The Court of the Rightful",
           encounter: "Court of the Rightful",
           read: "A hall of giant stones, smoky and hung with stolen tapestries. On a throne of stacked millstones sits an ogre in a crown of beaten cooking pots, a grey stone glowing at its brow. \"KNEEL,\" booms the Rightful King. \"We, the Rightful, will hear you inde-fatigably. But first: you KNEEL.\"",
-          gm: "The kneel compulsion (see the area notes). Grummox wants respect more than war. Winning him: show the Gallan rubbing, tell him he was used (Big Thudd), kneel and give him a real title (a hero with the Regent's warrant can promise him a lordship of the Highfells). Three successes at DC 17 Persuasion before three failures, each tool giving advantage on one. On a win, he takes off the pot-crown and asks to swear in the Moot ring. On a loss, he fights, with his chiefs, his guard and his ettin herald (the oni, flying and invisible, regenerating). The Granite Shard: gift, the carrier cannot be knocked prone or moved against their will, and has advantage on saves against being charmed; twist, the carrier demands respect from everyone, and cannot let a slight pass.",
+          gm: "The kneel compulsion (see the area notes). Grummox wants respect more than war. Winning him: show the Gallan rubbing, tell him he was used (Big Thudd), kneel and give him a real title (a hero with the Regent's warrant can promise him a lordship of the Highfells). Three successes at DC 17 Persuasion before three failures, each tool giving advantage on one. On a win, he takes off the pot-crown and asks to swear in the Moot ring. On a loss, he fights (Shard-Crowned Ogre King stat block: regenerating, stepping through stone and roaring at everyone to kneel), with his chiefs, his guard and his ettin herald. The Granite Shard: gift, the carrier cannot be knocked prone or moved against their will, and has advantage on saves against being charmed; twist, the carrier demands respect from everyone, and cannot let a slight pass.",
           treasure: "The Granite Shard. Reyna's satchel. The Rightful King's treasury, heaped by the throne: 2,400 gp in tribute, a stolen church's silver (500 gp), a ring of free action, a wand of binding.",
         },
         {
@@ -1484,10 +1486,10 @@ function brassholm() {
     seed: 315,
     mat: 'stone-flagstone',
     read: 'A round chamber around a forge like a volcano\'s mouth, ringed by a moat of lava. Over the forge stands a giant of iron and granite, eighteen feet tall, hammering a red-hot blade as long as a boat. In the middle of its chest, a grey shard glows like a furnace eye. It turns its head. "WAR IS COMING," it says. "YOU ARE NOT READY."',
-    gm: 'Gallowmaul (stone golem) with two azers bound to the forge. It is not cruel: it believes the war is coming (it is) and that only an army can save Brassholm. It can be argued with (DC 18 Persuasion, advantage with Haldis present) for one round: it pauses to listen, which is time to climb it. To reach the shutdown word: a hero must be on the golem (grapple, DC 16 Athletics or Acrobatics) and spend an action prying open the chest plate (DC 15 Strength), then another reading the word aloud. Or take the shard by force (destroy the golem). Stopping the bellows, cooling the lava ring and the hammer from the temple all help.',
+    gm: 'Gallowmaul (dwarven war golem) with two azers bound to the forge. It is not cruel: it believes the war is coming (it is) and that only an army can save Brassholm. It can be argued with (DC 18 Persuasion, advantage with Haldis present) for one round: it pauses to listen, which is time to climb it. To reach the shutdown word: a hero must be on the golem (grapple, DC 16 Athletics or Acrobatics) and spend an action prying open the chest plate (DC 15 Strength), then another reading the word aloud. Or take the shard by force (destroy the golem). Stopping the bellows, cooling the lava ring and the hammer from the temple all help.',
   });
   b.lava(62, 66, 1, 8).lava(76, 66, 1, 8).lava(64, 64, 11, 1).lava(64, 76, 11, 1);
-  b.encounter('Gallowmaul', [60, 62, 17, 16], [['stoneGolem', 1], ['azer', 2]], 'high');
+  b.encounter('Gallowmaul', [60, 62, 17, 16], [['dwarvenWarGolem', 1], ['azer', 2]], 'high');
   b.prop('forge', 69, 69).prop('anvil', 69, 72).props_('chains-hanging', [[66, 69], [72, 69]]).prop('magic-sword', 71, 72).props_('brazier-pedestal', [[65, 73], [73, 73]]).prop('magma-vent', 69, 67);
   b.light(69, 69, 30, 30, '#ff6a1a');
 
@@ -1566,7 +1568,7 @@ function scuttlehold() {
     gm: 'Where the climax happens if Morwenna flees to sea. Her first mate, Black Annet (gladiator), sleeps aboard. The captain\'s cabin at the stern holds her strongbox.',
   });
   b.props_('ship-mast', [[49, 53], [54, 53]]).prop('ship-wheel', 47, 53).prop('crows-nest', 54, 52).props_('cannon', [[50, 50], [52, 50], [50, 56], [52, 56]]).prop('cargo-hatch', 51, 53).prop('sails-pile', 56, 54).prop('strongbox', 46, 51);
-  b.encounter("Storm on the Gull's Revenge", [44, 49, 15, 9], [['mage', 1], ['waterElemental', 1], ['gladiator', 1], ['veteran', 2], ['banditCaptain', 1]], 'high');
+  b.encounter("Storm on the Gull's Revenge", [44, 49, 15, 9], [['tideQueenCorsair', 1], ['waterElemental', 1], ['gladiator', 1], ['veteran', 2], ['banditCaptain', 1]], 'high');
   b.floor(61, 57, 13, 6, 'wood-planks');
   hall(b, 'Golden Abundance', [[64, 58, 7, 4]], 'wood-planks-dark', {
     read: 'A fat merchant galleon with her masts cut down, chained to the pier. From inside her hull comes the sound of many people trying to be quiet.',
@@ -1831,7 +1833,7 @@ function torGallan() {
     gm: 'The Court of the Rightful. Grummox receives visitors here with his hill giant chiefs, his guard of ogres and an ettin herald. He insists everyone kneel (the shard compels: DC 16 Wisdom save or kneel, prone, until the end of the next turn). See the climax scene.',
   });
   b.door(40, 39, 's', 'closed', 'door-double').door(41, 39, 's', 'closed', 'door-double').door(32, 34, 'w', 'closed').door(48, 34, 'e', 'closed');
-  b.encounter('Court of the Rightful', [32, 26, 17, 14], [['oni', 1], ['hillGiant', 2], ['ogre', 4], ['ettin', 1]], 'high');
+  b.encounter('Court of the Rightful', [32, 26, 17, 14], [['shardCrownedOgreKing', 1], ['hillGiant', 2], ['ogre', 4], ['ettin', 1]], 'high');
   b.prop('throne-dais', 40, 27).prop('throne', 40, 28).props_('tapestry-tall', [[33, 30], [47, 30], [33, 37], [47, 37]]).props_('column-collapsed', [[35, 32], [45, 36]]).prop('statue-tall-knight', 44, 31).prop('table-feast', 40, 34).props_('brazier-pedestal', [[37, 29], [43, 29]]).prop('crown-cushion', 42, 27).prop('loot-sacks', 34, 38).prop('backpack', 46, 38);
   b.light(37, 29, 15, 20).light(43, 29, 15, 20).light(40, 34, 15, 20);
   b.building('Royal stewpot', 28, 42, 7, 6, {

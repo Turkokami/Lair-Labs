@@ -332,12 +332,12 @@ function wrackstoneIsle() {
   b.cave("Captain's grotto", 64, 66, 7, 5, {
     seed: 39,
     read: 'A tall cave with a black pool in the middle. On a shelf of rock lies a long crate, split open, lead straps peeled back like the lid of a tin. Bones and salt spill out of it. Above the pool, a tall figure in a rotted captain\'s coat turns, and its eyes are two cold points of light.',
-    gm: 'Captain Mordaunt Cullis (wight) and two of his old crew (zombies). Cullis hates light: the burner crown, the lamp beam or a lantern held high and bright gives him disadvantage on attack rolls while he stands in it. If the lamp is lit while he still walks, he comes up the shaft and the stair with his two crewmen to put it out: run this fight in the lamp room instead. Destroyed, every drowned thing on the island drops where it stands.',
+    gm: 'Captain Mordaunt Cullis (Drowned Captain, an original Lair Labs stat block) and two of his old crew (zombies). Cullis hates light: the burner crown, the lamp beam or a lantern held high and bright gives him disadvantage on attack rolls while he stands in it. If the lamp is lit while he still walks, he comes up the shaft and the stair with his two crewmen to put it out: run this fight in the lamp room instead. Destroyed, every drowned thing on the island drops where it stands.',
   });
   b.pool(64, 67, 2.5, 1.8, true);
   b.prop('sarcophagus-open', 61, 64).prop('bone-heap', 62, 66).prop('skull-pile', 66, 69).prop('chains-hanging', 67, 63).prop('treasure-pile', 69, 66).prop('gm-treasure', 61, 69, 0, { gm: true });
   b.light(64, 67, 5, 15, '#7fd6ff');
-  b.encounter("Captain Cullis", [57, 61, 14, 11], [['wight', 1], ['zombie', 2]], 'high');
+  b.encounter("Captain Cullis", [57, 61, 14, 11], [['drownedPirateCaptain', 1], ['zombie', 2]], 'high');
   b.tunnel([[70, 47], [69, 50]], 1, { mat: 'cave-floor', seed: 40 });
   b.cave("Purser's hole", 67, 53, 3, 3, {
     seed: 41,
@@ -434,13 +434,13 @@ export const WRACKSTONE_LIGHT: Adventure = {
       gmNotes: 'Locked in the store rooms for ransom. Freed and armed, she fights beside the heroes (scout stat block). She knows ships: with her help any check to carry oil, work the clockwork or light the lamp has advantage.',
     },
     {
-      id: 'pf_wklcullis', name: 'Captain Mordaunt Cullis', title: 'the drowned captain', kind: 'monster', art: 'wight', monsterId: 'wight',
+      id: 'pf_wklcullis', name: 'Captain Mordaunt Cullis', title: 'the drowned captain', kind: 'monster', art: 'wight', monsterId: 'drownedPirateCaptain',
       wants: 'A dark sea, a drowned crew, and a ship under his feet again. The Wendeline will do.',
       knows: 'Every reef and current of this coast as it was forty years ago. Everything his drowned crew saw when they lived. That light is the one thing he fears.',
       voice: 'Courtly and cold, like a gentleman reading out a sentence. Water drips from the end of every word.',
       appearance: 'A tall, thin corpse in the rags of a fine captain\'s coat, skin grey and salt-cracked, a broken iron chain still locked to one wrist. His eyes are two cold blue points.',
       backstory: 'A pirate captain of the Hungry Patience, taken at Scaldby forty years ago. On the morning of the hanging he walked off the harbour wall in his chains, and his whole crew followed him. They came back. The temple sealed them in salt and lead.',
-      gmNotes: 'Wight stat block. Bright light (the lit lamp, the burner crown, a raised lantern within 10 feet) gives him disadvantage on attack rolls while he stands in it. He bargains only for time. If destroyed, every drowned thing on Wrackstone falls where it stands. If the lamp is lit while he walks, he comes up the shaft and the stair to put it out.',
+      gmNotes: 'Drowned Captain stat block (original Lair Labs). Bright light (the lit lamp, the burner crown, a raised lantern within 10 feet) gives him disadvantage on attack rolls while he stands in it. He bargains only for time. If destroyed, every drowned thing on Wrackstone falls where it stands. If the lamp is lit while he walks, he comes up the shaft and the stair to put it out.',
     },
   ],
   handouts: [

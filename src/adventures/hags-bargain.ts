@@ -65,7 +65,7 @@ function grimsallowCarr() {
   b.cave('The eel pool', 11, 49, 9, 7, {
     seed: 23, mat: 'grass',
     read: 'A round black pool lies in a ring of alders, so still it looks like a hole in the world. Then something as thick as your thigh rolls under the surface, and another, and the water shivers.',
-    gm: 'Three giant eels (giant constrictor snakes) live here, old and fat on what the hags throw in. They attack anyone who wades or swims, or who lingers on the stepping stones. Dorrit Swale can call them off with a bucket of offal and a whistle. Something gold glints in the mud at the bottom (DC 13 Perception), 15 feet down.',
+    gm: 'Three giant bog eels live here, old and fat on what the hags throw in. They attack anyone who wades or swims, or who lingers on the stepping stones. Dorrit Swale can call them off with a bucket of offal and a whistle. Something gold glints in the mud at the bottom (DC 13 Perception), 15 feet down.',
   });
   b.cave('The alder carr', 24, 42, 7.5, 6, {
     seed: 29, mat: 'grass',
@@ -221,7 +221,7 @@ function grimsallowCarr() {
   keepRect(3, 44, 5, 4);
   b.prop('fishing-net', 4, 45).prop('barrel', 6, 45).prop('straw-bed', 4, 46).prop('herbs-drying', 6, 46).prop('lantern-hanging', 5, 45).light(5, 45, 5, 15);
   b.props_('fishing-gear', [[9, 44], [15, 45]]).prop('canoe', 8, 52, 90).prop('mooring-post', 8, 48).props_('reeds', [[14, 46], [6, 51], [16, 50]]).prop('lily-pads', 12, 48).prop('gm-treasure', 11, 49, 0, { gm: true });
-  b.encounter('The eels of the pool', [3, 43, 17, 13], [['giantConstrictorSnake', 3]], 'low');
+  b.encounter('The eels of the pool', [3, 43, 17, 13], [['giantBogEel', 3]], 'low');
   scatter(['tree-willow', 'reeds', 'grass-tall', 'stump'], 12, 2, 42, 18, 14);
 
   // the alder carr: wet woods between the pool, the church, the bog and the garden
@@ -236,7 +236,7 @@ function grimsallowCarr() {
   path([[34, 70], [37, 67], [39, 63], [40, 59], [42, 56], [41, 51]], 2, 'stone-cobble');
   b.water(39, 61, 2, 2, false).water(41, 57, 2, 1, false);
   b.prop('gibbet-post', 46, 55).props_('bones-mud', [[35, 57], [44, 62]]).props_('reeds', [[34, 53], [48, 57], [38, 64]]).prop('skeleton-lying', 45, 63).prop('lantern-standing', 38, 66, 0, { off: true }).prop('milestone', 43, 53).prop('mud-patch', 44, 59);
-  b.encounter('The famine dead', [33, 51, 18, 14], [['ogreZombie', 2], ['zombie', 7]], 'low');
+  b.encounter('The famine dead', [33, 51, 18, 14], [['bloatedMereDead', 2], ['zombie', 7]], 'low');
   scatter(['reeds', 'tree-swamp', 'lily-pads', 'log-fallen'], 16, 33, 51, 18, 14);
   b.light(46, 55, 5, 15, '#9fd0ff');
 
@@ -273,6 +273,7 @@ function grimsallowCarr() {
     label: [52, 28],
   });
   b.prop('bones', 52, 30).prop('glowing-fungus', 52, 27).prop('mine-support', 50, 38);
+  b.door(48, 17, 'n', 'secret').prop('trapdoor', 48, 17); // the hidden hatch under the flat stone by the standing stones
 
   // ================= THE WISP BOG (centre) =================
   b.mud(25, 21, 23, 17);
@@ -558,7 +559,7 @@ export const HAGS_BARGAIN: Adventure = {
         {
           room: 'The sunken causeway', title: 'The famine dead',
           read: 'The grey stones go out across the mere. At the drowned stretch the water rises to your knees, and under it you see faces, rows of them, thin and patient, looking up.',
-          gm: 'The quickest way to the garden. Stay on the stones and say the counting rhyme (group DC 13 Stealth) and the dead stay down. Splashing, fighting or stepping off wakes two ogre zombies and seven zombies, who were Thimbleby folk. A cleric who speaks a word of rest over them before the fight turns one zombie per hero back to sleep.',
+          gm: 'The quickest way to the garden. Stay on the stones and say the counting rhyme (group DC 13 Stealth) and the dead stay down. Splashing, fighting or stepping off wakes two bloated mere-dead and seven zombies, who were Thimbleby folk. A cleric who speaks a word of rest over them before the fight turns one zombie per hero back to sleep.',
           encounter: 'The famine dead',
           treasure: 'On the dead: 40 gp of old coins and a silver locket (25 gp) with a lock of baby hair, from the Hungry Year.',
         },

@@ -89,7 +89,7 @@ function silverEyrie() {
   b.props_('column-fluted', [[19, 31], [19, 41], [51, 31], [51, 41], [27, 31], [43, 31]]).props_('snowdrift', [[24, 36], [44, 36]]).prop('campfire', 40, 40).prop('war-banner', 31, 41);
   b.props_('sandbags', [[34, 31], [37, 31]]).prop('cart', 45, 41);
   b.light(40, 40, 15, 20).light(35, 35, 5, 15, '#cfe2ff');
-  b.encounter('The schism in the snow', [18, 30, 35, 13], [['veteran', 6], ['gladiator', 2], ['priest', 2]], 'low');
+  b.encounter('The schism in the snow', [18, 30, 35, 13], [['eyrieWarriorMonk', 6], ['eyrieStaffMaster', 2], ['priest', 2]], 'low');
 
   // ================= the bell tower =================
   b.cave('Bell tower', 10, 37, 5, 5, {
@@ -123,7 +123,7 @@ function silverEyrie() {
   b.prop('weapon-rack', 3, 16).prop('rug', 4, 15).prop('candles', 11, 24).prop('book-pile', 10, 24);
   b.props_('lantern-hook', [[6, 15], [7, 21], [6, 27]]).prop('water-barrel', 7, 13);
   b.light(6, 15, 5, 10).light(7, 21, 5, 10).light(6, 27, 5, 10);
-  b.encounter('Faces in the cells', [2, 12, 10, 18], [['doppelganger', 6], ['invisibleStalker', 2]], 'low');
+  b.encounter('Faces in the cells', [2, 12, 10, 18], [['doppelganger', 6], ['unseenWhisperer', 2]], 'low');
 
   // ================= the cloister garden =================
   b.room('Cloister garden', 2, 2, 17, 9, {
@@ -162,7 +162,7 @@ function silverEyrie() {
   b.door(35, 29, 's', 'open', 'door-double').door(36, 29, 's', 'open', 'door-double').door(37, 29, 's', 'open', 'door-double');
   b.props_('stairs-up', [[36, 17], [36, 24]]).props_('candle-stand-tall', [[35, 15], [37, 15], [35, 27], [37, 27]]).prop('barricade-wood', 36, 28);
   b.light(36, 20, 10, 15, '#e6f0ff');
-  b.encounter("The Prior's line", [34, 14, 5, 16], [['gladiator', 4], ['knight', 6]], 'low');
+  b.encounter("The Prior's line", [34, 14, 5, 16], [['eyrieStaffMaster', 4], ['eyrieWarriorMonk', 6]], 'low');
 
   b.room('Scriptorium', 20, 17, 12, 12, {
     mat: 'wood-planks-dark',
@@ -329,13 +329,13 @@ export const SILVER_EYRIE: Adventure = {
       gmNotes: 'Adult silver dragon stat block. If fought and dropped to 0 hit points, he does not die: he falls into a deep sleep, and can still be woken with the keys. Awake, he forgives Corentin and asks the heroes to do the same. He will not let anyone kill the old man in his hall.',
     },
     {
-      id: 'pf_seyingrith', name: 'Prior Ingrith Stannard', title: 'prior of the Eyrie, captain of the White Wardens', kind: 'monster', art: 'monk', monsterId: 'gladiator', shared: true,
+      id: 'pf_seyingrith', name: 'Prior Ingrith Stannard', title: 'prior of the Eyrie, captain of the White Wardens', kind: 'monster', art: 'monk', monsterId: 'eyrieStaffMaster', shared: true,
       wants: 'The abbot safe, and the traitor found. Until then, nobody passes the Silver Stair. Her backup plan is to drown the dream-pool in molten silver, which would cut the god off from the world forever.',
       knows: 'The abbot fell ill after evening tea nine days ago. Three people hold keys to the sanctum: the abbot, herself and the Master. She once found the Master sleepwalking by the pool, and said nothing.',
       voice: 'Clipped, cold, a soldier\'s voice. Never says please. Softens only when she talks about the abbot.',
       appearance: 'A broad grey-haired woman with a broken nose, in white robes over mail, a silver mask pushed up on her head.',
       backstory: 'A mercenary who climbed the mountain to die forty years ago, and found a reason not to.',
-      gmNotes: 'Gladiator stat block. The red herring. She looks guilty and acts guilty, because she is ashamed: her silence about the Master\'s sleepwalking let this happen. If the heroes clear her name, she and the Wardens hold the courtyard against the nightmares while the heroes go to the sanctum.',
+      gmNotes: 'Monk Staff-Master stat block. The red herring. She looks guilty and acts guilty, because she is ashamed: her silence about the Master\'s sleepwalking let this happen. If the heroes clear her name, she and the Wardens hold the courtyard against the nightmares while the heroes go to the sanctum.',
     },
     {
       id: 'pf_seycorentin', name: 'Master Corentin Venmore', title: 'keeper of dreams, the traitor', kind: 'monster', art: 'elder-wizard', monsterId: 'archmage',
@@ -355,12 +355,12 @@ export const SILVER_EYRIE: Adventure = {
       gmNotes: 'Acolyte stat block. Hiding in the hot springs under Anaveth\'s wing. The rebels want to hang him. He is innocent, and his story is the strongest clue in the Eyrie, if the heroes protect him long enough to hear it.',
     },
     {
-      id: 'pf_seyhamund', name: 'Brother Hamund Mossend', title: 'leader of the Grey Brothers', kind: 'monster', art: 'veteran', monsterId: 'veteran',
+      id: 'pf_seyhamund', name: 'Brother Hamund Mossend', title: 'leader of the Grey Brothers', kind: 'monster', art: 'veteran', monsterId: 'eyrieStaffMaster',
       wants: 'To storm the Silver Stair, save the abbot and see someone hang for this.',
       knows: 'The Prior locked everyone out the night the abbot fell. Edwy served the tea. Monks have gone missing in the cells (taken by the doppelgangers).',
       voice: 'Loud, hoarse, quick to anger and quick to weep. Thumps his chest when he swears.',
       appearance: 'A big red-bearded monk with frostbitten ears and a quarterstaff bound in iron.',
-      gmNotes: 'Veteran stat block. Honest but wrong. Show him real proof and he kneels to the Prior and apologises, and the Grey Brothers fight beside the Wardens.',
+      gmNotes: 'Monk Staff-Master stat block (he and one other senior brother lead the Grey Brothers). Honest but wrong. Show him real proof and he kneels to the Prior and apologises, and the Grey Brothers fight beside the Wardens.',
     },
     {
       id: 'pf_seyanaveth', name: 'Anaveth', title: 'deva of the Eyrie', kind: 'monster', art: 'deva', monsterId: 'deva', shared: true,
@@ -419,7 +419,7 @@ export const SILVER_EYRIE: Adventure = {
         {
           room: 'Frozen courtyard', title: 'The schism in the snow', encounter: 'The schism in the snow', handout: 'prior-order',
           read: 'Two lines of monks face each other across the frozen fountain: grey robes and white, staffs raised. A red-bearded giant of a monk bellows that the Prior is a traitor, and from the stair a woman\'s voice answers: "Come and say it to my face, Hamund."',
-          gm: 'Brother Hamund and the Grey Brothers (veterans, gladiators and priests) are about to storm the Silver Stair. Stop it with a DC 20 Persuasion or Intimidation, or promise to find the traitor (DC 16). If the heroes do nothing, the fight starts and three monks die each round. Then the Silver Stair: Prior Ingrith and her White Wardens will not let anyone up. They step aside for proof the heroes are not the demon\'s (a zone of truth, a DC 20 Persuasion backed by evidence) or for the real poisoner; attacked, they fight as The Prior\'s line. The gallows is for Edwy, who has run away.',
+          gm: 'Brother Hamund and the Grey Brothers (warrior monks, two staff-masters and two priests) are about to storm the Silver Stair. Stop it with a DC 20 Persuasion or Intimidation, or promise to find the traitor (DC 16). If the heroes do nothing, the fight starts and three monks die each round. Then the Silver Stair: Prior Ingrith and her White Wardens will not let anyone up. They step aside for proof the heroes are not the demon\'s (a zone of truth, a DC 20 Persuasion backed by evidence) or for the real poisoner; attacked, they fight as The Prior\'s line. The gallows is for Edwy, who has run away.',
         },
         {
           room: "Master Venmore's study", title: 'A kind old man',
@@ -434,7 +434,7 @@ export const SILVER_EYRIE: Adventure = {
         },
         {
           room: 'Dormitory walk', title: 'Faces in the cells', encounter: 'Faces in the cells', optional: true,
-          gm: 'Six "monks" in the cells are doppelgangers wearing the faces of missing brothers, plus two invisible stalkers that whisper accusations. They try to split the party and lead them to the Prior\'s cell. The Prior\'s cell and the Novice cell hold the two key clues: the planted vial (DC 18 Investigation to see it was planted) and the honey jar labelled in the Master\'s hand.',
+          gm: 'Six "monks" in the cells are doppelgangers wearing the faces of missing brothers, plus two unseen whisperers: shapeless nightmares that leaked out of the troubled dream-pool and whisper accusations in friends\' voices. They try to split the party and lead them to the Prior\'s cell. The Prior\'s cell and the Novice cell hold the two key clues: the planted vial (DC 18 Investigation to see it was planted) and the honey jar labelled in the Master\'s hand.',
           treasure: 'Hidden in the Prior\'s footlocker: her old mercenary purse, 1,500 gp, and a +2 shield she has not carried in forty years.',
         },
         {

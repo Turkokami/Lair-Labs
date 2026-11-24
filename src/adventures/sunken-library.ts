@@ -270,13 +270,13 @@ function quillmereLakeBed() {
   b.room('The Inkwell', 54, 29, 10, 9, {
     mat: 'stone-flagstone',
     read: 'The scriptorium: rows of slanted desks, quills still wet. Every inkpot has been knocked over, and the ink has run together into one black lake in the middle of the floor. It shines. It is deeper than the floor it sits on. It is moving.',
-    gm: 'A black pudding made of a century of spilled ink. It sleeps until something warm comes within 10 feet, or the winch at the front doors is used. It cannot climb the desks (DC 10 Acrobatics to cross desk to desk). On the master\'s desk: a gold pen (25 gp) and a bundle of spell scrolls in a waxed case.',
+    gm: 'An ink pudding: a century of spilled ink that woke up. It sleeps until something warm comes within 10 feet, or the winch at the front doors is used. It cannot climb the desks (DC 10 Acrobatics to cross desk to desk). On the master\'s desk: a gold pen (25 gp) and a bundle of spell scrolls in a waxed case.',
   });
   b.hall(58, 27, 58, 28, 1, { mat: 'stone-flagstone' }).door(58, 28, 's', 'closed');
   b.hall(53, 33, 53, 33, 1, { mat: 'stone-flagstone' }).door(53, 33, 'e', 'closed');
   b.props_('writing-desk', [[55, 30], [55, 33], [55, 36], [62, 30], [62, 33], [62, 36]]).prop('tar-pit', 59, 33).prop('oil-slick', 58, 32).prop('lectern', 60, 30).prop('scroll-pile', 63, 35).prop('shelf-jars', 57, 29);
   b.light(60, 30, 10, 10);
-  b.encounter('The Inkwell', [54, 29, 10, 9], [['black-pudding', 1]], 'moderate');
+  b.encounter('The Inkwell', [54, 29, 10, 9], [['inkPudding', 1]], 'moderate');
 
   b.room('Bindery', 54, 40, 10, 8, {
     mat: 'wood-planks',
@@ -473,7 +473,7 @@ export const SUNKEN_LIBRARY: Adventure = {
         },
         {
           room: 'The Inkwell', title: 'The Inkwell', encounter: 'The Inkwell', optional: true,
-          gm: 'A black pudding of ink. It can be avoided by crossing on the desks (DC 10 Acrobatics each), or skipped entirely: the east wing is a side trip. Fire makes the ink burn with a smell of old letters.',
+          gm: 'The ink pudding can be avoided by crossing on the desks (DC 10 Acrobatics each), or skipped entirely: the east wing is a side trip. Fire makes the ink burn with a smell of old letters.',
           treasure: 'The master\'s waxed case: spell scrolls of identify, comprehend languages and silence; a gold pen (25 gp).',
         },
         {

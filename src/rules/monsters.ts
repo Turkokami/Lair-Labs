@@ -28,6 +28,8 @@ const m2 = (x: Omit<Monster, 'source'>): Monster => ({ ...x, source: 'srd-5.2' }
 /** Lair Labs' own monsters: original stat blocks written with the SRD 5.2 rules. */
 const own = (x: Omit<Monster, 'source'>): Monster => ({ ...x, source: 'lair-labs' });
 
+import { ADVENTURE_MONSTERS } from './own';
+
 const CR_ORDER = (cr: string) => (cr.includes('/') ? 1 / Number(cr.split('/')[1]) : Number(cr));
 
 const LIST: Monster[] = [
@@ -760,6 +762,6 @@ const LIST: Monster[] = [
 ];
 
 /** Every monster, ordered by challenge rating and then by name. */
-export const MONSTERS: Monster[] = [...LIST].sort((a, b) => CR_ORDER(a.cr) - CR_ORDER(b.cr) || a.name.localeCompare(b.name));
+export const MONSTERS: Monster[] = [...LIST, ...ADVENTURE_MONSTERS].sort((a, b) => CR_ORDER(a.cr) - CR_ORDER(b.cr) || a.name.localeCompare(b.name));
 export const monsterById = (id: string) => MONSTERS.find((x) => x.id === id);
 export const sizeSquares = (size: string) => (size === 'Large' ? 2 : size === 'Huge' ? 3 : size === 'Gargantuan' ? 4 : 1);

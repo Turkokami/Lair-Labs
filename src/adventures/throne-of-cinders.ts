@@ -206,7 +206,7 @@ function burnedCapital() {
   b.floor(67, 46, 1, 1, 'stone-flagstone').door(67, 45, 's', 'locked', 'door-iron');
   b.props_('spear-rack', [[65, 43], [69, 43]]).prop('weapon-rack', 67, 43).prop('armor-stand', 66, 45);
   b.floor(54, 50, 4, 1, 'stone-cobble').door(54, 50, 'w', 'closed', 'door-iron');
-  b.encounter('Barracks of the Scaled Oath', [55, 43, 23, 13], [['gladiator', 3], ['knight', 8], ['veteran', 8], ['youngRedDragon', 4]], 'moderate');
+  b.encounter('Barracks of the Scaled Oath', [55, 43, 23, 13], [['dragonSwornGeneral', 1], ['gladiator', 2], ['knight', 8], ['veteran', 8], ['youngRedDragon', 4]], 'moderate');
 
   // ======== the slag river ========
   {
@@ -443,11 +443,11 @@ export const THRONE_OF_CINDERS: Adventure = {
       gmNotes: 'Noble stat block. Freeing her breaks the third anchor. In person, she can release Roke from his oath with a word: the Scaled Oath turns at once.',
     },
     {
-      id: 'pf_tcroke', name: 'Lord-General Tavian Roke', title: 'commander of the Scaled Oath', kind: 'monster', art: 'knight', monsterId: 'gladiator', shared: true,
+      id: 'pf_tcroke', name: 'Lord-General Tavian Roke', title: 'commander of the Scaled Oath', kind: 'monster', art: 'knight', monsterId: 'dragonSwornGeneral', shared: true,
       wants: 'To undo the oath he swore to the dragon, without getting the rest of his soldiers burned for it.', knows: 'The honour guard\'s orders, the dome patrol\'s timing, and that the queen\'s left wing has never healed from Aurivel\'s breath.',
       voice: 'Formal and tired. Never says the dragon\'s name; calls her "the Queen" with a twist in it.', appearance: 'A broad man in dark red dragon-scale armour, with a grey beard and the Empress\'s colours sewn inside his cloak where no one sees.',
       backstory: 'Three years ago the dragon gave him a choice: kneel with the army, or watch every southern city burn. He knelt.',
-      gmNotes: 'Gladiator stat block, as one of the three gladiators in the barracks fight. Turned (the Empress, his letter, or a DC 18 Persuasion with a good reason), he and his knights fight the honour guard and lend the heroes their young dragons. Tell him the knights\' families are safe and the check has advantage.',
+      gmNotes: 'Dragon-Sworn General stat block; he leads the barracks fight himself, with two arena champions at his side. Turned (the Empress, his letter, or a DC 18 Persuasion with a good reason), he and his knights fight the honour guard and lend the heroes their young dragons. Tell him the knights\' families are safe and the check has advantage.',
     },
     {
       id: 'pf_tcaurivel', name: 'Aurivel', title: 'the Unburnt Offering, a chained silver dragon', kind: 'monster', art: 'dragon-silver-adult', monsterId: 'adultSilverDragon', shared: true,

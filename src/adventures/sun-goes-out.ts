@@ -233,7 +233,7 @@ function solmere() {
   });
   b.tunnel([[49, 48], [50, 51], [52, 55]], 2, { mat: 'dungeon-slab', seed: 11 });
   b.hall(56, 60, 57, 60, 1, { mat: 'dungeon-slab' }).door(55, 60, 'e', 'secret');
-  b.props_('sarcophagus-row', [[51, 57], [51, 61]]).prop('sarcophagus-effigy', 54, 58).props_('urn', [[54, 56], [54, 63]]).prop('candles', 53, 62).prop('stairs-up', 50, 55).light(53, 62, 5, 10, FIRE);
+  b.props_('sarcophagus-row', [[51, 57], [51, 61]]).prop('sarcophagus-effigy', 54, 58).props_('urn', [[54, 56], [54, 63]]).prop('candles', 53, 62).prop('stairs-up', 50, 55).prop('pit-deep', 52, 63).light(53, 62, 5, 10, FIRE);
   b.cave('The Worm Galleries', 55, 71, 5, 5, {
     seed: 23,
     read: 'Round tunnels as wide as a house, their walls glassy and ridged, wind through the roots of the hill. Something enormous has been eating its way toward the cold.',
@@ -534,7 +534,7 @@ function larkspire() {
     gm: 'The Book of Matins. The page it lies open at holds the Hymn of Matins in full, with the music (handout if Pellam is not with them). A secret trapdoor under the lectern (DC 18 Perception) leads to a tiny reliquary.',
     doors: [[50, 50, 'w', 'closed']],
   });
-  b.prop('lectern-dais', 53, 49).props_('bench-long', [[51, 48], [51, 52], [54, 51]]).prop('reliquary', 54, 52).prop('candle-stand-tall', 52, 50).light(53, 50, 5, 15, SUNLIGHT);
+  b.prop('lectern-dais', 53, 49).props_('bench-long', [[51, 48], [51, 52], [54, 51]]).prop('reliquary', 54, 52).prop('candle-stand-tall', 52, 50).prop('trapdoor', 54, 49, 0, { gm: true }).light(53, 50, 5, 15, SUNLIGHT);
   b.building('Scriptorium', 33, 53, 14, 5, {
     mat: 'wood-planks',
     read: 'Long desks, inkpots frozen solid, pages of illuminated manuscript scattered by a wind that has stopped blowing. At the end of the room, two figures of clay and two of iron stand guard over a locked case.',
@@ -754,11 +754,11 @@ function unsolmere() {
   b.cave('The Shadow Spire', 9, 71, 7, 6, {
     seed: 49,
     read: 'A cavern under the shadow city, where a spire of black glass grows downward from the roof like a fang, its tip a hand\'s width from the floor. Light drips from it, gold, and the drops vanish before they land. Beneath it, on a throne of black ice, sits Queen Elowen. Her eyes are black from edge to edge. Beside her, a robed skeleton turns the pages of a star-chart.',
-    gm: 'The fourth Night Spire (same stats), guarded by the Unqueen (vampire), the Umbral Astronomer (lich: Isaura\'s shadow, or Isaura herself if she died in Part 1 and the dark took her), four vampire spawn and two cloakers. See the Unqueen\'s notes for how she can be broken. When this spire falls, Unsolmere starts to fade, and the shades walk home; the Dark Meridian appears, a black road in the air, leading to the edge of the world.',
+    gm: 'The fourth Night Spire (same stats), guarded by the Unqueen, the Umbral Astronomer (Isaura\'s shadow, or Isaura herself if she died in Part 1 and the dark took her), four vampire spawn and two cloakers. See the Unqueen\'s notes for how she can be broken. When this spire falls, Unsolmere starts to fade, and the shades walk home; the Dark Meridian appears, a black road in the air, leading to the edge of the world.',
   });
   b.prop('crystal-spire', 9, 70).prop('throne', 6, 72).prop('summoning-circle', 10, 73).prop('lectern', 12, 69).props_('stalactites-tall', [[4, 68], [11, 74]]).prop('candle-ring', 7, 75);
   b.light(9, 70, 15, 25, NIGHT).light(6, 72, 5, 10, SHADE);
-  b.encounter('The Unqueen at the Shadow Spire', [2, 65, 15, 13], [['vampire', 1], ['lich', 1], ['vampireSpawn', 4], ['cloaker', 2]], 'high');
+  b.encounter('The Unqueen at the Shadow Spire', [2, 65, 15, 13], [['unqueen', 1], ['umbralAstronomer', 1], ['vampireSpawn', 4], ['cloaker', 2]], 'high');
 
   // ----- the eastern shadow-town -----
   b.building('Hall of Snuffed Lamps', 63, 46, 11, 8, {
@@ -970,7 +970,7 @@ export const SUN_GOES_OUT: Adventure = {
       voice: 'Precise and quiet, like someone reading measurements. When she talks about her son, her voice goes very flat.',
       appearance: 'A tall woman of fifty in a midnight-blue robe sewn with silver stars, with ink-stained fingers and a lock of a child\'s hair in a locket at her throat.',
       backstory: 'Her son Cael died of a winter fever a year ago. A month later, an angel with grey wings came to her observatory and offered her a world where no one would ever lose a child again.',
-      gmNotes: 'Archmage stat block. She can be talked down at the First Spire (DC 22 Persuasion; automatic if the heroes have been to House Kestrane and speak of Cael with honesty). Spared, she becomes a priceless ally: she knows where every spire stands, and can come to the Shadow Spire in Part 4, where seeing her son\'s shadow ends her faith in the night for good. If she dies, her shadow becomes the lich in Part 4.',
+      gmNotes: 'Archmage stat block. She can be talked down at the First Spire (DC 22 Persuasion; automatic if the heroes have been to House Kestrane and speak of Cael with honesty). Spared, she becomes a priceless ally: she knows where every spire stands, and can come to the Shadow Spire in Part 4, where seeing her son\'s shadow ends her faith in the night for good. If she dies, the dark remakes her as the Umbral Astronomer in Part 4.',
       shared: true,
     },
     {
@@ -983,13 +983,13 @@ export const SUN_GOES_OUT: Adventure = {
       shared: true,
     },
     {
-      id: 'pf_sgounqueen', name: 'The Unqueen', title: 'the shadow of Queen Elowen', kind: 'monster', art: 'vampire', monsterId: 'vampire',
+      id: 'pf_sgounqueen', name: 'The Unqueen', title: 'the shadow of Queen Elowen', kind: 'monster', art: 'vampire', monsterId: 'unqueen',
       wants: 'To be the only queen: to rule a city where no one is ever hungry or cold again, because no one ever feels anything again.',
       knows: 'Everything Elowen knows, and everything she fears. The way to the Dark Meridian, which opens when the Shadow Spire falls.',
       voice: 'Elowen\'s voice, slowed down, with all the hurry taken out. Calm, tender and terrible. She says "right" after she decides, not before.',
       appearance: 'Elowen, exactly, but in a gown of black frost, with eyes black from edge to edge and her father\'s crown on her head.',
       backstory: 'Every fear the young queen has had since her father died, given a body by the long night: the fear of failing her people, and the wish to stop feeling it.',
-      gmNotes: 'Vampire stat block. She is broken by the truth: if the heroes give her Odran\'s message ("he was proud of her"), or the real Elowen looks her in the face, she must make a DC 18 Wisdom save at the start of each of her turns or do nothing that turn but weep. Reduced to 0 hit points she does not die; she fades, and the real Elowen in Solmere wakes feeling lighter than she has in a year.',
+      gmNotes: 'Unqueen stat block (her own: frost, regeneration and royal commands). She is broken by the truth: if the heroes give her Odran\'s message ("he was proud of her"), or the real Elowen looks her in the face, she must make a DC 18 Wisdom save at the start of each of her turns or do nothing that turn but weep. Reduced to 0 hit points she does not die; she fades, and the real Elowen in Solmere wakes feeling lighter than she has in a year.',
     },
     {
       id: 'pf_sgoskarra', name: 'Skarra Tidewife', title: 'storm giant oracle of the Whitewake', kind: 'npc', art: 'stormGiant', monsterId: 'stormGiant', shared: true,
@@ -1139,7 +1139,7 @@ export const SUN_GOES_OUT: Adventure = {
         { room: 'Throne of Midnight', title: 'The Midnight Chancellor', encounter: 'The Midnight Chancellor', read: 'The palace stands upside down. Chandeliers grow from the floor like iron trees; the throne hangs from the ceiling. Beneath it, at a table of bone, a vast red devil in a judge\'s robe signs papers, and a line of grey shades waits to be signed.', gm: 'A pit fiend clerk. Beat him with his own charter (the true queen\'s claim), or fight. Avoidable entirely by going round through the gardens.', treasure: 'In the Chancellery strongbox: 15,000 gp in black gold coins (they turn to real gold in sunlight) and a mantle of spell resistance.' },
         { room: 'The Drowned Mirror', title: 'A message to the queen', optional: true, read: 'The black lake shows the real Solmere upside down, and a young queen asleep at her desk with her cheek on a map.', gm: 'Speak to Elowen in her dream. If she comes through the Looking-Glass Gate, the Chancellor must bow and the Unqueen is weakened. It is a real risk for her: the heroes must keep her alive in Unsolmere.' },
         { room: 'Vault of Stolen Hours', title: 'The king\'s last summer', optional: true, gm: 'Real sunlight in hourglasses. Daylight +3 hours, and Odran\'s hourglass lets him rest.', treasure: 'Odran\'s frost crown, left behind when he fades: while worn, the wearer has resistance to cold and necrotic damage and can\'t be frightened (attunement).' },
-        { room: 'The Shadow Spire', title: 'The fourth spire', encounter: 'The Unqueen at the Shadow Spire', read: 'A spire of black glass grows down from the roof like a fang, dripping gold light that vanishes before it lands. Beneath it, on a throne of black ice, sits Queen Elowen, with eyes black from edge to edge. Beside her, a robed skeleton turns the pages of a star-chart.', gm: 'The Unqueen, the Umbral Astronomer and their guards. Odran\'s message or the real Elowen breaks the Unqueen (see her notes). When the spire falls, Daylight +2 hours, Unsolmere begins to fade, and a black road opens in the air: the Dark Meridian, running to the edge of the world.', treasure: 'The Umbral Astronomer\'s staff (a staff of the magi, if it was a lich; Isaura\'s staff of power returns if it was her shadow).' },
+        { room: 'The Shadow Spire', title: 'The fourth spire', encounter: 'The Unqueen at the Shadow Spire', read: 'A spire of black glass grows down from the roof like a fang, dripping gold light that vanishes before it lands. Beneath it, on a throne of black ice, sits Queen Elowen, with eyes black from edge to edge. Beside her, a robed skeleton turns the pages of a star-chart.', gm: 'The Unqueen, the Umbral Astronomer and their guards. Odran\'s message or the real Elowen breaks the Unqueen (see her notes). When the spire falls, Daylight +2 hours, Unsolmere begins to fade, and a black road opens in the air: the Dark Meridian, running to the edge of the world.', treasure: 'The Umbral Astronomer\'s staff (a staff of the magi if it was Isaura herself, remade by the dark; if it was only her shadow, Isaura\'s own staff of power returns to her).' },
       ],
       wrapUp: 'The fourth spire falls upward into the dark, and the shadow city starts to fade like a dream at morning. The shades go home, each carrying an hour of light. In the real Solmere, Queen Elowen wakes and, for the first time in a year, cries for her father. Above the ruins, the Dark Meridian unrolls: a road of black light to the end of the world. The heroes reach level 20.',
     },

@@ -350,6 +350,7 @@ function skerrow() {
     read: 'A curved walk lined with seven little chapels, each with its gate of silver bars and its own candle. In four of them the candles have gone out, and the silver caskets are gone. In the other three, something wrapped in gold cloth glints through the bars.',
     gm: 'The reliquaries of the Seven. Each casket has a silver keeping-nail driven through its lid into the bones (Arcana DC 13: the nail holds the soul to the bones). The Keeping guards the chapels: the empty suits of armour on the walk, the long rug and the saints\' swords hanging in the chapels wake if anyone opens a chapel gate without singing the first line of the Lantern Hymn, or if any bones leave. A hero who reads the confession knows this. Three remain: Saint Merriel the Midwife, Saint Cathan the Singer and Little Saint Bryok.',
   });
+  b.wall(61, 15, 's', 'window'); // the high window over the herb garden: climb (DC 13 Athletics) and drop in
   for (let k = 0; k < 7; k++) {
     const y = 1 + 2 * k;
     b.wallRun(61, y + 1, 3, 's').wall(61, y + 1, 'w');

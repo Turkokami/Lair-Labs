@@ -94,7 +94,7 @@ function sorrelHill() {
   b.building("The mayor's townhouse", 55, 1, 22, 12, {
     mat: 'wood-planks-dark',
     read: 'A tall house of black beams and white plaster. Every window is lit, and a white stag banner hangs over the door.',
-    gm: 'Mayor Tamsin Hale lives here with her steward, Bram Holloway. Two hired door guards (use guard stats) admit only invited guests. A forged invitation (DC 13), a good lie (DC 14 Deception) or a word from Sister Ysolde gets the heroes in. The study window on the east side is unlatched (DC 12 Athletics to climb the ivy).',
+    gm: 'Mayor Tamsin Hale lives here with her steward, Bram Holloway. Two hired door guards (guard stat blocks) admit only invited guests. A forged invitation (DC 13), a good lie (DC 14 Deception) or a word from Sister Ysolde gets the heroes in. The study window on the east side is unlatched (DC 12 Athletics to climb the ivy).',
     doors: [[65, 12, 's', 'closed', 'door-double'], [66, 12, 's', 'closed', 'door-double']],
     windows: [[58, 12, 's'], [72, 12, 's'], [76, 9, 'e'], [55, 4, 'w'], [60, 1, 'n'], [72, 1, 'n']],
   });

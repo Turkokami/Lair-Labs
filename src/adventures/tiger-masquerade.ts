@@ -207,11 +207,11 @@ function isolaVascarra() {
   b.room('Tiger Vault', 53, 7, 8, 4, {
     mat: 'marble',
     read: 'Gold glints behind an iron door: chests, coin stacks, a crown on a cushion. Crouched in the middle of it all is a tiger of black iron, larger than a horse, its eyes two lamps of red glass.',
-    gm: 'The Vascarra treasury. The Iron Tiger (iron golem) attacks anyone who enters without the prince or the vault key from his writing desk. Saying the House motto ("We do not sleep") stops it for 1 minute (DC 16 History to know it, or the prince tells it). The demon has not come here: it wants the Chair, not the gold.',
+    gm: 'The Vascarra treasury. The Iron Tiger (Iron Vault Tiger stat block) attacks anyone who enters without the prince or the vault key from his writing desk. Saying the House motto ("We do not sleep") stops it for 1 minute (DC 16 History to know it, or the prince tells it). The demon has not come here: it wants the Chair, not the gold.',
   });
   b.props_('treasure-pile', [[54, 8], [59, 8]]).props_('coin-stacks', [[55, 10], [58, 10]]).prop('crown-cushion', 60, 7).prop('strongbox', 53, 10).prop('display-case', 53, 7).prop('gem-bowl', 60, 10).prop('statue', 56, 8);
   b.light(56, 9, 5, 10, '#ff5c5c');
-  b.encounter('The Iron Tiger', [53, 7, 8, 4], [['ironGolem', 1]], 'moderate');
+  b.encounter('The Iron Tiger', [53, 7, 8, 4], [['ironVaultTiger', 1]], 'moderate');
 
   b.room("Prince's Apartments", 53, 12, 8, 5, {
     mat: 'wood-planks-dark',
@@ -606,7 +606,7 @@ export const TIGER_MASQUERADE: Adventure = {
         {
           room: "Prince's Apartments", title: 'The eleventh bell', encounter: 'The eleventh bell',
           read: 'The prince is halfway into his ceremonial coat, laughing at something his valet said, when the wardrobe door opens very gently. A woman in a fox mask steps out with a knife in each hand and says, quite sincerely, "I am sorry, Your Highness."',
-          gm: 'Jessa Larrow and a second Snuffer strike at the eleventh bell. If the heroes are not there, the prince dies unless Mirela was warned. Show Jessa proof that the client was false and she stops at once, voids the contract and hands it over. The Tiger Vault is next door (iron golem; the motto "We do not sleep" stops it). At the same bell, two vrocks land on the observatory dome: anyone on the Sea Terrace or in the garden sees them.',
+          gm: 'Jessa Larrow and a second Snuffer strike at the eleventh bell. If the heroes are not there, the prince dies unless Mirela was warned. Show Jessa proof that the client was false and she stops at once, voids the contract and hands it over. The Tiger Vault is next door (the Iron Vault Tiger; the motto "We do not sleep" stops it). At the same bell, two vrocks land on the observatory dome: anyone on the Sea Terrace or in the garden sees them.',
           treasure: 'On the assassins: a dagger of venom and 600 gp. In the vault, if the prince opens it for his rescuers: a gem of seeing, a rod of rulership he is happy to lend for the night, and 4,000 gp.',
           handout: 'contract',
         },

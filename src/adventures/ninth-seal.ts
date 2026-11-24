@@ -553,12 +553,12 @@ function hushdeep() {
   b.water(38, 50, 9, 2, false, true);
   b.area('The Murmuring Stilts', [[38, 38, 9, 13]], {
     read: 'A village of huts on stilts over the shallows, joined by rope walks. Hushfolk in grey sit on the platforms, eyes shut, rocking and murmuring in their sleep. A few are awake. Their skin has scales, or too many fingers, or a second mouth that does not speak.',
-    gm: 'The cave-folk, changed by the titan\'s dreams: some into dream-trolls that heal unless burned, and two great ettin-shaped "twin-sleepers". They are not evil, only half asleep and frightened. Mother Quorra can calm them; without her, they attack strangers who carry light (they think the light will wake the dreamer).',
+    gm: 'The cave-folk, changed by the titan\'s dreams: some into dream-trolls that heal unless burned, and two into great two-headed twin-sleepers (each grown from two dreamers; Mother Quorra knows their names, and calling both makes one hesitate). They are not evil, only half asleep and frightened. Mother Quorra can calm them; without her, they attack strangers who carry light (they think the light will wake the dreamer).',
   });
   b.building('Mother Quorra\'s hut', 39, 39, 5, 4, { mat: 'wood-planks', read: 'A hut hung with bundles of grey moss and little clay dolls, one for every villager, each with its eyes stitched shut.', gm: 'Quorra\'s home. The dolls are dream-charms: she stitches the eyes of each to keep its owner from dreaming too deep. It works, a little.', doors: [[41, 42, 's', 'open']] });
   b.building('Hut of the sleepers', 39, 45, 5, 4, { mat: 'wood-planks', read: 'Six Hushfolk lie on reed mats, breathing in perfect time. Their eyes move under the lids. All in the same direction.', gm: 'The deepest sleepers. Waking one (DC 15 Medicine) makes them scream the same words: "the key is coming home".', doors: [[41, 45, 'n', 'open']] });
   b.props_('herbs-drying', [[40, 40], [42, 40]]).props_('hammock', [[45, 39], [45, 47]]).props_('fishing-net', [[38, 49], [46, 43]]).prop('cooking-pot-fire', 45, 44).prop('canoe', 42, 50, 90).prop('reeds', 39, 50).light(45, 44, 10, 15);
-  b.encounter('The Murmuring Stilts', [37, 37, 10, 14], [['troll', 4], ['ettin', 2]], 'low');
+  b.encounter('The Murmuring Stilts', [37, 37, 10, 14], [['dreamTroll', 4], ['twinSleeper', 2]], 'low');
   b.floor(47, 44, 8, 1, 'wood-planks');
   b.area('The rope walk', [[47, 44, 8, 1]], { read: 'A rope bridge on floats, swaying over the black water toward the island.', gm: 'Forty feet of bridge. The Listener knows the moment anyone steps on it.' });
   b.cave('The Listener\'s isle', 58, 44, 4, 3, {

@@ -87,14 +87,14 @@ function thimbleIsle() {
   b.pool(34, 35, 2.5, 2.5);
   b.area('Courtyard', [[25, 26, 18, 19]], {
     read: 'A cobbled courtyard with a fountain shaped like a frog spitting water at a fish. Brooms zip through the air in a tight squadron, sweeping everything they find. A dinner lady is stuck at the top of a lamp post, holding a ladle.',
-    gm: 'Three brooms (flying swords that bludgeon instead of slash) sweep anything that moves "into a neat pile". Ways to win without fighting: shout "Brooms, REST!" in a teacher\'s voice (DC 12 Intimidation or Deception), tangle them in a net or a tablecloth (DC 12 Dexterity), or dump a sack of dust in the fountain so they all dive in to tidy it. Rescuing the dinner lady (DC 10 Athletics) earns three warm treacle tarts.',
+    gm: 'Three runaway brooms sweep anything that moves "into a neat pile". Ways to win without fighting: shout "Brooms, REST!" in a teacher\'s voice (DC 12 Intimidation or Deception), tangle them in a net or a tablecloth (DC 12 Dexterity), or dump a sack of dust in the fountain so they all dive in to tidy it. Rescuing the dinner lady (DC 10 Athletics) earns three warm treacle tarts.',
     label: [29, 32],
   });
   b.wallRun(25, 44, 5, 's', 'low').wallRun(38, 44, 5, 's', 'low').wallRun(42, 34, 4, 'e', 'low').wallRun(42, 40, 5, 'e', 'low');
   b.prop('fountain-grand', 33, 34).props_('tree-oak', [[26, 28], [41, 28], [26, 43], [41, 43]]).props_('bench', [[29, 37], [39, 37]]).props_('lamp-post', [[30, 30], [38, 30], [30, 41], [38, 41]]);
   b.prop('notice-board', 25, 31).prop('statue', 26, 36).props_('flowers', [[28, 27], [36, 27], [27, 39]]).props_('debris-wood', [[31, 28], [37, 39]]).prop('broken-furniture', 40, 33).prop('sack', 35, 43).prop('handcart', 28, 43);
   b.light(30, 30, 15, 20).light(38, 30, 15, 20).light(30, 41, 15, 20).light(38, 41, 15, 20).light(33, 34, 5, 10, '#ff9adf');
-  b.encounter('The broom brigade', [25, 26, 18, 19], [['flyingSword', 3]], 'low');
+  b.encounter('The broom brigade', [25, 26, 18, 19], [['runawayBroom', 3]], 'low');
 
   // ---------- the great hall ----------
   b.building('Great hall', 25, 16, 18, 10, {
@@ -132,7 +132,7 @@ function thimbleIsle() {
   b.building('Library', 14, 28, 11, 20, {
     mat: 'wood-planks-dark',
     read: 'Tall stacks lean together like gossiping aunts. Books flap overhead in a dark, rustling flock, and every so often one swoops down and snaps at someone\'s ear.',
-    gm: 'Three flocks of flapping books (swarms of bats). They hate noise: shout "SHHHH!" together and they settle on the shelves (DC 12 group Charisma check). A lamp waved at them makes them flee too. The librarian\'s desk holds the lending log: Nettie\'s name is NOT on it, but "F.S." took out "Advanced Circles" last week.',
+    gm: 'Three flocks of flapping books. They hate noise: shout "SHHHH!" together and they settle on the shelves (DC 12 group Charisma check). A lamp waved at them makes them flee too. The librarian\'s desk holds the lending log: Nettie\'s name is NOT on it, but "F.S." took out "Advanced Circles" last week.',
     doors: [[19, 33, 's', 'locked', 'door-iron'], [24, 38, 'e', 'closed', 'door-double'], [24, 39, 'e', 'closed', 'door-double'], [14, 42, 'w', 'closed']],
     windows: [[14, 36, 'w'], [14, 45, 'w'], [17, 47, 's'], [21, 47, 's']],
   });
@@ -146,13 +146,13 @@ function thimbleIsle() {
   for (const x of [16, 18, 20, 22]) for (const y of [35, 36, 37, 41, 42, 43]) b.prop('library-stack', x, y);
   b.prop('bookcase-ladder', 23, 36).prop('desk', 21, 39).prop('chair', 21, 40).prop('lectern', 16, 39).prop('table-reading', 17, 45).props_('chair', [[16, 45], [18, 45]]).prop('reading-nook', 15, 46).prop('globe-stand', 23, 45).props_('book-pile', [[20, 46], [19, 39]]);
   b.light(19, 31, 5, 15, '#9ad0ff').light(21, 39, 10, 15).light(17, 45, 10, 15);
-  b.encounter('Flapping books', [14, 34, 11, 14], [['swarmOfBats', 3]], 'low');
+  b.encounter('Flapping books', [14, 34, 11, 14], [['flappingBookFlock', 3]], 'low');
 
   // ---------- the potion classroom ----------
   b.building('Potion classroom', 43, 16, 11, 10, {
     mat: 'stone-flagstone',
     read: 'Cauldrons bubble on their own. Last week\'s homework has climbed out of them: one lumpy brown blob, one lumpy grey blob, and a cloud of steam with a very bad temper, all arguing about whose turn it is.',
-    gm: 'Three bits of failed homework (two mud mephits and a steam mephit). They want to be marked: give each a grade higher than a C (DC 11 Deception or Persuasion each) and they glow with pride and slop back into the cauldrons. A failing grade makes them attack. Nettie\'s cauldron still has half a batch of Un-Cat Tonic in it (see Homework with legs).',
+    gm: 'Three bits of failed homework (two lumps of lumpy homework and a cross steam cloud). They want to be marked: give each a grade higher than a C (DC 11 Deception or Persuasion each) and they glow with pride and slop back into the cauldrons. A failing grade makes them attack. Nettie\'s cauldron still has half a batch of Un-Cat Tonic in it (see Homework with legs).',
     doors: [[46, 25, 's', 'closed'], [53, 23, 'e', 'closed']],
   });
   b.wallRun(49, 16, 5, 'e').wallRun(50, 20, 4, 's').door(49, 18, 'e', 'closed');
@@ -164,7 +164,7 @@ function thimbleIsle() {
   b.props_('cauldron', [[45, 19], [48, 22], [45, 22]]).prop('cauldron-tripod', 47, 19).prop('alchemy-table', 44, 24).props_('desk', [[47, 24], [49, 24]]).prop('notice-board', 44, 17).prop('green-slime', 46, 21).prop('potion-shelf', 52, 22).prop('potion-rack', 52, 24);
   b.prop('shelf-jars', 51, 17).prop('herbs-drying', 53, 17).prop('wall-shelves', 50, 19).prop('potion-set', 53, 19);
   b.light(45, 19, 10, 15, '#7dff9a').light(48, 22, 10, 15, '#7dff9a').light(51, 18, 5, 10);
-  b.encounter('Homework with legs', [43, 16, 7, 10], [['mudMephit', 2], ['steamMephit', 1]], 'low');
+  b.encounter('Homework with legs', [43, 16, 7, 10], [['homeworkBlob', 2], ['homeworkSteamCloud', 1]], 'low');
 
   // ---------- the clock tower ----------
   b.building('Clock tower', 43, 26, 8, 8, {
@@ -246,7 +246,7 @@ function thimbleIsle() {
   b.building('Greenhouse', 2, 29, 10, 15, {
     mat: 'dirt',
     read: 'Warm, wet air fogs your glasses. Snapdragons snap, the creepers creep, and two tiny glowing people sit on a mushroom, giggling and pelting you with seeds.',
-    gm: 'Two sprites live here and have joined in the mischief. Four snapdragon shrubs (awakened shrubs) snap at ankles. The sprites love riddles and compliments: win a riddle contest (DC 12 Intelligence) or praise their garden properly (DC 11 Persuasion) and they call the plants off. The moonbell flower for the Un-Cat Tonic grows in the pond bed; the sprites will pick it if asked nicely.',
+    gm: 'Two sprites live here and have joined in the mischief. Four snapdragon shrubs snap at ankles. The sprites love riddles and compliments: win a riddle contest (DC 12 Intelligence) or praise their garden properly (DC 11 Persuasion) and they call the plants off. The moonbell flower for the Un-Cat Tonic grows in the pond bed; the sprites will pick it if asked nicely.',
     doors: [[11, 36, 'e', 'closed'], [6, 43, 's', 'closed']],
     windows: [[2, 31, 'w'], [2, 34, 'w'], [2, 37, 'w'], [2, 40, 'w'], [4, 29, 'n'], [8, 29, 'n'], [11, 31, 'e'], [11, 40, 'e'], [9, 43, 's']],
   });
@@ -254,7 +254,7 @@ function thimbleIsle() {
   b.pool(8.5, 39.5, 1.5, 1.5);
   b.props_('crop-rows', [[4, 32], [9, 32]]).prop('mushroom-giant', 4, 38).props_('flowers', [[6, 35], [9, 35]]).prop('thorn-bush', 10, 34).props_('ferns', [[3, 42], [10, 38]]).prop('tree-palm', 6, 30).prop('lily-pads', 8, 39).prop('reeds', 9, 40).prop('workbench', 10, 42).prop('pottery', 7, 42).prop('water-barrel', 10, 30);
   b.light(6, 36, 10, 15, '#b4ffb0');
-  b.encounter('Snapdragons', [2, 29, 10, 15], [['sprite', 2], ['awakenedShrub', 4]], 'low');
+  b.encounter('Snapdragons', [2, 29, 10, 15], [['sprite', 2], ['snapdragonShrub', 4]], 'low');
 
   // ---------- the broom shed and the west lawn ----------
   b.building('Broom shed', 3, 18, 7, 6, {
@@ -337,7 +337,7 @@ function thimbleIsle() {
   b.prop('summoning-circle', 45, 7).prop('portal-arch', 45, 3).props_('candles', [[41, 6], [49, 6], [45, 11]]).prop('rune-stone', 41, 9).prop('brazier-pedestal', 49, 8).prop('rubble-pile', 48, 3).prop('scroll-pile', 43, 10).prop('rune-tiles', 47, 9).prop('gm-encounter', 45, 7, 0, { gm: true });
   b.rubble(39, 6, 1, 2);
   b.light(45, 7, 20, 20, '#ff6fd8').light(49, 8, 5, 10);
-  b.encounter('The thing in the circle', [38, 2, 15, 11], [['quasit', 1], ['noble', 1], ['flyingSword', 3]], 'high');
+  b.encounter('The thing in the circle', [38, 2, 15, 11], [['quasit', 1], ['chalkTutor', 1], ['chalkPointer', 3]], 'high');
   b.tunnel([[60, 15], [60, 12], [56, 10], [50, 8]], 1, { mat: 'dungeon-slab', seed: 5 });
   b.area('Secret passage', [[54, 9, 7, 6]], {
     read: 'A narrow private stair with a handrail, a doormat and a little shelf for a lamp. Somebody has been using it a lot.',
@@ -398,11 +398,11 @@ export const ACADEMY_SMALL_WONDERS: Adventure = {
       gmNotes: 'A great guide: she knows every room, the portrait password and the secret bookcase. In the final scene she can close the circle herself if the heroes keep Corvin and Snibbet off her. At the end, one of the union familiars may choose her.',
     },
     {
-      id: 'pf_awcorvin', name: 'Master Corvin Sallowmere', title: 'tutor of deportment and sums', kind: 'npc', art: 'court-wizard', monsterId: 'noble', shared: true,
+      id: 'pf_awcorvin', name: 'Master Corvin Sallowmere', title: 'tutor of deportment and sums', kind: 'npc', art: 'court-wizard', monsterId: 'chalkTutor', shared: true,
       wants: 'To be headmaster. He has already had the name plate made.', knows: 'Everything about the sabotage, and the inspector\'s exact arrival time.',
       voice: 'Silky, slow and terribly polite. Says "dear me" and "how unfortunate" while smiling. Sniffs when anyone mentions the headmistress.', appearance: 'A tall, thin man in a spotless grey robe, with violet chalk dust on his fingertips that he keeps trying to wipe off.',
       backstory: 'Passed over for headship twice. Has marked every exam paper in the school F tonight "to be on the safe side".',
-      gmNotes: 'Early on he appears in the great hall to "help" (move his token there), sends the heroes off on errands that keep them busy, then slips away to the cellars by his secret passage. In the chamber he uses the noble stat block, with his conducting baton as a rapier, and three conjured chalk pointers (flying swords). He gives up at half hit points ("Oh, very well."). If confronted with two clues before the fight, he may bolt down the old drain.',
+      gmNotes: 'Early on he appears in the great hall to "help" (move his token there), sends the heroes off on errands that keep them busy, then slips away to the cellars by his secret passage. In the chamber he fights with his conducting baton and violet chalk bolts (Scheming Tutor stat block), and conjures three chalk pointers to rap knuckles. He gives up at half hit points ("Oh, very well."). If confronted with two clues before the fight, he may bolt down the old drain.',
     },
     {
       id: 'pf_awsnibbet', name: 'Snibbet', title: 'a quasit who came through the circle', kind: 'monster', art: 'quasit', monsterId: 'quasit',
@@ -481,7 +481,7 @@ export const ACADEMY_SMALL_WONDERS: Adventure = {
         {
           room: 'Courtyard', title: 'The broom brigade',
           read: 'The moment you step into the courtyard, three brooms peel out of formation and swoop toward you, bristles first. "Tidy," they seem to hiss. "Tidy, tidy, TIDY."',
-          gm: 'Three flying brooms (flying swords; they bludgeon, they do not cut). They try to sweep heroes into a pile by the fountain. End it with a teacher\'s command (DC 12 Intimidation or Deception: "Brooms, REST!"), a tablecloth or net (DC 12 Dexterity to tangle one), or by giving them something better to tidy (a burst sack, a pile of leaves). Calmed brooms lean themselves neatly against the wall. One trouble fixed.',
+          gm: 'Three runaway brooms (they bludgeon, they do not cut). They try to sweep heroes into a pile by the fountain. End it with a teacher\'s command (DC 12 Intimidation or Deception: "Brooms, REST!"), a tablecloth or net (DC 12 Dexterity to tangle one), or by giving them something better to tidy (a burst sack, a pile of leaves). Calmed brooms lean themselves neatly against the wall. One trouble fixed.',
           encounter: 'The broom brigade',
           treasure: 'Three treacle tarts from the grateful dinner lady (each restores 1 hit point and a great deal of morale).',
         },
@@ -502,7 +502,7 @@ export const ACADEMY_SMALL_WONDERS: Adventure = {
         {
           room: 'Library', title: 'Flapping books', optional: true,
           read: 'Books flap overhead in a rustling black flock, snapping their covers like beaks. Somewhere among the stacks an iron door stands shut, and behind it something heavy grumbles in its chains.',
-          gm: 'Three flocks of books (swarms of bats). A group "SHHHH!" (DC 12, group Charisma) or bright light drives them back to the shelves. The forbidden section holds the open Grand Summons with its margin note (handout) and violet smudges on the door handle (DC 13 Investigation). The lending log on the desk shows "F.S." took out "Advanced Circles" last week. One trouble fixed.',
+          gm: 'Three flocks of flapping books. A group "SHHHH!" (DC 12, group Charisma) or bright light drives them back to the shelves. The forbidden section holds the open Grand Summons with its margin note (handout) and violet smudges on the door handle (DC 13 Investigation). The lending log on the desk shows "F.S." took out "Advanced Circles" last week. One trouble fixed.',
           encounter: 'Flapping books',
           handout: 'forbidden',
           treasure: 'A Spell Scroll of Magic Missile in the forbidden section\'s chained case (DC 12 thieves\' tools, or the headmistress\'s nod).',
@@ -510,14 +510,14 @@ export const ACADEMY_SMALL_WONDERS: Adventure = {
         {
           room: 'Potion classroom', title: 'Homework with legs', optional: true,
           read: 'Two lumpy brown blobs and an angry puff of steam have climbed out of the cauldrons and are holding up their own homework labels. "MARK US," gurgles the biggest. "MARK US NOW."',
-          gm: 'Failed homework come to life (two mud mephits and a steam mephit). Give each a grade of B or better with a straight face (DC 11 Deception or Persuasion each) and they slop happily back in. Nettie\'s cauldron holds half a batch of Un-Cat Tonic: add a moonbell flower from the greenhouse and stir (DC 12 Arcana or alchemist\'s supplies) and the headmistress can be human for one hour, enough to talk, cast a spell or two and boss everyone about. One trouble fixed.',
+          gm: 'Failed homework come to life (two lumps of lumpy homework and a cross steam cloud). Give each a grade of B or better with a straight face (DC 11 Deception or Persuasion each) and they slop happily back in. Nettie\'s cauldron holds half a batch of Un-Cat Tonic: add a moonbell flower from the greenhouse and stir (DC 12 Arcana or alchemist\'s supplies) and the headmistress can be human for one hour, enough to talk, cast a spell or two and boss everyone about. One trouble fixed.',
           encounter: 'Homework with legs',
           treasure: 'Two Potions of Healing in the ingredient store ("Matron\'s").',
         },
         {
           room: 'Greenhouse', title: 'Snapdragons', optional: true,
           read: 'Warm, wet air fogs the glass. A row of potted snapdragons swings toward you, jaws clacking, and two tiny glowing people on a mushroom fall about laughing.',
-          gm: 'Two sprites and four snapdragons (awakened shrubs). The sprites will call the plants off for a won riddle contest (DC 12 Intelligence, best of three) or a heartfelt compliment about their garden (DC 11 Persuasion). They pick the moonbell flower for the Un-Cat Tonic as a present. Fire makes the snapdragons wilt and the sprites furious. One trouble fixed.',
+          gm: 'Two sprites and four snapdragon shrubs. The sprites will call the plants off for a won riddle contest (DC 12 Intelligence, best of three) or a heartfelt compliment about their garden (DC 11 Persuasion). They pick the moonbell flower for the Un-Cat Tonic as a present. Fire makes the snapdragons wilt and the sprites furious. One trouble fixed.',
           encounter: 'Snapdragons',
         },
         {
@@ -543,7 +543,7 @@ export const ACADEMY_SMALL_WONDERS: Adventure = {
         {
           room: 'Summoning chamber', title: 'The thing in the circle',
           read: 'Pink light crackles from a great chalk circle like a fire made of sherbet. A grinning, bat-eared creature with a teacup for a hat floats over it, juggling candles. From the shadows steps Master Sallowmere, dusting his hands. "Dear me," he says. "You really should have stayed in the menagerie."',
-          gm: 'The climax. Corvin (noble stat block) and Snibbet (quasit) fight together, with three conjured chalk pointers (flying swords). Closing the circle takes two actions: rub out the eighth rune on the north side, then read the closing lines (Nettie can do it if protected; anyone with the homework or the spellbook can too). Snibbet can be bought off with a good souvenir and a DC 13 Persuasion. Showing Corvin two clues, or having the headmistress (cat or human) stare him down, gives advantage on any check to make him surrender; he gives up at half hit points anyway. When the circle shuts: every enchanted thing in the school drops still, Snibbet and Grizzleworth pop home, and a very cross headmistress is standing where the cat was.',
+          gm: 'The climax. Corvin (Scheming Tutor) and Snibbet (quasit) fight together, with three conjured chalk pointers. Closing the circle takes two actions: rub out the eighth rune on the north side, then read the closing lines (Nettie can do it if protected; anyone with the homework or the spellbook can too). Snibbet can be bought off with a good souvenir and a DC 13 Persuasion. Showing Corvin two clues, or having the headmistress (cat or human) stare him down, gives advantage on any check to make him surrender; he gives up at half hit points anyway. When the circle shuts: every enchanted thing in the school drops still, Snibbet and Grizzleworth pop home, and a very cross headmistress is standing where the cat was.',
           encounter: 'The thing in the circle',
           treasure: 'From the grateful headmistress: 25 gp each, an honorary staff badge, and the school\'s old lost-property bag (a Bag of Holding) for the group. The founder\'s Driftglobe is still on the islet for those who find it.',
         },

@@ -217,12 +217,12 @@ function stilecrossMeadow() {
   round(b, 42.5, 54.5, 5.5, { mat: 'wood-planks', kind: 'low', gaps: ['42,49,n', '43,49,n', '42,59,s', '43,59,s', '37,54,w', '37,55,w', '47,54,w', '47,54,e', '47,55,e'] });
   b.area('The Carousel', [[38, 50, 9, 9]], {
     read: `A carousel of painted horses turns to wheezing calliope music, though nobody is working the crank. Every horse is white with gold reins, except the lead horse, which is black as a hole and does not go up and down like the others.`,
-    gm: `The black horse is Sootfoot, Mother Gloam's nightmare, standing very still and pretending to be wood (DC 15 Perception: its nostrils steam). The painted horses carry riders round and round; anyone who rides three turns hears whispering in their ear: the names of the taken (DC 13 Investigation to pick out "Tibitha" and "Wystan"). Catching the brass ring from the pole wins a prize. Touch the black horse, or try to stop the music, and Sootfoot wakes: the painted horses tear free of their poles and charge (use warhorse stats; they are wood).`,
+    gm: `The black horse is Sootfoot, Mother Gloam's nightmare, standing very still and pretending to be wood (DC 15 Perception: its nostrils steam). The painted horses carry riders round and round; anyone who rides three turns hears whispering in their ear: the names of the taken (DC 13 Investigation to pick out "Tibitha" and "Wystan"). Catching the brass ring from the pole wins a prize. Touch the black horse, or try to stop the music, and Sootfoot wakes: the six painted horses tear free of their poles and charge (carousel horses: painted wood, and they burn).`,
     label: [42, 54],
   });
   b.prop('pipe-organ', 42, 54).prop('pillar-round', 43, 55).props_('statue', [[40, 52], [45, 52], [39, 55], [46, 56], [41, 57], [44, 51]]).prop('statue-dragon', 40, 57).prop('lantern-cluster', 42, 51);
   b.light(42, 54, 15, 20, '#ffe08a').light(39, 51, 6, 10, '#ff7ad1').light(46, 57, 6, 10, '#7ad1ff');
-  b.encounter('The carousel bolts', [37, 49, 11, 11], [['nightmare', 1], ['warhorse', 6]], 'low');
+  b.encounter('The carousel bolts', [37, 49, 11, 11], [['nightmare', 1], ['carouselHorse', 6]], 'low');
 
   // ---------- the Mirror Maze (south) ----------
   const MX = 30, MY = 62, MW = 19, MH = 15;

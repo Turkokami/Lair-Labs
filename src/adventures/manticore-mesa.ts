@@ -247,7 +247,7 @@ function sabbathMesa() {
     gm: 'The climax. Old Sabbath talks first: he is in no hurry, and curious. Tobias Bledsoe comes out to stand beside him, fists taped. The Deacon waits in the Den and attacks from behind once the fight starts. If the heroes show Old Sabbath that the red hands and the lantern are a leash (DC 15 Persuasion or Deception, advantage with Delphine\'s letters), he turns: he swears to eat Delphine and fly north, and only Tobias and his crew fight. Old Sabbath flies off at a third of his hit points; the Deacon fights to the death near the Den.',
     label: [66, 14],
   });
-  b.encounter('The toll comes due', [58, 2, 19, 19], [['manticore', 2], ['gladiator', 1], ['thug', 5]], 'high');
+  b.encounter('The toll comes due', [58, 2, 19, 19], [['elderManticore', 1], ['manticore', 1], ['gladiator', 1], ['thug', 5]], 'high');
 
   // ---------- the flats west of the wash ----------
   b.building('Quarles shack', 6, 41, 5, 4, { mat: 'wood-planks', doors: [[8, 44, 's']], windows: [[10, 42, 'e']],
@@ -414,12 +414,12 @@ export const MANTICORE_MESA: Adventure = {
       gmNotes: 'Spy stat block. She helps the heroes at first, eager to point them at the mesa (she hopes the manticore or Tobias kills them). When exposed she calls out the heroes onto Main Street with three hired regulators and four toughs (High noon), and runs for a horse when it goes badly. She surrenders if cornered and tries to bribe her way out (1,000 gp in railroad shares, worthless).',
     },
     {
-      id: 'pf_mcmsabbath', name: 'Old Sabbath', title: 'the manticore of the mesa', kind: 'monster', art: 'manticore', monsterId: 'manticore', shared: true,
+      id: 'pf_mcmsabbath', name: 'Old Sabbath', title: 'the manticore of the mesa', kind: 'monster', art: 'manticore', monsterId: 'elderManticore', shared: true,
       wants: 'Meat, flattery and to never be made a fool of.',
       knows: 'The red lantern and the red hand mean an easy meal. The small ink-woman thinks she owns him. The big man feeds him and does not fear him, which he respects.',
       voice: 'A slow, rolling preacher\'s voice. Calls people "sinners" and his meals "the tithe". Quotes nothing, invents proverbs.',
       appearance: 'A lion the colour of the rock, with leathery wings, a scorpion-thick tail bristling with black spikes, and a man\'s face, old, bearded and smiling.',
-      gmNotes: 'Manticore stat block with maximum hit points. He opens with tail spikes from the air and lands only on the wounded. He can be talked to, and turned (see the Bone Yard). Flies off at a third of his hit points.',
+      gmNotes: 'Elder Manticore (an original Lair Labs stat block). He opens with tail spikes and his Spike Sermon from the air, and lands only on the wounded (Old Hunter). The Deacon is an ordinary manticore. He can be talked to, and turned (see the Bone Yard). Flies off at a third of his hit points.',
     },
     {
       id: 'pf_mcmtobias', name: 'Tobias Bledsoe', title: 'the Feeder, a disgraced prizefighter', kind: 'npc', art: 'gladiator', monsterId: 'gladiator',

@@ -79,7 +79,7 @@ function brightwallBesieged() {
   b.mud(30, 70, 14, 3);
   b.area('East slope', [[70, 22, 10, 28]], { read: 'The hill falls away steeply under the east wall. Scaling ladders lie in the grass like the bones of something long.', gm: 'The legion tests this wall every few hours. A siege tower is being built far down the slope; it will not be ready until the final assault.', label: [75, 34] });
   b.props_('ladder', [[70, 28], [70, 32], [70, 36], [70, 45]]).prop('siege-tower', 75, 10).props_('barricade-wood', [[76, 30], [77, 44]]).props_('skeleton-lying', [[73, 33], [72, 47]]).prop('boulder', 76, 52);
-  b.encounter('Ladders on the east wall', [60, 26, 20, 22], [['hobgoblin', 10], ['veteran', 2], ['ogre', 2]], 'low');
+  b.encounter('Ladders on the east wall', [60, 26, 20, 22], [['hobgoblin', 10], ['ironCollarSergeant', 2], ['ogre', 2]], 'low');
   b.area('East wall-walk', [[66, 4, 2, 58]], { read: 'A stone walk behind the battlements, slick with rain and worse. Every twenty paces a militiaman stands with a pole for pushing ladders away.', gm: 'From the walk, defenders have three-quarters cover against archers below. Pushing a ladder off: DC 15 Athletics (DC 20 if two hobgoblins are on it).', label: [66, 20] });
   b.props_('brazier', [[67, 16], [67, 40]]).props_('barrel', [[67, 24], [66, 34]]).prop('sandbags', 67, 52).light(67, 16, 10, 15).light(67, 40, 10, 15);
   b.area('Water-gate', [[17, 60, 6, 6]], { read: 'The Brightrun slides out under the wall through an iron grate furred with weed. The bars are old. Some of them are newly bent.', gm: 'The weak point of the wall. DC 14 Perception: two bars are bent from outside, and fresh worg prints are pressed into the mud bank. Outriders sniff here at night. The grate\'s lock: DC 16 thieves\' tools; Hedda has the key.', label: [19, 61] });
@@ -96,7 +96,7 @@ function brightwallBesieged() {
   b.prop('brazier-pedestal', 30, 3).prop('orb-pedestal', 31, 4).prop('debris-wood', 28, 4).prop('candle-ring', 33, 3).prop('book-pile', 27, 3);
   b.building("Keeper's house", 38, 4, 9, 6, { read: 'A neat house that smells of lamp oil and ink. A child\'s room at the back is very tidy, as if nobody has slept in it for a month.', gm: 'Teodric\'s house. His desk drawer (DC 15 to pick) holds a knotted cord of brown hair and a note in a neat soldier\'s hand (handout). He says his daughter Elske is visiting her aunt in Harrowford. She is not.', doors: [[42, 9, 's']], windows: [[38, 6, 'w'], [46, 6, 'e']] });
   b.prop('writing-desk', 39, 5).prop('bookshelf', 40, 4).prop('bed', 45, 5).prop('crib', 44, 8).prop('fireplace', 42, 4).prop('chest', 39, 8).prop('dresser', 46, 8);
-  b.encounter('The Keeper unmasked', [24, 2, 25, 12], [['mage', 1], ['animatedArmor', 4], ['bugbear', 8], ['veteran', 2]], 'high');
+  b.encounter('The Keeper unmasked', [24, 2, 25, 12], [['mage', 1], ['animatedArmor', 4], ['bugbear', 8], ['ironCollarSergeant', 2]], 'high');
   b.area('Signal Stair', [[34, 13, 6, 4]], { read: 'Forty steps cut into the rock, so steep you climb with your hands.', gm: 'The main way up the crag. Two can fight abreast on it; anyone shoved off falls 20 feet (2d6 bludgeoning).', label: [36, 15] });
   b.props_('stair-grand', [[36, 14], [37, 15]]);
 
@@ -142,7 +142,7 @@ function brightwallBesieged() {
   b.area('Field hospital', [[22, 39, 13, 12]], { read: 'The market square is full of tents. Stalls hold bandages instead of apples. Somewhere a man is singing to keep from screaming, and a priest in a bloody apron is singing along.', gm: 'More wounded, the cook-fires and the dead-cart. At dusk the bugbears who came up the shaft strike here, to kill the healers and spread panic, at the same moment as ladders go up on the east wall.', label: [28, 44] });
   b.props_('tent', [[24, 41], [31, 41], [24, 48], [31, 48]]).props_('cot', [[27, 41], [28, 41], [27, 48], [28, 48]]).prop('cauldron-tripod', 28, 46).prop('water-barrel', 34, 40).prop('cart', 33, 49).prop('market-stall', 22, 43).prop('herbs-drying', 22, 47).prop('table-trestle', 30, 45);
   b.light(28, 46, 10, 20);
-  b.encounter('Knives in the field hospital', [22, 39, 13, 12], [['bugbear', 8], ['veteran', 1]], 'low');
+  b.encounter('Knives in the field hospital', [22, 39, 13, 12], [['bugbear', 8], ['ironCollarSergeant', 1]], 'low');
   b.building('Temple of the Kindler', 44, 32, 14, 14, { mat: 'marble', read: 'A tall temple of white stone. On the altar a crystal the size of a fist holds a steady flame that never needs fuel. Children sleep under the pews in rows.', gm: 'The Kindler is the god of hearth-fires and watch-fires. The altar crystal is a shard of the same stone as the Dawnstone: with the rite (handout, part 3) it can mend the Beacon\'s lens. Mother Agathe will give it up only if she believes the Beacon will be lit.', doors: [[44, 38, 'w', 'closed', 'door-double'], [44, 39, 'w', 'closed', 'door-double'], [57, 41, 'e'], [50, 45, 's']], windows: [[47, 32, 'n'], [51, 32, 'n'], [44, 34, 'w'], [44, 43, 'w']] });
   b.wallRun(53, 32, 5, 'w').wallRun(53, 36, 5, 's').door(53, 34, 'w');
   b.area('Sacristy', [[53, 32, 5, 5]], { gm: 'Vestments, candles and a stair down to the crypt. Agathe keeps the temple\'s silver here (a censer and two chalices, 150 gp) and will not mind if it buys arrows.', label: [55, 34] });
@@ -200,7 +200,7 @@ function theSortie() {
   b.tunnel([[45, 10], [44, 6]], 2, { seed: 40, mat: 'dirt' });
   b.room('The mine face', 39, 2, 11, 5, { mat: 'dirt', read: 'The end of the counter-mine: a long chamber under the town wall, propped with timbers soaked in pitch. Barrels of pitch are stacked to the roof. Through the ceiling you hear boots on stone: the wall-walk, right above you.', gm: 'When the props burn, the wall above falls. The sappers plan to fire them at dawn of the final assault. Collapsing the face now (fire it early with the heroes clear: they need 3 rounds to get out, DC 14 Dexterity save or 3d10 bludgeoning) costs the legion its mine. The orders are nailed to a prop (handout).' });
   b.props_('mine-support', [[40, 3], [43, 3], [46, 3], [40, 5], [43, 5], [46, 5]]).props_('barrel-stack', [[48, 2], [48, 5]]).prop('pickaxes', 41, 4).prop('ore-pile', 45, 6).prop('lantern-standing', 44, 4).light(44, 4, 10, 15);
-  b.encounter('Sappers at the mine face', [38, 2, 13, 9], [['bugbear', 6], ['ogre', 2], ['veteran', 1]], 'low');
+  b.encounter('Sappers at the mine face', [38, 2, 13, 9], [['bugbear', 6], ['ogre', 2], ['ironCollarSergeant', 1]], 'low');
   b.tunnel([[48, 11], [51, 9]], 2, { seed: 41, mat: 'dirt' });
   b.cave('Bulette pen', 54, 9, 4, 3, { seed: 42, mat: 'dirt', read: 'Two armoured backs, like overturned boats, rise and fall in the dirt. Chains as thick as your wrist run from their collars to iron stakes.', gm: 'The legion\'s tunnel hounds, starved to make them dig. They can be loosed to chase the sappers (DC 16 Animal Handling, or just break the stakes and run). If killed here they cannot erupt under the town in part 3.' });
   b.props_('chains-hanging', [[52, 9], [56, 9]]).prop('bone-heap', 55, 11).prop('wall-chains', 57, 8);
@@ -217,7 +217,7 @@ function theSortie() {
   b.mud(50, 24, 8, 2).mud(56, 19, 2, 6).mud(56, 19, 8, 2).mud(62, 15, 2, 5).mud(62, 15, 5, 2);
   b.area('The saps', [[50, 14, 20, 13]], { read: 'Zigzag trenches crawl up the slope toward the town wall, roofed in places with hurdles. Hobgoblins sleep in them in neat rows, armour on, weapons in hand.', gm: 'The legion\'s approach trenches. Pickets with worgs walk them every watch. They are the shortest way between the engines and the hill, and the most watched.', label: [58, 21] });
   b.props_('sandbags', [[51, 23], [55, 18], [60, 15]]).props_('barricade-wood', [[58, 22], [64, 17]]).prop('spear-rack', 54, 26).prop('torch-standing', 60, 19).prop('crate', 57, 25).light(60, 19, 10, 15);
-  b.encounter('Pickets in the saps', [50, 14, 20, 13], [['hobgoblin', 10], ['worg', 4], ['veteran', 1]], 'low');
+  b.encounter('Pickets in the saps', [50, 14, 20, 13], [['hobgoblin', 10], ['worg', 4], ['ironCollarSergeant', 1]], 'low');
 
   // ----- the stream, the ford and the bridge -----
   river(b, [[69, 11], [64, 16], [67, 22], [63, 28], [65, 33], [62, 36]], false);
@@ -256,19 +256,19 @@ function theSortie() {
   b.area('Tent lines', [[18, 54, 14, 10]], { read: 'Tents in perfect rows, eight soldiers to a tent, boots lined up outside each flap. Even the snoring sounds orderly.', gm: 'Two hundred sleeping legionaries. Any alarm here wakes the camp: the night clock jumps forward one watch and every later fight gains two hobgoblins.', label: [24, 59] });
   for (const x of [19, 22, 25, 28]) for (const y of [55, 58, 61]) b.prop('tent', x, y);
   b.prop('campfire', 30, 57).prop('cooking-pot-fire', 30, 61).prop('weapon-barrel', 20, 63).light(30, 57, 10, 15);
-  b.building("Warlord's pavilion", 37, 54, 11, 8, { mat: 'wood-planks', read: 'A pavilion of black and grey canvas. Inside, a map of Brightwall covers the table, with every house drawn and numbered. A tall hobgoblin in black armour looks up from it, unsurprised.', gm: 'Grisk Uldaran and Ashcaller Yethra, planning the final assault, with three iron-collar sergeants (veterans). Grisk will talk before he fights: he offers a duel, champion against champion, before witnesses. If his champion loses, he gives up the Dawnstone and lets the heroes walk out. He keeps his word. Yethra does not.', doors: [[42, 61, 's', 'closed', 'door-wood'], [37, 57, 'w', 'closed', 'door-wood']] });
+  b.building("Warlord's pavilion", 37, 54, 11, 8, { mat: 'wood-planks', read: 'A pavilion of black and grey canvas. Inside, a map of Brightwall covers the table, with every house drawn and numbered. A tall hobgoblin in black armour looks up from it, unsurprised.', gm: 'Grisk Uldaran and Ashcaller Yethra, planning the final assault, with three iron-collar sergeants. Grisk will talk before he fights: he offers a duel, champion against champion, before witnesses. If his champion loses, he gives up the Dawnstone and lets the heroes walk out. He keeps his word. Yethra does not.', doors: [[42, 61, 's', 'closed', 'door-wood'], [37, 57, 'w', 'closed', 'door-wood']] });
   b.wallRun(44, 54, 4, 'w').wallRun(44, 57, 4, 's').door(44, 56, 'w', 'locked');
   b.area('Strongroom', [[44, 54, 4, 4]], { gm: 'An iron-bound chest (DC 18 to pick; Grisk wears the key). Inside, wrapped in a soldier\'s cloak, the Dawnstone glows softly, warm as a hand.', label: [46, 55] });
   b.prop('war-table', 40, 57).props_('chair-high-back', [[39, 56], [41, 56]]).prop('rug-pelt', 40, 59).prop('brazier', 38, 55).prop('armor-stand', 43, 55).prop('weapon-rack', 38, 60).prop('cot', 43, 60).props_('chest', [[46, 55]]).prop('strongbox', 45, 56).light(38, 55, 10, 15);
-  b.encounter("The warlord's pavilion", [37, 54, 11, 8], [['gladiator', 1], ['mage', 1], ['veteran', 3]], 'high');
+  b.encounter("The warlord's pavilion", [37, 54, 11, 8], [['tallyWarlord', 1], ['tallyAshcaller', 1], ['ironCollarSergeant', 3]], 'high');
   b.area('The Great Tally', [[29, 61, 9, 9]], { read: 'Where the camp\'s two roads cross stands a bronze pole twice the height of a man, hung with thousands of knotted cords. Each cord belonged to a dead legionary; each knot is a life they took. Two giant hobgoblins in masks stand guard.', gm: 'The legion\'s standard. Stealing or burning it (it takes two rounds to cut down) breaks the legion\'s heart: in part 3 every hobgoblin has disadvantage on its first attack, and the legion retreats as soon as Grisk falls. The honour guard fight to the death.', label: [33, 65] });
   b.prop('banner-pole', 33, 65).props_('brazier-pedestal', [[31, 63], [35, 67]]).prop('skull-pile', 31, 67).prop('war-banner', 35, 63).light(31, 63, 10, 15).light(35, 67, 10, 15);
-  b.encounter('The Great Tally guard', [29, 61, 9, 9], [['gladiator', 2], ['hobgoblin', 6]], 'moderate');
+  b.encounter('The Great Tally guard', [29, 61, 9, 9], [['tallyMaskedChampion', 2], ['hobgoblin', 6]], 'moderate');
   b.wallRun(19, 69, 4, 'n', 'bars').wallRun(19, 74, 4, 's', 'bars').wallRun(19, 69, 6, 'w', 'bars').wallRun(22, 69, 6, 'e', 'bars').door(21, 69, 'n', 'locked', 'bars');
   b.wallRun(25, 69, 4, 'n', 'bars').wallRun(25, 74, 4, 's', 'bars').wallRun(25, 69, 6, 'w', 'bars').wallRun(28, 69, 6, 'e', 'bars').door(26, 69, 'n', 'locked', 'bars');
   b.area('Prisoner pens', [[18, 67, 13, 9]], { read: 'Two cages of lashed iron bars, crammed with people from the valley farms. Nobody cries. A girl in cracked spectacles is counting the guards under her breath.', gm: 'Thirty-one prisoners, kept as labour. Elske Wendercott is in the east cage. The keys hang on the sergeant\'s belt; the locks are DC 15. Getting thirty frightened people out of a camp is the hard part: back the way the heroes came, or out the west gate and up the gully.', label: [24, 67] });
   b.props_('straw-bed', [[20, 71], [26, 71]]).props_('water-trough', [[21, 73], [27, 73]]).prop('stocks', 30, 70).prop('brazier', 30, 74).prop('key-ring', 29, 72).light(30, 74, 10, 15);
-  b.encounter('Pen guards', [18, 67, 13, 9], [['hobgoblin', 8], ['veteran', 2]], 'low');
+  b.encounter('Pen guards', [18, 67, 13, 9], [['hobgoblin', 8], ['ironCollarSergeant', 2]], 'low');
   b.area("Quartermaster's depot", [[36, 67, 13, 9]], { read: 'Stacked crates, sacks of grain stamped with the seals of three different villages, and a field forge banked for the night.', gm: 'Plunder and supplies. Four potions of healing in a medicine chest. The pitch store next door is the best diversion in the camp.', label: [40, 70] });
   b.props_('crate-stack', [[37, 68], [37, 71]]).props_('flour-sacks', [[40, 68], [41, 74]]).prop('loot-sacks', 39, 73).prop('forge', 42, 69).prop('anvil', 42, 71).prop('cart', 38, 75, 90);
   b.building('Pitch store', 44, 70, 5, 5, { mat: 'dirt', gm: 'Barrels of pitch for the fire-pots. One torch and a 30-foot run turns it into a fireball (8d6 fire in 20 feet) and a column of flame the whole camp will chase. Buys the heroes one watch of chaos.', doors: [[44, 72, 'w']] });
@@ -300,7 +300,7 @@ function brightwallBurning() {
   b.area('The fallen gate', [[28, 50, 20, 16]], { read: 'The gate-towers are heaps of broken stone. Through the gap where the portcullis was, a mammoth in iron plate drags the ram backwards for another swing, and behind it the legion comes on in step.', gm: 'The opening fight of the final assault. If the heroes destroyed the ram or freed the mammoth in part 2, the gate still holds: the legion comes over ladders instead, without the mammoth (drop it from the fight).', label: [37, 55] });
   b.props_('door-broken', [[36, 61], [39, 62]]).prop('battering-ram', 37, 63).props_('burning-wreckage', [[30, 52], [45, 52]]).props_('rubble-pile', [[33, 56], [42, 56]]).props_('skeleton-lying', [[38, 57], [31, 55]]).prop('war-banner', 39, 64).prop('obscuring-cloud', 35, 59);
   b.light(30, 52, 10, 20, '#ff7a2a').light(45, 52, 10, 20, '#ff7a2a');
-  b.encounter('The war mammoth', [28, 50, 20, 16], [['mammoth', 1], ['hobgoblin', 10], ['veteran', 2], ['ogre', 2]], 'moderate');
+  b.encounter('The war mammoth', [28, 50, 20, 16], [['mammoth', 1], ['hobgoblin', 10], ['ironCollarSergeant', 2], ['ogre', 2]], 'moderate');
   b.area('The killing ground', [[22, 66, 40, 13]], { read: 'The slope below the wall is black with the legion: shield-blocks in perfect squares, waiting their turn.', gm: 'Nobody goes out here and lives. Show it to the players to make them feel the size of the thing.', label: [40, 72] });
   b.props_('catapult', [[30, 77], [50, 78]]).props_('barricade-wood', [[36, 76], [44, 76]]).props_('war-banner', [[34, 74], [46, 74]]).props_('ladder', [[24, 66], [48, 66]]).prop('skeleton-lying', 41, 70);
 
@@ -314,7 +314,7 @@ function brightwallBurning() {
   b.light(33, 37, 15, 20).light(41, 37, 15, 20);
   b.area('The lost market', [[22, 42, 14, 9]], { read: 'The tents of the field hospital are slashed and trampled. Cots lie overturned in the mud. Not everyone got out.', gm: 'South of the line, in enemy hands. Three wounded who could not be carried hide under the dead-cart (DC 14 Perception to hear them). Bringing them back over the barricade under fire is a heroic act; the town remembers.', label: [28, 46] });
   b.props_('cot', [[24, 43], [27, 47], [31, 44]]).prop('tent', 33, 48).prop('cart', 25, 49, 90).prop('cauldron-tripod', 29, 46).prop('debris-wood', 23, 46);
-  b.encounter('Hold the Lamp Street gate', [20, 42, 24, 7], [['hobgoblin', 15], ['veteran', 3], ['bugbear', 4]], 'low');
+  b.encounter('Hold the Lamp Street gate', [20, 42, 24, 7], [['hobgoblin', 15], ['ironCollarSergeant', 3], ['bugbear', 4]], 'low');
 
   // ----- the east breach and the graveyard line -----
   b.floor(68, 33, 2, 10, 'dirt').rubble(62, 33, 10, 10);
@@ -330,7 +330,7 @@ function brightwallBurning() {
   b.area('Broken sacristy', [[53, 32, 5, 5]], { read: 'The floor of the sacristy has fallen in. Pine props and fresh dirt show where something dug up from below.', gm: 'The sappers\' tunnel (if it exists). Collapsing it behind them takes one action and a DC 15 Strength check, or any thunder spell.', label: [55, 34] });
   b.prop('altar', 49, 33).prop('brazier-everburning', 50, 34).props_('pew', [[47, 37], [51, 37], [47, 39], [51, 39], [47, 41], [51, 41]]).props_('cot', [[45, 42], [55, 42], [55, 39]]).prop('font', 49, 44).prop('statue-tall-robed', 45, 33).prop('trapdoor', 56, 34).prop('mine-support', 54, 35).prop('rubble-pile', 55, 33);
   b.light(50, 34, 15, 20, '#ffe3a8');
-  b.encounter('Sappers in the sanctuary', [44, 32, 14, 14], [['bugbear', 8], ['veteran', 3], ['ogre', 2]], 'low');
+  b.encounter('Sappers in the sanctuary', [44, 32, 14, 14], [['bugbear', 8], ['ironCollarSergeant', 3], ['ogre', 2]], 'low');
 
   // ----- the burning town -----
   b.area('Burned Cloth Hall', [[22, 31, 12, 8]], { read: 'The old hospital is a black shell. Its roof has fallen in and flames still crawl along the beams. From under the floor, someone is knocking.', gm: 'Six wounded were hidden in the cellar when the hall caught fire. Getting them out: three DC 15 checks (Athletics to shift beams, Medicine or Survival to find air, Constitution saves against the smoke at 2d6 fire damage each failure). Takes 3 rounds the heroes are not spending elsewhere.', label: [27, 34] });
@@ -365,7 +365,7 @@ function brightwallBurning() {
   b.props_('siege-tower', [[72, 4]]).props_('skeleton-lying', [[60, 3], [65, 4]]).prop('war-banner', 55, 3).prop('burning-wreckage', 62, 7);
   b.area('Signal Stair', [[34, 13, 6, 4]], { read: 'The forty steps up the crag are held by a wall of black shields, three deep. Above them, on the Beacon yard, you hear the warlord giving calm orders.', gm: 'The main way up. The goat path (west) and the Watch Door (east) go round, but take longer.', label: [36, 15] });
   b.props_('stair-grand', [[36, 14], [37, 15]]).prop('war-banner', 38, 17);
-  b.encounter('Shield wall on the Signal Stair', [30, 12, 12, 7], [['gladiator', 1], ['hobgoblin', 12], ['veteran', 2]], 'low');
+  b.encounter('Shield wall on the Signal Stair', [30, 12, 12, 7], [['tallyMaskedChampion', 1], ['hobgoblin', 12], ['ironCollarSergeant', 2]], 'low');
   b.area('Beacon yard', [[24, 2, 25, 12]], { read: 'The top of the crag. Smoke from the burning town boils up all round it, and through the gaps you can see the whole valley, all the way to the far blue ridge where the knights wait.', gm: 'The final fight. Grisk and Yethra hold the yard: Yethra means to burn the tower down so it can never be lit. While the heroes fight, someone has to relight the Beacon (see the scene). Grisk ends the fight if the Beacon burns: his war is lost and he knows it.', label: [41, 12] });
   b.props_('barrel-group', [[25, 12], [47, 12]]).prop('telescope', 47, 3).prop('stairs-down', 37, 13).props_('burning-ground', [[39, 11], [44, 7]]).prop('war-banner', 36, 10).prop('obscuring-cloud', 45, 12);
   b.building('Beacon tower', 26, 6, 9, 6, { mat: 'stone-flagstone', gm: 'Yethra has piled pitch barrels against the stair. If she gets two uninterrupted turns here, the tower burns from the inside and the Beacon cannot be lit for a day.', doors: [[30, 11, 's', 'closed', 'door-iron'], [30, 6, 'n', 'closed']], windows: [[26, 8, 'w'], [34, 8, 'e']] });
@@ -374,7 +374,7 @@ function brightwallBurning() {
   b.prop('brazier-pedestal', 30, 3).prop('orb-pedestal', 31, 4).prop('candle-ring', 33, 3);
   b.building("Keeper's house", 38, 4, 9, 6, { gm: 'Empty. Elske\'s spare spectacles still sit on the windowsill.', doors: [[42, 9, 's']] });
   b.prop('writing-desk', 39, 5).prop('bed', 45, 5).prop('broken-furniture', 41, 7);
-  b.encounter('Grisk at the beacon', [24, 2, 25, 10], [['gladiator', 2], ['mage', 1], ['veteran', 3]], 'high');
+  b.encounter('Grisk at the beacon', [24, 2, 25, 10], [['tallyWarlord', 1], ['tallyMaskedChampion', 1], ['tallyAshcaller', 1], ['ironCollarSergeant', 3]], 'high');
 
   b.area('Orchard camp', [[4, 2, 16, 12]], { read: 'The people of the lower town have fled up here with what they could carry. Blankets hang from the apple trees, and a hundred faces turn toward you each time a horn sounds.', gm: 'If the Beacon falls, these are the people who die first. Mabb can lead them down the old shaft and out through the mine, but only if someone holds the Smelt House for her.', label: [11, 7] });
   b.props_('tree-oak', [[6, 4], [10, 3], [14, 5], [7, 9], [12, 10], [17, 4]]).props_('bedroll', [[8, 5], [12, 7], [15, 8]]).props_('tent', [[5, 11], [16, 11]]).prop('campfire', 10, 7).prop('handcart', 18, 5).light(10, 7, 10, 15);
@@ -401,7 +401,7 @@ export const BRIGHTWALL_SIEGE: Adventure = {
   ],
   tips: [
     'Run it as a war story. Keep a visible tally of townsfolk saved and lost, just as the legion keeps its tally. Let the players feel every choice in that number.',
-    'The SRD has only plain hobgoblins, so the legion borrows stat blocks: veterans are iron-collar sergeants, gladiators are masked champions and the warlord, mages are ashcallers (war-casters). Ogres and hill giants are hired muscle. Describe them all as one disciplined army.',
+    'The legion has its own stat blocks: plain hobgoblins in the ranks, iron-collar sergeants leading every squad, masked champions guarding the standard, Ashcaller Yethra as its war-caster and Grisk as the Tally Warlord. Bugbears are scouts and knives; ogres and hill giants are hired muscle. Run them all as one disciplined army.',
     'The legion is disciplined, not mindless. Hobgoblin units retreat in good order at half strength, take prisoners, and keep their word in a parley. Many fights can be avoided by bluff, by fear, or by giving them a better order to follow.',
     'Part 1: at dusk, three alarms come at once (the hospital, the east wall, the Beacon). The heroes cannot be everywhere: whatever they leave, the townsfolk handle badly. That is the point.',
     'Part 2 has a night clock of six watches. Each fight, each engine burned, each rescue costs one watch. At dawn the camp wakes. What the heroes destroy here changes part 3: say so plainly when they do it.',
@@ -409,21 +409,21 @@ export const BRIGHTWALL_SIEGE: Adventure = {
   ],
   npcs: [
     {
-      id: 'pf_bwsgrisk', name: 'Grisk Uldaran', title: 'warlord of the Tally Legion', kind: 'monster', art: 'hobgoblin', monsterId: 'gladiator',
+      id: 'pf_bwsgrisk', name: 'Grisk Uldaran', title: 'warlord of the Tally Legion', kind: 'monster', art: 'hobgoblin', monsterId: 'tallyWarlord',
       wants: 'Brightwall\'s walls for his legion\'s winter, and the knights who broke his father\'s legion to come too late.',
       knows: 'The name of every soldier he commands. Where the Dawnstone is (his strongroom). That he holds the Keeper\'s daughter.',
       voice: 'Calm and precise. Never raises his voice. Speaks Common with a soldier\'s courtesy and counts on his fingers as he talks.',
       appearance: 'A tall grey-skinned hobgoblin in black lacquered plate. Knotted cords run down his left arm from shoulder to wrist: his tally.',
       backstory: 'His father\'s legion was destroyed by the Dawnward Knights thirty years ago, at this same valley. Grisk was a drummer boy. He remembers the Beacon burning that night.',
-      gmNotes: 'Gladiator stat block. He keeps his word: offered a duel before witnesses, he accepts, and honours the result. If he dies in part 2, his second-in-command (same stat block) leads the assault in part 3, swearing revenge. If the Beacon burns, he orders a withdrawal in good order rather than lose his whole legion.',
+      gmNotes: 'Tally Warlord stat block. He keeps his word: offered a duel before witnesses, he accepts, and honours the result. If he dies in part 2, his second-in-command (also a Tally Warlord) leads the assault in part 3, swearing revenge. If the Beacon burns, he orders a withdrawal in good order rather than lose his whole legion.',
     },
     {
-      id: 'pf_bwsyethra', name: 'Yethra Coldmouth', title: 'Ashcaller of the legion', kind: 'monster', art: 'fire-mage', monsterId: 'mage',
+      id: 'pf_bwsyethra', name: 'Yethra Coldmouth', title: 'Ashcaller of the legion', kind: 'monster', art: 'fire-mage', monsterId: 'tallyAshcaller',
       wants: 'To burn the Beacon tower to the ground, so that no fire but the legion\'s ever calls anyone again.',
       knows: 'Every fire-pot recipe in the legion. That Grisk means to keep his promise to the Keeper, which she thinks is weakness.',
       voice: 'A hoarse whisper (her throat is burned). Laughs at the wrong moments.',
       appearance: 'A small hobgoblin woman with soot-black arms to the elbow, carrying a brass lantern on a pole.',
-      gmNotes: 'Mage stat block (fire spells). She does not keep Grisk\'s bargains: if he lets the heroes go, she sends bugbears after them. In part 3 she tries to burn the tower from inside.',
+      gmNotes: 'Ashcaller stat block. She does not keep Grisk\'s bargains: if he lets the heroes go, she sends bugbears after them. In part 3 she tries to burn the tower from inside.',
     },
     {
       id: 'pf_bwsteodric', name: 'Teodric Wendercott', title: 'Magister, Keeper of the Beacon', kind: 'npc', art: 'court-wizard', monsterId: 'mage',

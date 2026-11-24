@@ -280,10 +280,10 @@ function rimehold() {
   b.props_('forge', [[15, 26], [20, 26]]).props_('anvil', [[16, 30], [20, 32]]).prop('weapon-rack', 14, 38).prop('ice-block', 21, 37).prop('grindstone', 18, 35).prop('ore-pile', 14, 33);
   b.light(15, 26, 15, 20, '#7fb8ff').light(20, 26, 15, 20, '#7fb8ff');
   b.tunnel([[6, 25], [7, 19]], 2, { seed: 3004 });
-  b.cave('Barrow of the Rime-Kings', 7, 13, 5, 7, { seed: 3002, read: 'Dead giant kings sit on stone chairs along the walls, frozen, with their crowns still on. Their breath hangs in the air as if they were alive. Some of them are.', gm: 'The old kings\' huskarls, gone to wraiths and wights, guard the barrow. They obey a true heir: Prince Hallvar can send them to sleep with a word. Behind the last king, a secret door opens on the Kings\' Road, an old passage to the Heart of Winter (DC 18 Perception).' });
+  b.cave('Barrow of the Rime-Kings', 7, 13, 5, 7, { seed: 3002, read: 'Dead giant kings sit on stone chairs along the walls, frozen, with their crowns still on. Their breath hangs in the air as if they were alive. Some of them are.', gm: 'Four of the old kings\' huskarls, buried sitting up with their axes on their knees, still guard the barrow as barrow huskarls. They obey a true heir: Prince Hallvar can send them to sleep with a word. Behind the last king, a secret door opens on the Kings\' Road, an old passage to the Heart of Winter (DC 18 Perception).' });
   b.props_('throne', [[4, 10], [10, 10], [4, 16], [10, 16]]).props_('skeleton-seated', [[5, 13], [9, 13]]).prop('crown-cushion', 7, 8).props_('candle-stand-tall', [[6, 18], [8, 18]]);
   b.light(7, 13, 5, 15, '#a8c8ff');
-  b.encounter('Barrow of the Rime-Kings', [2, 6, 11, 15], [['wraith', 4], ['wight', 6]], 'low');
+  b.encounter('Barrow of the Rime-Kings', [2, 6, 11, 15], [['barrowHuskarl', 4]], 'low');
   b.hall(8, 9, 8, 1, 1, { mat: 'dungeon-slab' }).hall(8, 1, 58, 1, 1, { mat: 'dungeon-slab' }).hall(58, 1, 58, 5, 1, { mat: 'dungeon-slab' }).floor(58, 6, 1, 2, 'ice');
   b.door(8, 3, 'n', 'secret').door(58, 6, 'n', 'secret');
   b.area("The Kings' Road", [[9, 0, 48, 3]], { gm: 'A narrow passage cut for the old kings to walk unseen to the Heart. Giant-scale but forgotten: dust and frost. It ends at a secret door in the Heart chamber\'s north wall.', label: [30, 1] });
@@ -307,7 +307,7 @@ function rimehold() {
   b.ice(33, 15, 12, 3).water(37, 16, 4, 1, true);
   b.props_('column-twisted', [[29, 7], [29, 15], [47, 7], [47, 15], [35, 7], [41, 7]]).prop('throne-dais', 38, 6).props_('brazier-pedestal', [[34, 6], [43, 6]]).prop('rug-runner', 38, 13).props_('statue-tall-winged', [[27, 5], [49, 5]]);
   b.light(34, 6, 15, 20, '#7fb8ff').light(43, 6, 15, 20, '#7fb8ff');
-  b.encounter("The queen's judgement", [26, 4, 25, 16], [['frostGiant', 4], ['mammoth', 1]], 'moderate');
+  b.encounter("The queen's judgement", [26, 4, 25, 16], [['frostGiantQueen', 1], ['frostGiant', 3], ['mammoth', 1]], 'moderate');
   b.floor(37, 20, 6, 2);
   for (let x = 37; x < 43; x++) b.door(x, 20, 'n', 'closed', 'door-double');
   b.room("Queen's chambers", 16, 4, 8, 15, { mat: 'wood-planks', read: 'A bed the size of a barn, and beside it, a little bed carved for a giant child, kept neat. Drawings in charcoal cover the wall: a boy giant with a horn, older and older.', gm: 'The queen\'s grief, plain to see. Under her pillow: Vask\'s "proof" (the prince\'s broken horn wrapped in a bloody Highward cloak). A DC 16 Medicine or Investigation shows the blood is goat\'s, and the break in the horn was cut, not snapped.' });
@@ -397,13 +397,13 @@ export const FROSTFANG_PASS: Adventure = {
       wants: 'To keep his mother\'s promise: the pact renewed, the pass open.', knows: 'That Vask froze him on the glacier, and that the grey man spoke of "my partner below" who would "have every frozen soul".',
       voice: 'Young, eager and too loud; embarrassed by his own size around small folk.', appearance: 'A young frost giant with a short golden-white beard, a fine white cloak and an empty horn-strap across his chest.',
       backstory: 'He was walking down to Highward with the pact-horn to renew the Thaw Pact when Vask met him on the ice, smiling, with an offer of help.',
-      gmNotes: 'Frozen alive in part 2. Freed, he is the key to peace: the huskarls, the barrow wraiths and his mother all yield to him.',
+      gmNotes: 'Frozen alive in part 2. Freed, he is the key to peace: the huskarls, the barrow huskarls and his mother all yield to him.',
     },
     {
-      id: 'pf_ffysgerd', name: 'Queen Ysgerd', title: 'queen of Rimehold', kind: 'npc', art: 'frostGiant', monsterId: 'frostGiant',
+      id: 'pf_ffysgerd', name: 'Queen Ysgerd', title: 'queen of Rimehold', kind: 'npc', art: 'frostGiant', monsterId: 'frostGiantQueen',
       wants: 'Her son back; failing that, blood-price.', knows: 'The Thaw Song, the Heart, and only what Vask has told her about her son.',
       voice: 'Very quiet for a giant, which makes everyone lean in. Stops mid-sentence when she thinks of Hallvar.', appearance: 'A tall, old frost giant in white bearskins, with a crown of icicles and a broken horn always in her hand.',
-      gmNotes: 'Frost giant stat block with maximum hit points. She is not evil, only grieving and lied to. Shown the truth, she turns on Vask with terrible fury and sings the Thaw Song herself.',
+      gmNotes: 'Uses the Frost Giant Queen stat block: her grief turns to fury whenever one of her giants falls. She is not evil, only grieving and lied to. Shown the truth, she turns on Vask with terrible fury and sings the Thaw Song herself.',
     },
     {
       id: 'pf_ffvask', name: 'Ondrel Vask', title: 'exiled court mage, the queen\'s adviser', kind: 'npc', art: 'frost-mage', monsterId: 'archmage',
@@ -501,7 +501,7 @@ export const FROSTFANG_PASS: Adventure = {
         { room: "The Giants' Stair", title: 'The hall on the peak', read: 'Up here the sky is close and black and full of stars, even at noon. Snow rises from Rimehold\'s chimneys instead of smoke, and from somewhere inside comes a sound like a whole mountain breathing out.', gm: 'Choose the way in: the Gate of Tusks, or the mammoth ramp to the byre. If the prince is with the heroes, they can walk in the front door.' },
         { room: 'Gate of Tusks', title: 'The huskarls\' gate', encounter: 'Gate of Tusks', gm: 'Kneeling for the prince or Grunna, fighting for strangers.' },
         { room: 'Mammoth byre', title: 'Old Bergtha', optional: true, encounter: 'Mammoth byre', gm: 'A herder who will help anyone who saved her herd.' },
-        { room: 'Barrow of the Rime-Kings', title: 'The dead kings', optional: true, encounter: 'Barrow of the Rime-Kings', gm: 'Wraith huskarls obey the prince. The secret way behind the last king leads by the Kings\' Road to the Heart.', treasure: 'A dead king\'s crown (3,000 gp; the queen asks for it back, and gives a favour for it).' },
+        { room: 'Barrow of the Rime-Kings', title: 'The dead kings', optional: true, encounter: 'Barrow of the Rime-Kings', gm: 'The barrow huskarls obey the prince. The secret way behind the last king leads by the Kings\' Road to the Heart.', treasure: 'A dead king\'s crown (3,000 gp; the queen asks for it back, and gives a favour for it).' },
         { room: "Queen's chambers", title: 'A mother\'s room', optional: true, gm: 'The fake proof: goat\'s blood on a cut horn. Showing this to the queen breaks Vask\'s lie.' },
         { room: 'Great Hall of Rimehold', title: 'The hungry feast', encounter: 'Feast of the huskarls', gm: 'Starving huskarls. Food, the prince or a good speech (DC 18 Persuasion with the herd freed) turns the fight into a cheer.' },
         { room: 'Snow court', title: 'The great parley', optional: true, read: 'Giants pour into the court, dozens of them, and the snow falls on them all. The queen comes last, the broken horn in her hand, and the whole court goes quiet.', gm: 'If the heroes have proof, run the alliance here: the prince steps forward, or the letter is read out. The queen turns to look for Vask. He is already gone, to the Heart.' },

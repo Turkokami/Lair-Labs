@@ -458,7 +458,7 @@ function emberRoad() {
   b.wallRun(56, 55, 6, 's').wallRun(65, 55, 13, 's');
   b.rubble(62, 54, 3, 3);
   b.door(70, 20, 'n', 'secret');
-  b.door(56, 46, 'w', 'secret');
+  b.door(56, 46, 'w', 'secret').wall(56, 46, 'n').wall(56, 46, 's').door(57, 46, 'w', 'closed', 'portcullis'); // culvert runs under the wall to the cistern grate
   b.hall(48, 46, 55, 46, 1, { mat: 'dungeon-slab' });
   b.water(48, 46, 3, 1, false);
   b.area('Culvert', [[48, 45, 8, 3]], { gm: 'An old drain from the fort\'s cistern to the stream, behind a curtain of hanging moss (DC 13 Perception from the bank). Rusted grate at the fort end: DC 12 Athletics to wrench open, quietly.' });
@@ -512,7 +512,7 @@ function emberRoad() {
   b.area('Strongroom', [[68, 36, 4, 6]], {
     gm: 'Locked iron door (Gideon has the key; DC 13 thieves\' tools). Inside: the toll money (180 gp in a strongbox), a +1 shield with a thorn on it, the cult\'s contract letter (handout), and the Greyfen wardstone wrapped in sacking, taken from the fort chapel and waiting for the cult\'s cart. Behind a shelf, a narrow stair goes down to the cistern (no check: it is just behind the shelf).',
   });
-  b.prop('strongbox', 69, 37).prop('chest', 70, 40).prop('shield-wall', 68, 38).prop('gm-treasure', 69, 40, 0, { gm: true });
+  b.prop('stairs-down', 71, 41).prop('strongbox', 69, 37).prop('chest', 70, 40).prop('shield-wall', 68, 38).prop('gm-treasure', 69, 40, 0, { gm: true });
   b.encounter("Gideon's keep", [68, 28, 10, 8], [['banditCaptain', 1], ['thug', 2], ['cultist', 2]], 'high');
 
   b.building('Old cistern', 57, 44, 5, 5, {
@@ -522,7 +522,7 @@ function emberRoad() {
     doors: [[61, 46, 'e', 'closed']],
   });
   b.water(58, 45, 3, 3, true);
-  b.prop('ladder', 61, 44).prop('stairs-up', 57, 48);
+  b.prop('ladder', 61, 44).prop('stairs-up', 57, 48).prop('well', 63, 44);
 
   b.building('South-west tower', 56, 50, 5, 5, { mat: 'stone-flagstone', gm: 'Half fallen. The bandits keep their stolen ale here (four barrels). A hero who opens one starts a party, or a riot.', doors: [[58, 50, 'n', 'closed']] });
   b.props_('barrel', [[57, 51], [59, 52], [57, 53]]).prop('ceiling-rubble', 59, 53);
@@ -1098,7 +1098,7 @@ function heart() {
   b.prop('summoning-circle', 69, 26).prop('altar', 70, 25).props_('brazier-pedestal', [[67, 24], [71, 28], [66, 28]]).prop('rune-stone', 69, 24);
   b.props_('lava-pool', [[62, 20]]).props_('magma-vent', [[60, 25], [76, 24]]);
   b.light(69, 26, 25, 30, '#ff4a1c').light(62, 33, 15, 20, '#ff5a1c').light(63, 19, 15, 20, '#ff5a1c');
-  b.encounter('The Waking Rite', [57, 17, 22, 21], [['cultFanatic', 1], ['hellHound', 2], ['cultist', 4]], 'high');
+  b.encounter('The Waking Rite', [57, 17, 22, 21], [['highKindler', 1], ['hellHound', 2], ['cultist', 4]], 'high');
   b.encounter("The Mountain's Wrath", [60, 18, 18, 16], [['fireElemental', 1]], 'high');
 
   b.tunnel([[70, 37], [72, 43]], 2, { seed: 507 });
@@ -1221,11 +1221,11 @@ export const EMBER_ROAD: Adventure = {
       gmNotes: 'Cult fanatic stat block. He poisoned the last of the real monks. He would rather talk than fight and rather run than die. Captured, he bargains: the date of the rite and the way into the Heart in exchange for his freedom.',
     },
     {
-      id: 'pf_emrmaudra', name: 'Maudra Vesh', title: 'High Kindler of the Waking Flame', kind: 'monster', art: 'fire-mage', monsterId: 'cultFanatic', shared: true,
+      id: 'pf_emrmaudra', name: 'Maudra Vesh', title: 'High Kindler of the Waking Flame', kind: 'monster', art: 'fire-mage', monsterId: 'highKindler', shared: true,
       wants: 'To wake the Ashmother and burn away the cold, cruel world, so that no child ever freezes again.', knows: 'The whole plan, the rite, the stones, and a great deal about grief.',
       voice: 'Quiet, certain and sad. Never shouts. Speaks to the mountain as "Mother".', appearance: 'A tall woman in a cloak of red feathers, grey-streaked black hair, and burn scars on both hands she is proud of.',
       backstory: 'Her village starved in a hard winter while a lord kept his granary locked. Her husband and son died. She found the fire under the mountain in the monks\' books and decided it was the answer.',
-      gmNotes: 'Cult fanatic stat block, with 50 hit points as the leader. She is the villain, but not a monster: a hero who truly listens and offers her a better way (DC 16 Persuasion, only after a round of real talk) can make her falter and stop the rite. Defeated, she does not run. What happens to her is the heroes\' choice.',
+      gmNotes: 'High Kindler stat block. She is the villain, but not a monster: a hero who truly listens and offers her a better way (DC 16 Persuasion, only after a round of real talk) can make her falter and stop the rite. Defeated, she does not run. What happens to her is the heroes\' choice.',
     },
   ],
   handouts: [
